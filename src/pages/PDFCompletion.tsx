@@ -38,6 +38,8 @@ const PDFCompletionPage = () => {
           }));
         }
         
+        console.log('Pages data in completion:', pagesData);
+        console.log('Background image:', pagesData[0]?.backgroundImage);
         setPages(pagesData);
         
         // Collect all form elements from all pages
@@ -76,29 +78,34 @@ const PDFCompletionPage = () => {
     console.log("Completed form data:", formData);
   };
 
-  const downloadPDF = () => {
-    // Create a canvas to render the completed PDF
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Set canvas size to match PDF
-    canvas.width = 595; // A4 width in points
-    canvas.height = 842; // A4 height in points
-
-    // Create a link element to trigger download
-    const link = document.createElement('a');
-    link.download = `completed-pdf-${Date.now()}.png`;
-    
-    // Convert canvas to blob and download
-    canvas.toBlob((blob) => {
-      if (blob) {
-        link.href = URL.createObjectURL(blob);
-        link.click();
-        URL.revokeObjectURL(link.href);
-        toast.success("PDF downloaded successfully!");
+  const downloadPDF = async () => {
+    try {
+      // Get the PDF renderer element
+      const pdfContainer = document.querySelector('.pdf-renderer-container');
+      if (!pdfContainer) {
+        toast.error("PDF not ready for download");
+        return;
       }
-    });
+
+      // Use html2canvas to capture the PDF with form data
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(pdfContainer as HTMLElement, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.download = `completed-pdf-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      
+      toast.success("PDF downloaded successfully!");
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error("Failed to download PDF");
+    }
   };
 
   const getCompletionProgress = () => {
@@ -157,11 +164,7 @@ const PDFCompletionPage = () => {
             </Button>
             <Button onClick={downloadPDF} variant="outline">
               <Download className="w-4 h-4 mr-2" />
-              Download
-            </Button>
-            <Button onClick={handleComplete}>
-              <FileCheck className="w-4 h-4 mr-2" />
-              Complete
+              Download PDF
             </Button>
           </div>
         </div>
@@ -187,8 +190,8 @@ const PDFCompletionPage = () => {
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="relative border rounded-lg overflow-hidden bg-gray-50">
-                  {pages.length > 0 && pages[0].backgroundImage && (
+                <div className="pdf-renderer-container relative border rounded-lg overflow-hidden bg-gray-50">
+                  {pages.length > 0 && pages[0].backgroundImage ? (
                     <>
                       <PDFRenderer
                         fileUrl={pages[0].backgroundImage}
@@ -210,12 +213,19 @@ const PDFCompletionPage = () => {
                         />
                       ))}
                     </>
-                  )}
-                  {pages.length > 0 && !pages[0].backgroundImage && (
+                  ) : (
                     <div className="flex items-center justify-center h-[750px] text-muted-foreground">
                       <div className="text-center">
                         <p className="text-lg mb-2">No PDF uploaded</p>
                         <p className="text-sm">Please go back and upload a PDF file first.</p>
+                        <Button 
+                          onClick={() => navigate('/pdf-builder')} 
+                          className="mt-4"
+                          variant="outline"
+                        >
+                          <ArrowLeft className="w-4 h-4 mr-2" />
+                          Back to Builder
+                        </Button>
                       </div>
                     </div>
                   )}

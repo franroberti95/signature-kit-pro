@@ -131,7 +131,9 @@ const PDFBuilderPage = () => {
               Page {activePage + 1} of {pages.length} • {pages[activePage]?.format}
             </p>
           </div>
-            <Button onClick={() => navigate('/pdf-completion')} className="bg-green-600 hover:bg-green-700">
+            <Button onClick={() => navigate('/pdf-completion', { 
+              state: { uploadedFile: pages[0]?.backgroundImage } 
+            })} className="bg-green-600 hover:bg-green-700">
               Continue to Form Completion
             </Button>
         </div>
