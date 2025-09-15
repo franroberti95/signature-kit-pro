@@ -77,8 +77,28 @@ const PDFCompletionPage = () => {
   };
 
   const downloadPDF = () => {
-    toast.success("PDF download started!");
-    // Here you would generate and download the completed PDF
+    // Create a canvas to render the completed PDF
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size to match PDF
+    canvas.width = 595; // A4 width in points
+    canvas.height = 842; // A4 height in points
+
+    // Create a link element to trigger download
+    const link = document.createElement('a');
+    link.download = `completed-pdf-${Date.now()}.png`;
+    
+    // Convert canvas to blob and download
+    canvas.toBlob((blob) => {
+      if (blob) {
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+        toast.success("PDF downloaded successfully!");
+      }
+    });
   };
 
   const getCompletionProgress = () => {
@@ -168,10 +188,10 @@ const PDFCompletionPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="relative border rounded-lg overflow-hidden bg-gray-50">
-                  {pages.length > 0 && (
+                  {pages.length > 0 && pages[0].backgroundImage && (
                     <>
                       <PDFRenderer
-                        fileUrl={pages[0].backgroundImage || ''}
+                        fileUrl={pages[0].backgroundImage}
                         width={600}
                         height={750}
                         className="w-full"
@@ -190,6 +210,14 @@ const PDFCompletionPage = () => {
                         />
                       ))}
                     </>
+                  )}
+                  {pages.length > 0 && !pages[0].backgroundImage && (
+                    <div className="flex items-center justify-center h-[750px] text-muted-foreground">
+                      <div className="text-center">
+                        <p className="text-lg mb-2">No PDF uploaded</p>
+                        <p className="text-sm">Please go back and upload a PDF file first.</p>
+                      </div>
+                    </div>
                   )}
                 </div>
               </CardContent>
