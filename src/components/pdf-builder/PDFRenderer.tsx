@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { RPProvider, RPDefaultLayout, RPPages, RPConfig } from '@pdf-viewer/react';
+import { usePDFSlick } from '@pdfslick/react';
 import { Loader2 } from 'lucide-react';
+import '@pdfslick/react/dist/pdf_viewer.css';
 
 interface PDFRendererProps {
   fileUrl: string | File;
@@ -27,10 +28,8 @@ export const PDFRenderer = ({
       const url = URL.createObjectURL(fileUrl);
       objectUrlRef.current = url;
       setDocumentUrl(url);
-      console.log('PDFRenderer: Created object URL for file:', fileUrl.name);
     } else {
       setDocumentUrl(fileUrl);
-      console.log('PDFRenderer: Using direct URL:', fileUrl);
     }
 
     // Cleanup object URL on unmount
@@ -41,6 +40,10 @@ export const PDFRenderer = ({
       }
     };
   }, [fileUrl]);
+
+  const { viewerRef, usePDFSlickStore, PDFSlickViewer } = usePDFSlick(documentUrl || '', {
+    scaleValue: 'page-fit',
+  });
 
   if (!documentUrl) {
     return (
@@ -54,14 +57,13 @@ export const PDFRenderer = ({
   }
 
   return (
-    <div className={className}>
-      <RPConfig>
-        <RPProvider src={documentUrl}>
-          <RPDefaultLayout style={{ width: `${width}px`, height: `${height}px` }}>
-            <RPPages />
-          </RPDefaultLayout>
-        </RPProvider>
-      </RPConfig>
+    <div 
+      className={className} 
+      style={{ width: `${width}px`, height: `${height}px`, position: 'relative' }}
+    >
+      <div className="absolute inset-0 pdfSlick">
+        <PDFSlickViewer viewerRef={viewerRef} usePDFSlickStore={usePDFSlickStore} />
+      </div>
     </div>
   );
 };
