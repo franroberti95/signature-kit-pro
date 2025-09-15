@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { ToolbarPanel } from "@/components/pdf-builder/ToolbarPanel";
 import { PDFCanvas } from "@/components/pdf-builder/PDFCanvas";
 import { PDFFormat, ElementType, PDFElement, PDFPage } from "@/components/pdf-builder/PDFBuilder";
@@ -130,14 +131,9 @@ const PDFBuilderPage = () => {
               Page {activePage + 1} of {pages.length} • {pages[activePage]?.format}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => navigate('/')}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              ← Back to Start
-            </button>
-          </div>
+            <Button onClick={() => navigate('/pdf-completion')} className="bg-green-600 hover:bg-green-700">
+              Continue to Form Completion
+            </Button>
         </div>
       </header>
 
