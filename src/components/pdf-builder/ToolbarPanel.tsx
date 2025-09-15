@@ -7,7 +7,6 @@ import {
   CheckSquare, 
   ChevronDown, 
   Image,
-  MousePointer,
   Grip
 } from "lucide-react";
 import { ElementType } from "./PDFBuilder";
@@ -64,26 +63,6 @@ export const ToolbarPanel = ({ onAddElement }: ToolbarPanelProps) => {
   return (
     <div className="w-80 bg-toolbar-bg border-r border-toolbar-border overflow-y-auto">
       <div className="p-6 space-y-6">
-        {/* Selection Tool */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <MousePointer className="w-4 h-4" />
-              Selection Tool
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-2">
-              <Button variant="toolbar-active" size="toolbar" className="w-full">
-                <MousePointer className="w-5 h-5" />
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Click and drag elements to move them around the canvas
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Form Elements */}
         <Card className="shadow-sm">
           <CardHeader className="pb-3">
@@ -135,8 +114,8 @@ export const ToolbarPanel = ({ onAddElement }: ToolbarPanelProps) => {
               <ul className="space-y-1 list-disc list-inside">
                 <li>Click elements to add them to the canvas</li>
                 <li>Drag elements from toolbar to canvas</li>
-                <li>Click and drag elements to reposition</li>
-                <li>Click elements to configure properties</li>
+                <li>Click elements on canvas to select and drag</li>
+                <li>Click selected elements to configure properties</li>
               </ul>
             </div>
           </CardContent>

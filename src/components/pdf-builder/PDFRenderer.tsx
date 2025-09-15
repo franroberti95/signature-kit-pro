@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Loader2 } from 'lucide-react';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 
 // Set up the worker for PDF.js
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 
 interface PDFRendererProps {
   fileUrl: string;
@@ -25,15 +27,16 @@ export const PDFRenderer = ({
   const [error, setError] = useState<string | null>(null);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+    console.log('PDF loaded successfully with', numPages, 'pages');
     setNumPages(numPages);
     setLoading(false);
     setError(null);
   }
 
   function onDocumentLoadError(error: Error) {
-    setLoading(false);
-    setError('Failed to load PDF');
     console.error('PDF load error:', error);
+    setLoading(false);
+    setError(`Failed to load PDF: ${error.message}`);
   }
 
   if (loading) {
