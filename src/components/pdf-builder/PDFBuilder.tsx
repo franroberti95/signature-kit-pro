@@ -174,6 +174,11 @@ const PDFBuilder = () => {
           page={pages[activePage]}
           onUpdateElement={updateElement}
           onDeleteElement={deleteElement}
+          onAddElement={(element) => {
+            const updatedPages = [...pages];
+            updatedPages[activePage].elements.push(element);
+            setPages(updatedPages);
+          }}
           onAddPage={addPage}
           isLastPage={activePage === pages.length - 1}
         />

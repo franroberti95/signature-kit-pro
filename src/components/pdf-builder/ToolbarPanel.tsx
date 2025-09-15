@@ -69,13 +69,18 @@ export const ToolbarPanel = ({ onAddElement }: ToolbarPanelProps) => {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <MousePointer className="w-4 h-4" />
-              Selection
+              Selection Tool
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <Button variant="toolbar-active" size="toolbar" className="w-full">
-              <MousePointer className="w-5 h-5" />
-            </Button>
+            <div className="space-y-2">
+              <Button variant="toolbar-active" size="toolbar" className="w-full">
+                <MousePointer className="w-5 h-5" />
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Click and drag elements to move them around the canvas
+              </p>
+            </div>
           </CardContent>
         </Card>
 
@@ -87,39 +92,37 @@ export const ToolbarPanel = ({ onAddElement }: ToolbarPanelProps) => {
               Form Elements
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
+          <CardContent className="pt-0 space-y-3">
+            {/* Form Elements Grid */}
+            <div className="space-y-2">
               {toolbarElements.map((element) => {
                 const IconComponent = element.icon;
                 return (
-                  <Button
+                  <div 
                     key={element.type}
-                    variant="toolbar"
-                    size="toolbar"
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, element.type)}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-toolbar-hover transition-colors cursor-pointer"
                     onClick={() => onAddElement(element.type)}
-                    className="relative group"
-                    title={element.description}
                   >
-                    <IconComponent className="w-5 h-5" />
-                    
-                    {/* Tooltip */}
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-secondary text-secondary-foreground text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
-                      {element.label}
+                    <Button
+                      variant="toolbar"
+                      size="toolbar"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, element.type)}
+                      className="flex-shrink-0"
+                    >
+                      <IconComponent className="w-5 h-5" />
+                    </Button>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-foreground">
+                        {element.label}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {element.description}
+                      </div>
                     </div>
-                  </Button>
+                  </div>
                 );
               })}
-            </div>
-            
-            {/* Element descriptions */}
-            <div className="mt-4 space-y-2">
-              {toolbarElements.map((element) => (
-                <div key={`desc-${element.type}`} className="text-xs text-muted-foreground">
-                  <span className="font-medium">{element.label}:</span> {element.description}
-                </div>
-              ))}
             </div>
           </CardContent>
         </Card>

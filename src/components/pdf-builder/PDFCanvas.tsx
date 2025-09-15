@@ -9,6 +9,7 @@ interface PDFCanvasProps {
   page: PDFPage;
   onUpdateElement: (elementId: string, updates: Partial<PDFElement>) => void;
   onDeleteElement: (elementId: string) => void;
+  onAddElement: (element: PDFElement) => void;
   onAddPage: () => void;
   isLastPage: boolean;
 }
@@ -30,6 +31,7 @@ export const PDFCanvas = ({
   page,
   onUpdateElement,
   onDeleteElement,
+  onAddElement,
   onAddPage,
   isLastPage
 }: PDFCanvasProps) => {
@@ -70,10 +72,11 @@ export const PDFCanvas = ({
       required: false,
       placeholder: `Enter ${elementType}...`,
     };
-
-    onUpdateElement(newElement.id, newElement);
+    
+    // Add element using the parent callback
+    onAddElement(newElement);
     toast(`${elementType.charAt(0).toUpperCase() + elementType.slice(1)} field added to canvas`);
-  }, [scale, onUpdateElement]);
+  }, [scale, onAddElement]);
 
   const handleElementDrag = useCallback((elementId: string, deltaX: number, deltaY: number) => {
     onUpdateElement(elementId, {
@@ -142,11 +145,10 @@ export const PDFCanvas = ({
             >
               {/* Background Image (for uploaded PDFs) */}
               {page.backgroundImage && (
-                <img
-                  src={page.backgroundImage}
-                  alt="PDF Background"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
+                <div className="absolute inset-0 bg-muted/10 flex items-center justify-center text-muted-foreground text-sm">
+                  PDF Preview (Coming Soon)
+                  {/* TODO: Implement PDF.js to render actual PDF pages */}
+                </div>
               )}
 
               {/* Grid pattern for alignment */}
