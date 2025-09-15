@@ -9,7 +9,7 @@ import 'react-pdf/dist/Page/TextLayer.css';
 pdfjs.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 
 interface PDFRendererProps {
-  fileUrl: string;
+  fileUrl: string | File;
   width: number;
   height: number;
   pageNumber?: number;
@@ -27,7 +27,7 @@ export const PDFRenderer = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  console.log('PDFRenderer: Attempting to load PDF from:', fileUrl);
+  console.log('PDFRenderer: Attempting to load PDF:', typeof fileUrl === 'string' ? fileUrl : fileUrl.name);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     console.log('PDF loaded successfully with', numPages, 'pages');
@@ -60,7 +60,7 @@ export const PDFRenderer = ({
         <div className="flex flex-col items-center gap-2 text-muted-foreground">
           <Loader2 className="w-6 h-6 animate-spin" />
           <span className="text-sm">Loading PDF...</span>
-          <span className="text-xs">File: {fileUrl.substring(0, 50)}...</span>
+          <span className="text-xs">File: {typeof fileUrl === 'string' ? fileUrl.substring(0, 50) + '...' : fileUrl.name}</span>
         </div>
       </div>
     );

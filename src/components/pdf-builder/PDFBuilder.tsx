@@ -25,7 +25,7 @@ export interface PDFPage {
   id: string;
   format: PDFFormat;
   elements: PDFElement[];
-  backgroundImage?: string;
+  backgroundImage?: string | File;
 }
 
 const PDFBuilder = () => {
@@ -48,13 +48,12 @@ const PDFBuilder = () => {
   };
 
   const handleFileUpload = (file: File) => {
-    // Handle PDF upload with proper file URL
-    const fileUrl = URL.createObjectURL(file);
+    // Handle PDF upload by passing the File object directly to react-pdf
     const newPage: PDFPage = {
       id: `page-${Date.now()}`,
       format: "A4", // Default, would be detected from uploaded PDF
       elements: [],
-      backgroundImage: fileUrl, // Use the file URL for PDF rendering
+      backgroundImage: file, // Pass File object directly to PDFRenderer
     };
     setPages([newPage]);
     setActivePage(0);
