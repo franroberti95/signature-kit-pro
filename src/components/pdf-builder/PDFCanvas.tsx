@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Download, Eye } from "lucide-react";
 import { PDFPage, PDFElement, ElementType } from "./PDFBuilder";
 import { PDFElementComponent } from "./PDFElementComponent";
+import { PDFRenderer } from "./PDFRenderer";
 import { toast } from "sonner";
 
 interface PDFCanvasProps {
@@ -143,12 +144,17 @@ export const PDFCanvas = ({
               onDrop={handleDrop}
               onClick={() => setSelectedElement(null)}
             >
-              {/* Background Image (for uploaded PDFs) */}
-              {page.backgroundImage && (
-                <div className="absolute inset-0 bg-muted/10 flex items-center justify-center text-muted-foreground text-sm">
-                  PDF Preview (Coming Soon)
-                  {/* TODO: Implement PDF.js to render actual PDF pages */}
-                </div>
+              {/* PDF Background or Blank Canvas */}
+              {page.backgroundImage ? (
+                <PDFRenderer
+                  fileUrl={page.backgroundImage}
+                  width={displayWidth}
+                  height={displayHeight}
+                  className="absolute inset-0"
+                />
+              ) : (
+                /* Clean blank canvas */
+                <div className="absolute inset-0 bg-white" />
               )}
 
               {/* Grid pattern for alignment */}

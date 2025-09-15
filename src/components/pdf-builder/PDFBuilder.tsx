@@ -48,12 +48,13 @@ const PDFBuilder = () => {
   };
 
   const handleFileUpload = (file: File) => {
-    // Handle PDF upload - in a real implementation, you'd use PDF.js or similar
+    // Handle PDF upload with proper file URL
+    const fileUrl = URL.createObjectURL(file);
     const newPage: PDFPage = {
       id: `page-${Date.now()}`,
       format: "A4", // Default, would be detected from uploaded PDF
       elements: [],
-      backgroundImage: URL.createObjectURL(file), // Placeholder - would be PDF pages
+      backgroundImage: fileUrl, // Use the file URL for PDF rendering
     };
     setPages([newPage]);
     setActivePage(0);
