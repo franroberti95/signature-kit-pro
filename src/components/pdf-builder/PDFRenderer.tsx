@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import * as React from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Loader2 } from 'lucide-react';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -26,6 +27,8 @@ export const PDFRenderer = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  console.log('PDFRenderer: Attempting to load PDF from:', fileUrl);
+
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     console.log('PDF loaded successfully with', numPages, 'pages');
     setNumPages(numPages);
@@ -39,12 +42,25 @@ export const PDFRenderer = ({
     setError(`Failed to load PDF: ${error.message}`);
   }
 
+  // Add loading state with timeout for debugging
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.log('PDF still loading after 5 seconds, this might indicate an issue');
+        setError('PDF loading timeout - please try again');
+        setLoading(false);
+      }
+    }, 5000);
+    return () => clearTimeout(timeout);
+  }, [loading]);
+
   if (loading) {
     return (
       <div className={`${className} flex items-center justify-center bg-white`}>
         <div className="flex flex-col items-center gap-2 text-muted-foreground">
           <Loader2 className="w-6 h-6 animate-spin" />
           <span className="text-sm">Loading PDF...</span>
+          <span className="text-xs">File: {fileUrl.substring(0, 50)}...</span>
         </div>
       </div>
     );
