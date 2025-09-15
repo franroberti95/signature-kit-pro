@@ -1,15 +1,11 @@
-import { useState, useEffect } from 'react';
-import * as React from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Loader2 } from 'lucide-react';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// Set up the worker for PDF.js (recommended approach)
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+// Use CDN worker for better reliability
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PDFRendererProps {
   fileUrl: string | File;
@@ -29,8 +25,30 @@ export const PDFRenderer = ({
   const [numPages, setNumPages] = useState<number>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [documentUrl, setDocumentUrl] = useState<string | File>();
+  const objectUrlRef = useRef<string | null>(null);
 
-  console.log('PDFRenderer: Attempting to load PDF:', typeof fileUrl === 'string' ? fileUrl : fileUrl.name);
+  // Handle File objects by creating object URLs
+  useEffect(() => {
+    if (fileUrl instanceof File) {
+      // Create object URL for File objects
+      const url = URL.createObjectURL(fileUrl);
+      objectUrlRef.current = url;
+      setDocumentUrl(url);
+      console.log('PDFRenderer: Created object URL for file:', fileUrl.name);
+    } else {
+      setDocumentUrl(fileUrl);
+      console.log('PDFRenderer: Using direct URL:', fileUrl);
+    }
+
+    // Cleanup object URL on unmount
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, [fileUrl]);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     console.log('PDF loaded successfully with', numPages, 'pages');
@@ -45,25 +63,15 @@ export const PDFRenderer = ({
     setError(`Failed to load PDF: ${error.message}`);
   }
 
-  // Add loading state with timeout for debugging
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (loading) {
-        console.log('PDF still loading after 5 seconds, this might indicate an issue');
-        setError('PDF loading timeout - please try again');
-        setLoading(false);
-      }
-    }, 5000);
-    return () => clearTimeout(timeout);
-  }, [loading]);
-
   if (loading) {
     return (
       <div className={`${className} flex items-center justify-center bg-white`}>
         <div className="flex flex-col items-center gap-2 text-muted-foreground">
           <Loader2 className="w-6 h-6 animate-spin" />
           <span className="text-sm">Loading PDF...</span>
-          <span className="text-xs">File: {typeof fileUrl === 'string' ? fileUrl.substring(0, 50) + '...' : fileUrl.name}</span>
+          <span className="text-xs">
+            File: {typeof fileUrl === 'string' ? fileUrl.substring(0, 50) + '...' : fileUrl.name}
+          </span>
         </div>
       </div>
     );
@@ -79,13 +87,29 @@ export const PDFRenderer = ({
     );
   }
 
+  if (!documentUrl) {
+    return (
+      <div className={`${className} flex items-center justify-center bg-white`}>
+        <div className="text-center text-muted-foreground">
+          <span className="text-sm">Preparing document...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={className}>
       <Document
-        file={fileUrl}
+        file={documentUrl}
         onLoadSuccess={onDocumentLoadSuccess}
         onLoadError={onDocumentLoadError}
         className="flex justify-center"
+        options={{
+          // Add options for better compatibility
+          cMapUrl: `//unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
+          cMapPacked: true,
+          standardFontDataUrl: `//unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
+        }}
       >
         <Page
           pageNumber={pageNumber}
