@@ -77,71 +77,105 @@ const PDFCompletionPage = () => {
 
   const downloadPDF = async () => {
     try {
-      const jsPDF = (await import('jspdf')).default;
+      const { PDFDocument, rgb } = await import('pdf-lib');
       
-      // Create new PDF document
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
+      // Check if we have an original PDF to work with
+      const firstPage = pages[0];
+      let pdfDoc: any;
       
-      let isFirstPage = true;
-      
-      for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
-        const page = pages[pageIndex];
-        
-        if (!isFirstPage) {
-          pdf.addPage();
-        }
-        isFirstPage = false;
-        
-        // Add page background
-        if (page.backgroundImage) {
-          if (typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/')) {
-            // DOCX background image - compress it
-            pdf.addImage(page.backgroundImage, 'JPEG', 0, 0, pageWidth, pageHeight, undefined, 'MEDIUM');
-          } else if (typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('blob:')) {
-            // PDF background - we need to render it differently since we can't directly add PDF to PDF
-            // For now, add a placeholder or skip background for PDF files
-            console.log('PDF background detected, skipping for lightweight download');
-          }
-        }
-        
-        // Add form fields as text overlays (much lighter than images)
-        page.elements.forEach(element => {
-          const value = formData[element.id];
-          if (value && String(value) !== 'false') {
-            // Calculate position (convert from pixels to mm)
-            const x = (element.x / 595) * pageWidth; // 595 is A4 width in pixels
-            const y = (element.y / 842) * pageHeight; // 842 is A4 height in pixels
-            
-            if (element.type === 'signature' && typeof value === 'string' && value.startsWith('data:image/')) {
-              // Handle signature as image
-              try {
-                const imgWidth = (element.width || 100) * pageWidth / 595;
-                const imgHeight = (element.height || 50) * pageHeight / 842;
-                pdf.addImage(value, 'PNG', x, y, imgWidth, imgHeight);
-              } catch (error) {
-                console.error('Error adding signature:', error);
-                pdf.setFontSize(10);
-                pdf.text('[Signature]', x, y + 4);
-              }
-            } else if (element.type === 'checkbox' && value === true) {
-              pdf.setFontSize(12);
-              pdf.setTextColor(0, 0, 0);
-              pdf.text('☑', x, y + 4);
-            } else if (typeof value === 'string' && value.trim()) {
-              // Handle regular text
-              pdf.setFontSize(12);
-              pdf.setTextColor(0, 0, 0);
-              const lines = pdf.splitTextToSize(value, (element.width || 100) * pageWidth / 595);
-              pdf.text(lines, x, y + 4);
-            }
-          }
-        });
+      if (firstPage?.backgroundImage && typeof firstPage.backgroundImage === 'string' && firstPage.backgroundImage.startsWith('blob:')) {
+        // Load the original PDF
+        const response = await fetch(firstPage.backgroundImage);
+        const existingPdfBytes = await response.arrayBuffer();
+        pdfDoc = await PDFDocument.load(existingPdfBytes);
+      } else {
+        // Create new PDF if no original PDF
+        pdfDoc = await PDFDocument.create();
       }
       
-      // Download PDF
-      pdf.save(`completed-form-${Date.now()}.pdf`);
+      const pdfPages = pdfDoc.getPages();
+      
+      // Process each page
+      for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+        const page = pages[pageIndex];
+        let pdfPage;
+        
+        if (pageIndex < pdfPages.length) {
+          // Use existing page from original PDF
+          pdfPage = pdfPages[pageIndex];
+        } else {
+          // Add new page if we have more pages than the original
+          pdfPage = pdfDoc.addPage();
+        }
+        
+        const { width, height } = pdfPage.getSize();
+        
+        // Add form fields as overlays
+        for (const element of page.elements) {
+          const value = formData[element.id];
+          if (value && String(value) !== 'false') {
+            // Calculate position (convert from pixels to PDF coordinates)
+            const x = (element.x / 595) * width;
+            const y = height - ((element.y + (element.height || 20)) / 842) * height; // PDF coordinates are bottom-up
+            
+            if (element.type === 'signature' && typeof value === 'string' && value.startsWith('data:image/')) {
+              try {
+                // Convert base64 to PNG bytes
+                const base64Data = value.split(',')[1];
+                const imgBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+                const pngImage = await pdfDoc.embedPng(imgBytes);
+                
+                const imgWidth = (element.width || 100) / 595 * width;
+                const imgHeight = (element.height || 50) / 842 * height;
+                
+                pdfPage.drawImage(pngImage, {
+                  x,
+                  y,
+                  width: imgWidth,
+                  height: imgHeight,
+                });
+              } catch (error) {
+                console.error('Error adding signature:', error);
+                // Fallback to text
+                pdfPage.drawText('[Signature]', {
+                  x,
+                  y,
+                  size: 12,
+                  color: rgb(0, 0, 0),
+                });
+              }
+            } else if (element.type === 'checkbox' && value === true) {
+              pdfPage.drawText('☑', {
+                x,
+                y,
+                size: 14,
+                color: rgb(0, 0, 0),
+              });
+            } else if (typeof value === 'string' && value.trim()) {
+              pdfPage.drawText(value, {
+                x,
+                y,
+                size: 12,
+                color: rgb(0, 0, 0),
+                maxWidth: (element.width || 100) / 595 * width,
+              });
+            }
+          }
+        }
+      }
+      
+      // Generate PDF
+      const pdfBytes = await pdfDoc.save();
+      
+      // Download
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `completed-form-${Date.now()}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+      
       toast.success("PDF downloaded successfully!");
     } catch (error) {
       console.error('Download error:', error);
