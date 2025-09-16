@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Download, Eye } from "lucide-react";
+import { Plus } from "lucide-react";
 import { PDFPage, PDFElement, ElementType } from "./PDFBuilder";
 import { PDFElementComponent } from "./PDFElementComponent";
 import { PDFRenderer } from "./PDFRenderer";
@@ -98,13 +98,6 @@ export const PDFCanvas = ({
     });
   }, [scale, pages, onUpdateElement]);
 
-  const handlePreview = () => {
-    toast("Preview mode - showing how the form will look to signers");
-  };
-
-  const handleExport = () => {
-    toast("Exporting PDF with form fields...");
-  };
 
   const totalElements = pages.reduce((sum, page) => sum + page.elements.length, 0);
 
@@ -128,16 +121,6 @@ export const PDFCanvas = ({
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handlePreview}>
-            <Eye className="w-4 h-4 mr-2" />
-            Preview
-          </Button>
-          <Button variant="pdf-action" size="sm" onClick={handleExport}>
-            <Download className="w-4 h-4 mr-2" />
-            Export PDF
-          </Button>
-        </div>
       </div>
 
       {/* Canvas Area - All Pages Stacked */}

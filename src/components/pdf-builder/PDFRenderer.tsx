@@ -65,9 +65,9 @@ export const PDFRenderer = ({
   return (
     <div 
       className={className} 
-      style={{ width: `${width}px`, height: `${height}px`, position: 'relative' }}
+      style={{ width: `${width}px`, height: `${height}px`, position: 'relative', overflow: 'hidden' }}
     >
-      <div className="absolute inset-0 pdfSlick">
+      <div className="absolute inset-0 pdfSlick" style={{ overflow: 'hidden' }}>
         <PDFSlickViewer viewerRef={viewerRef} usePDFSlickStore={usePDFSlickStore} />
       </div>
     </div>

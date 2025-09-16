@@ -295,14 +295,14 @@ const PDFCompletionPage = () => {
           {!isMobile && (
             <div className="flex items-center gap-2">
               <Button 
-                variant="outline" 
+                variant="secondary" 
                 onClick={() => setShowOverlay(!showOverlay)}
                 className="flex items-center gap-2"
               >
                 {showOverlay ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 {showOverlay ? 'Hide Fields' : 'Show Fields'}
               </Button>
-              <Button onClick={downloadPDF} variant="outline">
+              <Button onClick={downloadPDF} variant="default">
                 <Download className="w-4 h-4 mr-2" />
                 Download PDF
               </Button>
