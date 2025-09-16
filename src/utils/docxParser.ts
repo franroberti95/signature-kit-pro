@@ -17,24 +17,41 @@ export class DocxParser {
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.convertToHtml({ arrayBuffer });
       
+      console.log('Mammoth HTML result length:', result.value.length);
+      console.log('Mammoth HTML preview:', result.value.substring(0, 500));
+      
       if (result.messages.length > 0) {
         console.log('Mammoth conversion messages:', result.messages);
       }
       
+      // Check if we got any content
+      if (!result.value || result.value.trim().length === 0) {
+        throw new Error('No content extracted from DOCX file');
+      }
+      
       // Create a temporary container to render the HTML
       const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.top = '-9999px';
-      container.style.left = '-9999px';
+      container.style.position = 'fixed'; // Changed from absolute to fixed
+      container.style.top = '0px'; // Visible for debugging
+      container.style.left = '0px';
       container.style.width = '794px'; // A4 width in pixels (at 96 DPI)
+      container.style.height = 'auto';
       container.style.backgroundColor = 'white';
       container.style.padding = '40px';
       container.style.fontFamily = 'Arial, sans-serif';
-      container.style.fontSize = '12px';
-      container.style.lineHeight = '1.4';
+      container.style.fontSize = '14px';
+      container.style.lineHeight = '1.6';
+      container.style.color = 'black';
+      container.style.zIndex = '9999';
+      container.style.border = '1px solid black'; // For debugging
       container.innerHTML = result.value;
       
       document.body.appendChild(container);
+      
+      // Wait a bit for fonts and styles to load
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('Container height after render:', container.scrollHeight);
       
       // Split content into pages based on height
       const pages = await this.splitIntoPages(container);
