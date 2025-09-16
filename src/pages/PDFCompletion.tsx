@@ -81,39 +81,38 @@ const PDFCompletionPage = () => {
   }, [navigate, location.state]);
 
   const scrollToElement = (elementId: string) => {
-    // Use requestAnimationFrame to ensure DOM is ready
-    requestAnimationFrame(() => {
+    const attemptScrollWithRetry = (attempts = 0) => {
+      const maxAttempts = 5;
+      
       const elementRef = elementRefs.current[elementId];
-      if (!elementRef) return;
+      if (!elementRef) {
+        if (attempts < maxAttempts) {
+          setTimeout(() => attemptScrollWithRetry(attempts + 1), 50);
+        }
+        return;
+      }
 
-      const element = allElements.find(el => el.id === elementId);
-      if (!element) return;
-
-      // Find which page this element is on
-      const pageIndex = pages.findIndex(page => 
-        page.elements.some(el => el.id === elementId)
-      );
-      
-      if (pageIndex === -1) return;
-
-      // Get the page container
-      const pageContainer = document.querySelector(`[data-page-index="${pageIndex}"]`) as HTMLElement;
-      if (!pageContainer) return;
-
-      // Simple scroll calculation - scroll to element with some offset from top
+      // Simple scroll to element with proper offset
       const elementRect = elementRef.getBoundingClientRect();
-      const headerHeight = 80; // Approximate header height
+      const headerHeight = 80;
       const mobileBottomPanelHeight = isMobile ? 280 : 0;
-      const offset = headerHeight + 20; // Extra padding
+      const viewportHeight = window.innerHeight - mobileBottomPanelHeight;
       
-      // Calculate scroll position to place element near top of visible area
-      const targetScroll = window.scrollY + elementRect.top - offset;
+      // Target position: center the element in the available viewport
+      const elementCenter = elementRect.top + (elementRect.height / 2);
+      const targetViewportCenter = viewportHeight / 2;
+      const scrollOffset = elementCenter - targetViewportCenter;
+      
+      const targetScroll = window.scrollY + scrollOffset;
       
       window.scrollTo({
         top: Math.max(0, targetScroll),
         behavior: 'smooth'
       });
-    });
+    };
+    
+    // Start with a small delay to ensure DOM updates
+    setTimeout(() => attemptScrollWithRetry(), 150);
   };
 
   const handleInputChange = (elementId: string, value: string | boolean) => {
@@ -128,8 +127,8 @@ const PDFCompletionPage = () => {
       setCurrentFieldIndex(index);
       const element = allElements[index];
       setActiveElement(element.id);
-      // Add a small delay to ensure state updates are applied
-      setTimeout(() => scrollToElement(element.id), 100);
+      // Scroll to the element after state updates
+      scrollToElement(element.id);
     }
   };
 
