@@ -84,24 +84,21 @@ const PDFCompletionPage = () => {
     if (!element) return;
 
     const headerHeight = 80;
-    const mobileBottomOffset = isMobile ? 140 : 0; // Account for mobile navigation
+    const mobileBottomOffset = isMobile ? 280 : 0; // Account for mobile navigation height
+    const availableViewHeight = window.innerHeight - headerHeight - mobileBottomOffset;
     
-    element.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center',
-      inline: 'nearest'
+    // Get element position relative to document
+    const elementRect = element.getBoundingClientRect();
+    const elementTop = elementRect.top + window.scrollY;
+    
+    // Calculate target scroll position to center element in available viewport
+    const targetScrollTop = elementTop - headerHeight - (availableViewHeight / 2) + (elementRect.height / 2);
+    
+    // Scroll to calculated position
+    window.scrollTo({
+      top: Math.max(0, targetScrollTop),
+      behavior: 'smooth'
     });
-    
-    // Adjust for header and mobile navigation after scroll
-    setTimeout(() => {
-      const rect = element.getBoundingClientRect();
-      if (rect.top < headerHeight + 20 || (isMobile && rect.bottom > window.innerHeight - mobileBottomOffset)) {
-        window.scrollBy({
-          top: -50,
-          behavior: 'smooth'
-        });
-      }
-    }, 100);
   };
 
   const handleInputChange = (elementId: string, value: string | boolean) => {
