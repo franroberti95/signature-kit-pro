@@ -51,12 +51,18 @@ export const PDFRenderer = ({
     }
   );
 
-  // Log PDF loading state
+  // Get PDF loading state
   const store = usePDFSlickStore();
   
   useEffect(() => {
-    console.log('PDFSlick store state:', store);
-  }, [store]);
+    console.log('PDFSlick store state:', {
+      isDocumentLoaded: store.isDocumentLoaded,
+      pagesReady: store.pagesReady,
+      scale: store.scale,
+      numPages: store.numPages,
+      pageNumber: store.pageNumber
+    });
+  }, [store.isDocumentLoaded, store.pagesReady, store.scale]);
 
   if (!documentUrl) {
     return (
@@ -64,6 +70,18 @@ export const PDFRenderer = ({
         <div className="flex flex-col items-center gap-2 text-muted-foreground">
           <Loader2 className="w-6 h-6 animate-spin" />
           <span className="text-sm">Preparing PDF...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Wait for pages to be ready before rendering
+  if (!store.pagesReady || store.scale === 0) {
+    return (
+      <div className={`${className} flex items-center justify-center bg-white`}>
+        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span className="text-sm">Loading PDF pages...</span>
         </div>
       </div>
     );
