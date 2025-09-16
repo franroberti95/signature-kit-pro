@@ -89,7 +89,7 @@ const PDFCompletionPage = () => {
         const existingPdfBytes = await response.arrayBuffer();
         pdfDoc = await PDFDocument.load(existingPdfBytes);
       } else {
-        // Create new PDF if no original PDF
+        // Create new PDF for DOCX or blank documents
         pdfDoc = await PDFDocument.create();
       }
       
@@ -100,12 +100,37 @@ const PDFCompletionPage = () => {
         const page = pages[pageIndex];
         let pdfPage;
         
-        if (pageIndex < pdfPages.length) {
+        if (pageIndex < pdfPages.length && firstPage?.backgroundImage && typeof firstPage.backgroundImage === 'string' && firstPage.backgroundImage.startsWith('blob:')) {
           // Use existing page from original PDF
           pdfPage = pdfPages[pageIndex];
         } else {
-          // Add new page if we have more pages than the original
-          pdfPage = pdfDoc.addPage();
+          // Add new page for DOCX or additional pages
+          pdfPage = pdfDoc.addPage([595, 842]); // A4 size in points
+          
+          // Add DOCX background if available
+          if (page.backgroundImage && typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/')) {
+            try {
+              const base64Data = page.backgroundImage.split(',')[1];
+              const imgBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+              
+              let backgroundImage;
+              if (page.backgroundImage.includes('data:image/png')) {
+                backgroundImage = await pdfDoc.embedPng(imgBytes);
+              } else {
+                backgroundImage = await pdfDoc.embedJpg(imgBytes);
+              }
+              
+              const { width, height } = pdfPage.getSize();
+              pdfPage.drawImage(backgroundImage, {
+                x: 0,
+                y: 0,
+                width,
+                height,
+              });
+            } catch (error) {
+              console.error('Error adding DOCX background:', error);
+            }
+          }
         }
         
         const { width, height } = pdfPage.getSize();
