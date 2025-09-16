@@ -201,7 +201,7 @@ const PDFCompletionPage = () => {
                       />
                       
                       {/* Interactive Elements Overlay */}
-                      {showOverlay && pages[0].elements.map((element) => (
+                      {pages[0].elements.map((element) => (
                         <InteractivePDFElement
                           key={element.id}
                           element={element}
@@ -210,6 +210,7 @@ const PDFCompletionPage = () => {
                           onUpdate={(value) => handleInputChange(element.id, value)}
                           isActive={activeElement === element.id}
                           onActivate={() => setActiveElement(element.id)}
+                          hideOverlay={!showOverlay}
                         />
                       ))}
                     </>

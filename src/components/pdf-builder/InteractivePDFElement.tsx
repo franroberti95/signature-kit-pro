@@ -23,6 +23,7 @@ interface InteractivePDFElementProps {
   onUpdate: (value: string | boolean) => void;
   isActive?: boolean;
   onActivate?: () => void;
+  hideOverlay?: boolean; // Hide visual boxes for export
 }
 
 const elementIcons: Record<string, any> = {
@@ -40,7 +41,8 @@ export const InteractivePDFElement = ({
   value,
   onUpdate,
   isActive = false,
-  onActivate
+  onActivate,
+  hideOverlay = false
 }: InteractivePDFElementProps) => {
   const [showSignatureCanvas, setShowSignatureCanvas] = useState(false);
   const [showInput, setShowInput] = useState(false);
@@ -84,6 +86,52 @@ export const InteractivePDFElement = ({
 
   const renderElementContent = () => {
     const hasValue = value !== "" && value !== false && value !== null && value !== undefined;
+    
+    // For export mode, only show content without visual boxes
+    if (hideOverlay && hasValue) {
+      switch (element.type) {
+        case "text":
+          return (
+            <div className="w-full h-full flex items-center justify-start text-sm font-medium text-black px-1">
+              {String(value)}
+            </div>
+          );
+        case "signature":
+          return (
+            <img 
+              src={String(value)} 
+              alt="Signature" 
+              className="w-full h-full object-contain"
+            />
+          );
+        case "image":
+          return (
+            <img 
+              src={String(value)} 
+              alt="Uploaded" 
+              className="w-full h-full object-contain"
+            />
+          );
+        case "checkbox":
+          return (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className={`w-4 h-4 border-2 border-black ${Boolean(value) ? 'bg-black' : 'bg-white'} flex items-center justify-center`}>
+                {Boolean(value) && <span className="text-white text-xs">✓</span>}
+              </div>
+            </div>
+          );
+        case "date":
+          return (
+            <div className="w-full h-full flex items-center justify-start text-sm font-medium text-black px-1">
+              {String(value)}
+            </div>
+          );
+        default:
+          return <div className="w-full h-full">{String(value)}</div>;
+      }
+    }
+    
+    // Interactive mode with visual boxes
     const baseClasses = `w-full h-full flex items-center justify-center text-xs font-medium rounded cursor-pointer transition-all duration-200 ${
       hasValue 
         ? 'bg-green-50 border-2 border-green-200 text-green-800' 
@@ -198,7 +246,7 @@ export const InteractivePDFElement = ({
   return (
     <>
       <div
-        className="absolute z-10"
+        className={hideOverlay ? "absolute" : "absolute z-10"}
         style={{
           left: `${element.x * scale}px`,
           top: `${element.y * scale}px`,
