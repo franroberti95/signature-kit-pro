@@ -78,6 +78,8 @@ export const InteractivePDFElement = ({
       };
       reader.readAsDataURL(file);
     }
+    // Clear the input value to allow selecting the same file again
+    event.target.value = '';
   };
 
   const handleTextSubmit = (newValue: string) => {

@@ -34,7 +34,8 @@ const PDFCompletionPage = () => {
         if (location.state?.uploadedFile) {
           pagesData = pagesData.map((page: PDFPage) => ({
             ...page,
-            backgroundImage: location.state.uploadedFile
+            // Only apply background to pages that originally had one
+            backgroundImage: page.backgroundImage ? location.state.uploadedFile : page.backgroundImage
           }));
         }
         

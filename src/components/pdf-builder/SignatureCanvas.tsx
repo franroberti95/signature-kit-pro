@@ -29,18 +29,25 @@ export const SignatureCanvas = ({
       backgroundColor: "#ffffff",
     });
 
-    // Enable drawing mode and configure brush
+    // Enable drawing mode
     canvas.isDrawingMode = true;
     
-    // Initialize the freeDrawingBrush after canvas creation
-    if (canvas.freeDrawingBrush) {
-      canvas.freeDrawingBrush.color = "#000000";
-      canvas.freeDrawingBrush.width = 2;
-    }
+    // Configure the brush - ensure brush exists before setting properties
+    setTimeout(() => {
+      if (canvas.freeDrawingBrush) {
+        canvas.freeDrawingBrush.color = "#000000";
+        canvas.freeDrawingBrush.width = 2;
+      }
+    }, 100);
 
     // Track when drawing happens
     canvas.on('path:created', () => {
       setIsEmpty(false);
+    });
+
+    // Track when canvas is cleared
+    canvas.on('canvas:cleared', () => {
+      setIsEmpty(true);
     });
 
     setFabricCanvas(canvas);
