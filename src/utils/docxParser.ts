@@ -29,11 +29,11 @@ export class DocxParser {
         throw new Error('No content extracted from DOCX file');
       }
       
-      // Create a temporary container to render the HTML
+      // Create a temporary container to render the HTML (hidden)
       const container = document.createElement('div');
-      container.style.position = 'fixed'; // Changed from absolute to fixed
-      container.style.top = '0px'; // Visible for debugging
-      container.style.left = '0px';
+      container.style.position = 'absolute';
+      container.style.top = '-9999px';
+      container.style.left = '-9999px';
       container.style.width = '794px'; // A4 width in pixels (at 96 DPI)
       container.style.height = 'auto';
       container.style.backgroundColor = 'white';
@@ -42,8 +42,6 @@ export class DocxParser {
       container.style.fontSize = '14px';
       container.style.lineHeight = '1.6';
       container.style.color = 'black';
-      container.style.zIndex = '9999';
-      container.style.border = '1px solid black'; // For debugging
       container.innerHTML = result.value;
       
       document.body.appendChild(container);
@@ -73,6 +71,8 @@ export class DocxParser {
     const A4_HEIGHT = 1123; // A4 height in pixels (at 96 DPI) minus padding
     const containerHeight = container.scrollHeight;
     
+    console.log('Container height:', containerHeight, 'A4 height:', A4_HEIGHT);
+    
     // If content fits in one page
     if (containerHeight <= A4_HEIGHT) {
       container.style.height = `${A4_HEIGHT}px`;
@@ -97,25 +97,40 @@ export class DocxParser {
     
     // Split content into multiple pages
     const numberOfPages = Math.ceil(containerHeight / A4_HEIGHT);
+    console.log('Splitting into', numberOfPages, 'pages');
     
     for (let i = 0; i < numberOfPages; i++) {
-      // Create a clipped version for each page
-      const pageContainer = container.cloneNode(true) as HTMLElement;
-      pageContainer.style.height = `${A4_HEIGHT}px`;
-      pageContainer.style.overflow = 'hidden';
-      pageContainer.style.marginTop = `-${i * A4_HEIGHT}px`;
+      // Create a wrapper div for proper clipping
+      const pageWrapper = document.createElement('div');
+      pageWrapper.style.position = 'absolute';
+      pageWrapper.style.top = '-9999px';
+      pageWrapper.style.left = '-9999px';
+      pageWrapper.style.width = '794px';
+      pageWrapper.style.height = `${A4_HEIGHT}px`;
+      pageWrapper.style.overflow = 'hidden';
+      pageWrapper.style.backgroundColor = 'white';
       
-      document.body.appendChild(pageContainer);
+      // Clone the content and position it to show the correct section
+      const contentClone = container.cloneNode(true) as HTMLElement;
+      contentClone.style.position = 'relative';
+      contentClone.style.top = `-${i * A4_HEIGHT}px`;
+      contentClone.style.left = '0px';
+      contentClone.style.width = '794px';
+      
+      pageWrapper.appendChild(contentClone);
+      document.body.appendChild(pageWrapper);
       
       try {
-        const canvas = await html2canvas(pageContainer, {
+        const canvas = await html2canvas(pageWrapper, {
           backgroundColor: '#ffffff',
           scale: 1,
           useCORS: true,
           logging: false,
           width: 794,
-          height: A4_HEIGHT + 80
+          height: A4_HEIGHT
         });
+        
+        console.log(`Page ${i + 1} canvas size:`, canvas.width, 'x', canvas.height);
         
         pages.push({
           pageNumber: i + 1,
@@ -125,7 +140,7 @@ export class DocxParser {
         });
         
       } finally {
-        document.body.removeChild(pageContainer);
+        document.body.removeChild(pageWrapper);
       }
     }
     
