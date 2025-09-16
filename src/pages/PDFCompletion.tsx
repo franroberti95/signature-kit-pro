@@ -81,40 +81,39 @@ const PDFCompletionPage = () => {
   }, [navigate, location.state]);
 
   const scrollToElement = (elementId: string) => {
-    const elementRef = elementRefs.current[elementId];
-    if (elementRef) {
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      const elementRef = elementRefs.current[elementId];
+      if (!elementRef) return;
+
       const element = allElements.find(el => el.id === elementId);
-      if (element) {
-        // Find which page this element is on
-        const pageIndex = pages.findIndex(page => 
-          page.elements.some(el => el.id === elementId)
-        );
-        
-        if (pageIndex !== -1) {
-          // Get the page container
-          const pageContainer = document.querySelector(`[data-page-index="${pageIndex}"]`) as HTMLElement;
-          if (pageContainer && elementRef) {
-            // Calculate the element's position relative to the viewport
-            const elementRect = elementRef.getBoundingClientRect();
-            const pageRect = pageContainer.getBoundingClientRect();
-            const viewportHeight = window.innerHeight;
-            
-            // Calculate target scroll position
-            // We want the element to be centered in viewport, accounting for mobile bottom panel
-            const mobileBottomPanelHeight = isMobile ? 250 : 0;
-            const availableViewportHeight = viewportHeight - mobileBottomPanelHeight;
-            const targetOffsetFromTop = Math.max(100, (availableViewportHeight / 2) - (elementRect.height / 2));
-            
-            const targetScroll = window.scrollY + elementRect.top - targetOffsetFromTop;
-            
-            window.scrollTo({
-              top: Math.max(0, targetScroll),
-              behavior: 'smooth'
-            });
-          }
-        }
-      }
-    }
+      if (!element) return;
+
+      // Find which page this element is on
+      const pageIndex = pages.findIndex(page => 
+        page.elements.some(el => el.id === elementId)
+      );
+      
+      if (pageIndex === -1) return;
+
+      // Get the page container
+      const pageContainer = document.querySelector(`[data-page-index="${pageIndex}"]`) as HTMLElement;
+      if (!pageContainer) return;
+
+      // Simple scroll calculation - scroll to element with some offset from top
+      const elementRect = elementRef.getBoundingClientRect();
+      const headerHeight = 80; // Approximate header height
+      const mobileBottomPanelHeight = isMobile ? 280 : 0;
+      const offset = headerHeight + 20; // Extra padding
+      
+      // Calculate scroll position to place element near top of visible area
+      const targetScroll = window.scrollY + elementRect.top - offset;
+      
+      window.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: 'smooth'
+      });
+    });
   };
 
   const handleInputChange = (elementId: string, value: string | boolean) => {
@@ -129,7 +128,8 @@ const PDFCompletionPage = () => {
       setCurrentFieldIndex(index);
       const element = allElements[index];
       setActiveElement(element.id);
-      scrollToElement(element.id);
+      // Add a small delay to ensure state updates are applied
+      setTimeout(() => scrollToElement(element.id), 100);
     }
   };
 
