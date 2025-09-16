@@ -7,12 +7,12 @@ import { PDFRenderer } from "./PDFRenderer";
 import { toast } from "sonner";
 
 interface PDFCanvasProps {
-  page: PDFPage;
-  onUpdateElement: (elementId: string, updates: Partial<PDFElement>) => void;
-  onDeleteElement: (elementId: string) => void;
-  onAddElement: (element: PDFElement) => void;
+  pages: PDFPage[];
+  activePage: number;
+  onUpdateElement: (pageIndex: number, elementId: string, updates: Partial<PDFElement>) => void;
+  onDeleteElement: (pageIndex: number, elementId: string) => void;
+  onAddElement: (pageIndex: number, element: PDFElement) => void;
   onAddPage: () => void;
-  isLastPage: boolean;
 }
 
 const getPageDimensions = (format: string) => {
@@ -29,34 +29,45 @@ const getPageDimensions = (format: string) => {
 };
 
 export const PDFCanvas = ({
-  page,
+  pages,
+  activePage,
   onUpdateElement,
   onDeleteElement,
   onAddElement,
-  onAddPage,
-  isLastPage
+  onAddPage
 }: PDFCanvasProps) => {
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [selectedPage, setSelectedPage] = useState<number>(0);
+  const [isDragOver, setIsDragOver] = useState<{ [key: number]: boolean }>({});
 
-  const pageDimensions = getPageDimensions(page?.format || "A4");
+  const getPageDimensions = (format: string) => {
+    switch (format) {
+      case "A4":
+        return { width: 595, height: 842 }; // A4 in points
+      case "A5":
+        return { width: 420, height: 595 }; // A5 in points
+      case "Letter":
+        return { width: 612, height: 792 }; // Letter in points
+      default:
+        return { width: 595, height: 842 };
+    }
+  };
+
   const scale = 0.75; // Scale factor for display
-  const displayWidth = pageDimensions.width * scale;
-  const displayHeight = pageDimensions.height * scale;
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent, pageIndex: number) => {
     e.preventDefault();
-    setIsDragOver(true);
+    setIsDragOver(prev => ({ ...prev, [pageIndex]: true }));
   }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: React.DragEvent, pageIndex: number) => {
     e.preventDefault();
-    setIsDragOver(false);
+    setIsDragOver(prev => ({ ...prev, [pageIndex]: false }));
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent, pageIndex: number) => {
     e.preventDefault();
-    setIsDragOver(false);
+    setIsDragOver(prev => ({ ...prev, [pageIndex]: false }));
 
     const elementType = e.dataTransfer.getData("text/plain") as ElementType;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -74,17 +85,18 @@ export const PDFCanvas = ({
       placeholder: `Enter ${elementType}...`,
     };
     
-    // Add element using the parent callback
-    onAddElement(newElement);
-    toast(`${elementType.charAt(0).toUpperCase() + elementType.slice(1)} field added to canvas`);
+    onAddElement(pageIndex, newElement);
+    toast(`${elementType.charAt(0).toUpperCase() + elementType.slice(1)} field added to page ${pageIndex + 1}`);
   }, [scale, onAddElement]);
 
-  const handleElementDrag = useCallback((elementId: string, deltaX: number, deltaY: number) => {
-    onUpdateElement(elementId, {
+  const handleElementDrag = useCallback((pageIndex: number, elementId: string, deltaX: number, deltaY: number) => {
+    const page = pages[pageIndex];
+    const pageDimensions = getPageDimensions(page?.format || "A4");
+    onUpdateElement(pageIndex, elementId, {
       x: Math.max(0, Math.min(pageDimensions.width - 150, deltaX / scale)),
       y: Math.max(0, Math.min(pageDimensions.height - 40, deltaY / scale)),
     });
-  }, [scale, pageDimensions, onUpdateElement]);
+  }, [scale, pages, onUpdateElement]);
 
   const handlePreview = () => {
     toast("Preview mode - showing how the form will look to signers");
@@ -94,11 +106,13 @@ export const PDFCanvas = ({
     toast("Exporting PDF with form fields...");
   };
 
-  if (!page) {
+  const totalElements = pages.reduce((sum, page) => sum + page.elements.length, 0);
+
+  if (!pages || pages.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center bg-surface">
         <div className="text-center text-muted-foreground">
-          <p>No page selected</p>
+          <p>No pages available</p>
         </div>
       </div>
     );
@@ -110,7 +124,7 @@ export const PDFCanvas = ({
       <div className="flex items-center justify-between p-4 bg-card border-b border-border shadow-sm">
         <div className="flex items-center gap-4">
           <div className="text-sm text-muted-foreground">
-            {page.elements.length} form {page.elements.length === 1 ? 'field' : 'fields'}
+            {totalElements} form {totalElements === 1 ? 'field' : 'fields'} across {pages.length} {pages.length === 1 ? 'page' : 'pages'}
           </div>
         </div>
         
@@ -126,84 +140,105 @@ export const PDFCanvas = ({
         </div>
       </div>
 
-      {/* Canvas Area */}
+      {/* Canvas Area - All Pages Stacked */}
       <div className="flex-1 overflow-auto p-8 bg-surface">
-        <div className="flex flex-col items-center space-y-6">
-          {/* PDF Page */}
-          <div className="relative bg-card shadow-lg rounded-lg overflow-hidden border border-pdf-border">
-            <div
-              className={`relative bg-white transition-all duration-200 ${
-                isDragOver ? "bg-drop-active ring-2 ring-primary" : ""
-              }`}
-              style={{
-                width: `${displayWidth}px`,
-                height: `${displayHeight}px`,
-              }}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => setSelectedElement(null)}
-            >
-              {/* PDF Background or Blank Canvas */}
-              {page.backgroundImage ? (
-                <PDFRenderer
-                  fileUrl={page.backgroundImage}
-                  width={displayWidth}
-                  height={displayHeight}
-                  className="absolute inset-0"
-                />
-              ) : (
-                /* Clean blank canvas */
-                <div className="absolute inset-0 bg-white" />
-              )}
+        <div className="flex flex-col items-center space-y-8">
+          {pages.map((page, pageIndex) => {
+            const pageDimensions = getPageDimensions(page?.format || "A4");
+            const displayWidth = pageDimensions.width * scale;
+            const displayHeight = pageDimensions.height * scale;
+            const isPageDragOver = isDragOver[pageIndex] || false;
 
-              {/* Grid pattern for alignment */}
-              <div 
-                className="absolute inset-0 opacity-10 pointer-events-none"
-                style={{
-                  backgroundImage: `
-                    linear-gradient(hsl(var(--border)) 1px, transparent 1px),
-                    linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)
-                  `,
-                  backgroundSize: `${20 * scale}px ${20 * scale}px`,
-                }}
-              />
-
-              {/* Form Elements */}
-              {page.elements.map((element) => (
-                <PDFElementComponent
-                  key={element.id}
-                  element={element}
-                  scale={scale}
-                  isSelected={selectedElement === element.id}
-                  onSelect={() => setSelectedElement(element.id)}
-                  onDrag={(deltaX, deltaY) => handleElementDrag(element.id, deltaX, deltaY)}
-                  onUpdate={(updates) => onUpdateElement(element.id, updates)}
-                  onDelete={() => onDeleteElement(element.id)}
-                />
-              ))}
-
-              {/* Drop zone indicator */}
-              {isDragOver && (
-                <div className="absolute inset-0 bg-drop-active/20 border-2 border-dashed border-primary flex items-center justify-center">
-                  <div className="text-primary font-medium">Drop element here</div>
+            return (
+              <div key={page.id} className="relative">
+                {/* Page Number Label */}
+                <div className="absolute -top-6 left-0 text-sm text-muted-foreground">
+                  Page {pageIndex + 1}
                 </div>
-              )}
-            </div>
-          </div>
+                
+                {/* PDF Page */}
+                <div className={`relative bg-card shadow-lg rounded-lg overflow-hidden border border-pdf-border ${
+                  pageIndex === activePage ? 'ring-2 ring-primary ring-opacity-50' : ''
+                }`}>
+                  <div
+                    className={`relative bg-white transition-all duration-200 ${
+                      isPageDragOver ? "bg-drop-active ring-2 ring-primary" : ""
+                    }`}
+                    style={{
+                      width: `${displayWidth}px`,
+                      height: `${displayHeight}px`,
+                    }}
+                    onDragOver={(e) => handleDragOver(e, pageIndex)}
+                    onDragLeave={(e) => handleDragLeave(e, pageIndex)}
+                    onDrop={(e) => handleDrop(e, pageIndex)}
+                    onClick={() => {
+                      setSelectedElement(null);
+                      setSelectedPage(pageIndex);
+                    }}
+                  >
+                    {/* PDF Background or Blank Canvas */}
+                    {page.backgroundImage ? (
+                      <PDFRenderer
+                        fileUrl={page.backgroundImage}
+                        width={displayWidth}
+                        height={displayHeight}
+                        className="absolute inset-0"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-white" />
+                    )}
+
+                    {/* Grid pattern for alignment */}
+                    <div 
+                      className="absolute inset-0 opacity-10 pointer-events-none"
+                      style={{
+                        backgroundImage: `
+                          linear-gradient(hsl(var(--border)) 1px, transparent 1px),
+                          linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)
+                        `,
+                        backgroundSize: `${20 * scale}px ${20 * scale}px`,
+                      }}
+                    />
+
+                    {/* Form Elements */}
+                    {page.elements.map((element) => (
+                      <PDFElementComponent
+                        key={element.id}
+                        element={element}
+                        scale={scale}
+                        isSelected={selectedElement === element.id}
+                        onSelect={() => {
+                          setSelectedElement(element.id);
+                          setSelectedPage(pageIndex);
+                        }}
+                        onDrag={(deltaX, deltaY) => handleElementDrag(pageIndex, element.id, deltaX, deltaY)}
+                        onUpdate={(updates) => onUpdateElement(pageIndex, element.id, updates)}
+                        onDelete={() => onDeleteElement(pageIndex, element.id)}
+                      />
+                    ))}
+
+                    {/* Drop zone indicator */}
+                    {isPageDragOver && (
+                      <div className="absolute inset-0 bg-drop-active/20 border-2 border-dashed border-primary flex items-center justify-center">
+                        <div className="text-primary font-medium">Drop element here</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
 
           {/* Add Page Button */}
-          {isLastPage && (
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={onAddPage}
-              className="border-dashed border-2 hover:border-primary hover:bg-primary/5"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Add New Page
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={onAddPage}
+            className="border-dashed border-2 hover:border-primary hover:bg-primary/5"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add New Page
+          </Button>
         </div>
       </div>
     </div>

@@ -65,12 +65,12 @@ const PDFBuilderPage = () => {
     toast(`${type.charAt(0).toUpperCase() + type.slice(1)} field added`);
   };
 
-  const updateElement = (elementId: string, updates: Partial<PDFElement>) => {
+  const updateElement = (pageIndex: number, elementId: string, updates: Partial<PDFElement>) => {
     const updatedPages = [...pages];
-    const elementIndex = updatedPages[activePage].elements.findIndex(el => el.id === elementId);
+    const elementIndex = updatedPages[pageIndex].elements.findIndex(el => el.id === elementId);
     if (elementIndex !== -1) {
-      updatedPages[activePage].elements[elementIndex] = {
-        ...updatedPages[activePage].elements[elementIndex],
+      updatedPages[pageIndex].elements[elementIndex] = {
+        ...updatedPages[pageIndex].elements[elementIndex],
         ...updates,
       };
       setPages(updatedPages);
@@ -78,9 +78,9 @@ const PDFBuilderPage = () => {
     }
   };
 
-  const deleteElement = (elementId: string) => {
+  const deleteElement = (pageIndex: number, elementId: string) => {
     const updatedPages = [...pages];
-    updatedPages[activePage].elements = updatedPages[activePage].elements.filter(
+    updatedPages[pageIndex].elements = updatedPages[pageIndex].elements.filter(
       el => el.id !== elementId
     );
     setPages(updatedPages);
@@ -128,7 +128,7 @@ const PDFBuilderPage = () => {
           <div>
             <h1 className="text-xl font-semibold text-foreground">PDF Builder</h1>
             <p className="text-sm text-muted-foreground">
-              Page {activePage + 1} of {pages.length} • {pages[activePage]?.format}
+              {pages.length} {pages.length === 1 ? 'page' : 'pages'} • {pages[activePage]?.format}
             </p>
           </div>
             <Button onClick={() => navigate('/pdf-completion', { 
@@ -142,17 +142,17 @@ const PDFBuilderPage = () => {
       <div className="flex h-[calc(100vh-80px)]">
         <ToolbarPanel onAddElement={addElement} />
         <PDFCanvas
-          page={pages[activePage]}
+          pages={pages}
+          activePage={activePage}
           onUpdateElement={updateElement}
           onDeleteElement={deleteElement}
-          onAddElement={(element) => {
+          onAddElement={(pageIndex, element) => {
             const updatedPages = [...pages];
-            updatedPages[activePage].elements.push(element);
+            updatedPages[pageIndex].elements.push(element);
             setPages(updatedPages);
             updateStoredData(updatedPages, activePage);
           }}
           onAddPage={addPage}
-          isLastPage={activePage === pages.length - 1}
         />
       </div>
     </div>
