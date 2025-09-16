@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SignatureCanvas } from "./SignatureCanvas";
+import { DatePicker } from "./DatePicker";
 import { PDFElement } from "./PDFBuilder";
 import { 
   Type, 
@@ -175,25 +176,23 @@ export const InteractivePDFElement = ({
           </div>
         );
         
-      case "date":
-        return (
-          <div className={baseClasses}>
-            {hasValue ? (
-              <span className="text-xs">{String(value)}</span>
-            ) : (
-              <>
-                <Calendar className="w-3 h-3 mr-1" />
-                Select date
-              </>
-            )}
-            <Input
-              type="date"
-              value={String(value) || ''}
-              onChange={(e) => onUpdate(e.target.value)}
-              className="absolute inset-0 opacity-0 cursor-pointer"
-            />
-          </div>
-        );
+        case "date":
+          return (
+            <div className={`${baseClasses} relative`}>
+              {hasValue ? (
+                <span className="text-xs">{String(value)}</span>
+              ) : (
+                <>
+                  <Calendar className="w-3 h-3 mr-1" />
+                  Select date
+                </>
+              )}
+              <DatePicker
+                value={String(value) || ''}
+                onChange={(date) => onUpdate(date)}
+              />
+            </div>
+          );
         
       case "checkbox":
         return (

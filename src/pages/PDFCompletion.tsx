@@ -190,9 +190,9 @@ const PDFCompletionPage = () => {
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="pdf-renderer-container relative border rounded-lg overflow-auto bg-gray-50" style={{ maxHeight: '750px' }}>
+                <div className="pdf-renderer-container relative border rounded-lg bg-gray-50 overflow-hidden">
                   {pages.length > 0 && pages[0].backgroundImage ? (
-                    <div className="relative">
+                    <div className="relative" style={{ minHeight: '750px' }}>
                       <PDFRenderer
                         fileUrl={pages[0].backgroundImage}
                         width={600}
