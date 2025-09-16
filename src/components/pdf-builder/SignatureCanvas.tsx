@@ -85,7 +85,7 @@ export const SignatureCanvas = ({
               onClick={handleUseSame}
               className="flex items-center gap-1 text-card-foreground border-border hover:bg-muted whitespace-nowrap"
             >
-              Use Same
+              Reuse Last Signature
             </Button>
           )}
         </div>

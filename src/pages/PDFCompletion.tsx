@@ -334,15 +334,6 @@ const PDFCompletionPage = () => {
       </header>
 
       <div className={`mx-auto p-6 ${isMobile ? 'pb-32' : 'max-w-7xl'}`}>
-        {/* Progress Bar - Only show on desktop */}
-        {!isMobile && (
-          <div className="mb-6">
-            <Progress value={getCompletionProgress()} className="w-full" />
-            <p className="text-sm text-muted-foreground mt-2">
-              {getCompletionProgress()}% completed ({allElements.filter(el => formData[el.id] && formData[el.id] !== false).length} of {allElements.length} fields)
-            </p>
-          </div>
-        )}
 
         <div className={isMobile ? "space-y-4" : "grid grid-cols-1 lg:grid-cols-3 gap-6"}>
           {/* PDF with Interactive Elements */}
