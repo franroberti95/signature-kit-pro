@@ -86,104 +86,97 @@ export class DocxToPdfConverter {
         throw new Error('No content extracted from DOCX file');
       }
 
-      // Step 2: Create PDF directly from HTML using jsPDF
+      // Step 2: Create PDF using canvas-based approach for better compatibility
       const pdf = new jsPDF({
         orientation: 'portrait',
-        unit: 'mm',
+        unit: 'pt',
         format: 'a4'
       });
 
-      // Create a temporary div for measuring content
+      // Create a temporary div with proper styling
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = html;
       tempDiv.style.position = 'fixed';
       tempDiv.style.top = '-10000px';
       tempDiv.style.left = '-10000px';
-      tempDiv.style.width = '210mm'; // A4 width
-      tempDiv.style.maxWidth = '210mm';
+      tempDiv.style.width = '595pt'; // A4 width in points
       tempDiv.style.backgroundColor = 'white';
-      tempDiv.style.padding = '20mm';
+      tempDiv.style.padding = '40pt';
       tempDiv.style.fontFamily = 'Arial, sans-serif';
-      tempDiv.style.fontSize = '12px';
+      tempDiv.style.fontSize = '12pt';
       tempDiv.style.lineHeight = '1.5';
       tempDiv.style.color = 'black';
       tempDiv.style.wordWrap = 'break-word';
-      tempDiv.style.overflow = 'visible';
       
       document.body.appendChild(tempDiv);
       
       // Wait for content to render
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      console.log('Content rendered for PDF generation');
+      const contentHeight = tempDiv.scrollHeight;
+      console.log('Content rendered. Height:', contentHeight, 'pt');
       console.log('Text content preview:', tempDiv.textContent?.substring(0, 200));
 
-      try {
-        // Use jsPDF's built-in HTML to PDF conversion
-        await pdf.html(tempDiv, {
-          callback: () => {
-            console.log('PDF generation completed using jsPDF HTML method');
-          },
-          x: 0,
-          y: 0,
-          width: 210, // A4 width in mm
-          windowWidth: 794, // Viewport width for rendering
-          margin: [20, 20, 20, 20], // top, right, bottom, left margins in mm
-        });
-      } catch (htmlError) {
-        console.warn('HTML method failed, falling back to manual method:', htmlError);
+      // Create canvas and convert to PDF
+      const canvas = await html2canvas(tempDiv, {
+        backgroundColor: 'white',
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: true,
+        width: 595,
+        height: contentHeight,
+        logging: false
+      });
+      
+      console.log('Canvas created:', canvas.width, 'x', canvas.height);
+      
+      const pageHeight = 842; // A4 height in points
+      const pageWidth = 595; // A4 width in points
+      const canvasHeight = canvas.height;
+      
+      let yPosition = 0;
+      let pageNum = 0;
+      
+      while (yPosition < canvasHeight) {
+        if (pageNum > 0) {
+          pdf.addPage();
+        }
         
-        // Fallback: Create canvas and convert to image
-        const canvas = await html2canvas(tempDiv, {
-          backgroundColor: 'white',
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          width: 794,
-          height: Math.max(tempDiv.scrollHeight, 1123),
-          logging: false
-        });
+        const remainingHeight = Math.min(pageHeight, canvasHeight - yPosition);
         
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const imgWidth = 210; // A4 width in mm
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        // Create a temporary canvas for this page
+        const pageCanvas = document.createElement('canvas');
+        const pageCtx = pageCanvas.getContext('2d');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = remainingHeight * (canvas.width / pageWidth);
         
-        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
-        
-        // Handle multiple pages if content is too tall
-        if (imgHeight > 297) { // A4 height in mm
-          let yPosition = 297;
-          let pageNum = 1;
+        if (pageCtx) {
+          pageCtx.fillStyle = 'white';
+          pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
           
-          while (yPosition < imgHeight && pageNum < 10) {
-            pdf.addPage();
-            const remainingHeight = Math.min(297, imgHeight - yPosition);
-            
-            // Create a new canvas for this page section
-            const pageCanvas = document.createElement('canvas');
-            const pageCtx = pageCanvas.getContext('2d');
-            pageCanvas.width = canvas.width;
-            pageCanvas.height = (remainingHeight * canvas.width) / imgWidth;
-            
-            if (pageCtx) {
-              pageCtx.drawImage(
-                canvas,
-                0, (yPosition * canvas.width) / imgWidth,
-                canvas.width, pageCanvas.height,
-                0, 0,
-                canvas.width, pageCanvas.height
-              );
-              
-              const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
-              pdf.addImage(pageImgData, 'JPEG', 0, 0, imgWidth, remainingHeight);
-            }
-            
-            yPosition += 297;
-            pageNum++;
-          }
+          pageCtx.drawImage(
+            canvas,
+            0, yPosition * (canvas.width / pageWidth),
+            canvas.width, pageCanvas.height,
+            0, 0,
+            canvas.width, pageCanvas.height
+          );
+          
+          const imgData = pageCanvas.toDataURL('image/png', 0.95);
+          pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, remainingHeight);
+        }
+        
+        yPosition += pageHeight;
+        pageNum++;
+        
+        if (pageNum >= 20) {
+          console.warn('Document too large, stopping at 20 pages');
+          break;
         }
       }
-
+      
+      console.log(`PDF creation complete. Total pages: ${pageNum}`);
+      
       // Clean up
       document.body.removeChild(tempDiv);
 
