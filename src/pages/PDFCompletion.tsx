@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { PDFRenderer } from "@/components/pdf-builder/PDFRenderer";
 import { InteractivePDFElement } from "@/components/pdf-builder/InteractivePDFElement";
 import { MobileFieldNavigation } from "@/components/pdf-builder/MobileFieldNavigation";
-import { FieldEditModal } from "@/components/pdf-builder/FieldEditModal";
+
 import { PDFFormat, ElementType, PDFElement, PDFPage } from "@/components/pdf-builder/PDFBuilder";
 import { toast } from "sonner";
 import { ArrowLeft, FileCheck, Download, Eye, EyeOff, Edit } from "lucide-react";
@@ -23,7 +23,7 @@ const PDFCompletionPage = () => {
   const [allElements, setAllElements] = useState<PDFElement[]>([]);
   const [activeElement, setActiveElement] = useState<string | null>(null);
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0);
-  const [showEditModal, setShowEditModal] = useState(false);
+  
   const [showOverlay, setShowOverlay] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const elementRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -114,16 +114,9 @@ const PDFCompletionPage = () => {
       setCurrentFieldIndex(elementIndex);
     }
     
-    if (isMobile) {
-      setShowEditModal(true);
-    }
+    // Mobile field navigation will handle editing
   };
 
-  const handleEditModalSave = (value: string | boolean) => {
-    if (activeElement) {
-      handleInputChange(activeElement, value);
-    }
-  };
 
   const handleComplete = () => {
     toast.success("PDF completed successfully!");
@@ -606,24 +599,16 @@ const PDFCompletionPage = () => {
           )}
         </div>
 
-        {/* Mobile Navigation */}
-        {isMobile && allElements.length > 0 && (
+        {/* Mobile Field Navigation */}
+        {isMobile && (
           <MobileFieldNavigation
             elements={allElements}
             currentIndex={currentFieldIndex}
             onNavigate={handleNavigateToField}
             formData={formData}
+            onFieldUpdate={handleInputChange}
           />
         )}
-
-        {/* Field Edit Modal */}
-        <FieldEditModal
-          element={activeElement ? allElements.find(el => el.id === activeElement) || null : null}
-          isOpen={showEditModal}
-          onClose={() => setShowEditModal(false)}
-          value={activeElement ? formData[activeElement] || '' : ''}
-          onSave={handleEditModalSave}
-        />
       </div>
     </div>
   );
