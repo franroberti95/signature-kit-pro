@@ -21,24 +21,13 @@ const PDFBuilderPage = () => {
         const data = JSON.parse(storedData);
         let pagesData = data.pages || [];
         
-        // Handle parsed DOCX pages
-        if (location.state?.isDocx && location.state?.parsedPages) {
-          pagesData = location.state.parsedPages;
-        } else if (location.state?.uploadedFile && data.hasUploadedFile) {
-          if (location.state?.isDocx) {
-            // This shouldn't happen anymore with proper parsing, but keep as fallback
-            pagesData = pagesData.map((page: PDFPage) => ({
-              ...page,
-              backgroundImage: location.state.uploadedFile,
-              isDocxPlaceholder: true
-            }));
-          } else {
+        // Handle uploaded files
+        if (location.state?.uploadedFile && data.hasUploadedFile) {
             // Handle PDF files normally
             pagesData = pagesData.map((page: PDFPage) => ({
               ...page,
               backgroundImage: location.state.uploadedFile
             }));
-          }
         }
         
         setPages(pagesData);

@@ -279,9 +279,9 @@ const PDFCompletionPage = () => {
                           
                            <div className="relative bg-white shadow-lg rounded-lg overflow-hidden" style={{ minHeight: '750px' }}>
                              {page.backgroundImage ? (
-                               typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
-                                 // Rendered DOCX page as image
-                                 <img 
+                                typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
+                                  // Rendered page as image
+                                  <img
                                    src={page.backgroundImage}
                                    alt={`Page ${pageIndex + 1}`}
                                    className="w-full h-full object-contain bg-white"
