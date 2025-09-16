@@ -4,9 +4,8 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronLeft, ChevronRight, Check, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, X, Trash2 } from "lucide-react";
 import { PDFElement } from "./PDFBuilder";
-import { SignatureCanvas } from "./SignatureCanvas";
 import { DatePicker } from "./DatePicker";
 
 interface MobileFieldNavigationProps {
@@ -69,12 +68,118 @@ export const MobileFieldNavigation = ({
       case 'signature':
         return (
           <div className="p-4 bg-background border-t">
-            <SignatureCanvas
-              width={280}
-              height={120}
-              onSignatureComplete={handleSignatureComplete}
-              onCancel={() => {}}
-            />
+            <div className="mb-2">
+              <h3 className="text-sm font-medium text-foreground mb-1">Sign here</h3>
+              <p className="text-xs text-muted-foreground">Draw your signature using your mouse or finger</p>
+            </div>
+            
+            <div className="border-2 border-dashed border-muted-foreground/30 rounded mb-3 bg-white">
+              <canvas
+                ref={(canvas) => {
+                  if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                      let isDrawing = false;
+                      let lastX = 0;
+                      let lastY = 0;
+
+                      const startDrawing = (e: MouseEvent | TouchEvent) => {
+                        isDrawing = true;
+                        const rect = canvas.getBoundingClientRect();
+                        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+                        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+                        lastX = clientX - rect.left;
+                        lastY = clientY - rect.top;
+                      };
+
+                      const draw = (e: MouseEvent | TouchEvent) => {
+                        if (!isDrawing) return;
+                        e.preventDefault();
+                        
+                        const rect = canvas.getBoundingClientRect();
+                        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+                        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+                        const currentX = clientX - rect.left;
+                        const currentY = clientY - rect.top;
+
+                        ctx.strokeStyle = '#000';
+                        ctx.lineWidth = 2;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(lastX, lastY);
+                        ctx.lineTo(currentX, currentY);
+                        ctx.stroke();
+
+                        lastX = currentX;
+                        lastY = currentY;
+
+                        // Save signature when drawing
+                        const dataURL = canvas.toDataURL('image/png');
+                        setLocalValue(dataURL);
+                        onFieldUpdate(currentElement.id, dataURL);
+                      };
+
+                      const stopDrawing = () => {
+                        isDrawing = false;
+                      };
+
+                      // Mouse events
+                      canvas.addEventListener('mousedown', startDrawing);
+                      canvas.addEventListener('mousemove', draw);
+                      canvas.addEventListener('mouseup', stopDrawing);
+                      canvas.addEventListener('mouseout', stopDrawing);
+
+                      // Touch events
+                      canvas.addEventListener('touchstart', startDrawing);
+                      canvas.addEventListener('touchmove', draw);
+                      canvas.addEventListener('touchend', stopDrawing);
+
+                      // Clear canvas button functionality
+                      const clearCanvas = () => {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        setLocalValue('');
+                        onFieldUpdate(currentElement.id, '');
+                      };
+
+                      // Store clear function for button access
+                      (canvas as any).clearSignature = clearCanvas;
+
+                      // Load existing signature if any
+                      if (typeof localValue === 'string' && localValue.startsWith('data:image/')) {
+                        const img = new Image();
+                        img.onload = () => {
+                          ctx.drawImage(img, 0, 0);
+                        };
+                        img.src = localValue;
+                      }
+                    }
+                  }
+                }}
+                width={280}
+                height={120}
+                className="w-full touch-none"
+                style={{ touchAction: 'none' }}
+              />
+            </div>
+            
+            <div className="flex justify-center">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  const canvas = document.querySelector('canvas') as HTMLCanvasElement & { clearSignature?: () => void };
+                  if (canvas?.clearSignature) {
+                    canvas.clearSignature();
+                  }
+                }}
+                className="flex items-center gap-1"
+              >
+                <Trash2 className="w-3 h-3" />
+                Clear
+              </Button>
+            </div>
           </div>
         );
 
