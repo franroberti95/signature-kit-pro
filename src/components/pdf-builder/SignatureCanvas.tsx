@@ -36,12 +36,8 @@ export const SignatureCanvas = ({
     canvas.freeDrawingBrush.color = "#000000";
     canvas.freeDrawingBrush.width = 2;
 
-    // Debug: Log when canvas is ready
-    console.log('Signature canvas initialized:', canvas.isDrawingMode);
-
     // Track when drawing happens
-    canvas.on('path:created', (e) => {
-      console.log('Path created:', e);
+    canvas.on('path:created', () => {
       setIsEmpty(false);
     });
 
@@ -49,10 +45,6 @@ export const SignatureCanvas = ({
     canvas.on('canvas:cleared', () => {
       setIsEmpty(true);
     });
-
-    // Debug: Add mouse event listeners
-    canvas.on('mouse:down', () => console.log('Mouse down on canvas'));
-    canvas.on('mouse:move', () => console.log('Mouse move on canvas'));
 
     setFabricCanvas(canvas);
 
