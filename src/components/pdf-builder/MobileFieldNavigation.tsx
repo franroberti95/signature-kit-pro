@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronLeft, ChevronRight, Check, X, Trash2 } from "lucide-react";
 import { PDFElement } from "./PDFBuilder";
 import { DatePicker } from "./DatePicker";
+import { SignatureCanvas } from "./SignatureCanvas";
 
 interface MobileFieldNavigationProps {
   elements: PDFElement[];
@@ -24,7 +25,6 @@ export const MobileFieldNavigation = ({
   onFieldUpdate
 }: MobileFieldNavigationProps) => {
   const [localValue, setLocalValue] = useState<string | boolean>('');
-  const [canvasRef, setCanvasRef] = useState<HTMLCanvasElement | null>(null);
   const currentElement = elements[currentIndex];
   
   const completedCount = elements.filter(el => 
@@ -41,16 +41,8 @@ export const MobileFieldNavigation = ({
     if (currentElement) {
       const currentValue = formData[currentElement.id] || (currentElement.type === 'checkbox' ? false : '');
       setLocalValue(currentValue);
-      
-      // For signature fields, clear canvas only when switching to a different signature element
-      if (currentElement.type === 'signature' && canvasRef) {
-        const ctx = canvasRef.getContext('2d');
-        if (ctx && (!currentValue || typeof currentValue !== 'string' || !currentValue.startsWith('data:image/'))) {
-          ctx.clearRect(0, 0, canvasRef.width, canvasRef.height);
-        }
-      }
     }
-  }, [currentIndex, currentElement, formData, canvasRef]);
+  }, [currentIndex, currentElement, formData]);
 
   const handleSave = () => {
     if (currentElement) {
@@ -64,13 +56,6 @@ export const MobileFieldNavigation = ({
     }
   };
 
-  const handleSignatureComplete = (dataURL: string) => {
-    if (currentElement) {
-      setLocalValue(dataURL);
-      onFieldUpdate(currentElement.id, dataURL);
-    }
-  };
-
   const renderFieldEditor = () => {
     if (!currentElement) return null;
 
@@ -78,127 +63,18 @@ export const MobileFieldNavigation = ({
       case 'signature':
         return (
           <div className="p-4 bg-background border-t">
-            <div className="mb-2">
-              <h3 className="text-sm font-medium text-foreground mb-1">Sign here</h3>
-              <p className="text-xs text-muted-foreground">Draw your signature using your mouse or finger</p>
-            </div>
-            
-            <div className="flex justify-center mb-3">
-              <div className="border-2 border-dashed border-muted-foreground/30 rounded bg-white" style={{ width: '200px', height: '60px' }}>
-                <canvas
-                  ref={(canvas) => {
-                    setCanvasRef(canvas);
-                    if (canvas) {
-                      const ctx = canvas.getContext('2d');
-                      if (ctx) {
-                        // Only clear if this is a new canvas or no existing signature
-                        const hasExistingSignature = typeof localValue === 'string' && localValue.startsWith('data:image/');
-                        if (!hasExistingSignature) {
-                          ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        }
-                        
-                        let isDrawing = false;
-                        let lastX = 0;
-                        let lastY = 0;
-
-                        const startDrawing = (e: MouseEvent | TouchEvent) => {
-                          isDrawing = true;
-                          const rect = canvas.getBoundingClientRect();
-                          const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-                          const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-                          lastX = clientX - rect.left;
-                          lastY = clientY - rect.top;
-                        };
-
-                        const draw = (e: MouseEvent | TouchEvent) => {
-                          if (!isDrawing) return;
-                          e.preventDefault();
-                          
-                          const rect = canvas.getBoundingClientRect();
-                          const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-                          const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-                          const currentX = clientX - rect.left;
-                          const currentY = clientY - rect.top;
-
-                          ctx.strokeStyle = '#000';
-                          ctx.lineWidth = 2;
-                          ctx.lineCap = 'round';
-                          ctx.lineJoin = 'round';
-                          
-                          ctx.beginPath();
-                          ctx.moveTo(lastX, lastY);
-                          ctx.lineTo(currentX, currentY);
-                          ctx.stroke();
-
-                          lastX = currentX;
-                          lastY = currentY;
-
-                          // Save signature when drawing
-                          const dataURL = canvas.toDataURL('image/png');
-                          setLocalValue(dataURL);
-                          onFieldUpdate(currentElement.id, dataURL);
-                        };
-
-                        const stopDrawing = () => {
-                          isDrawing = false;
-                        };
-
-                        // Remove existing event listeners
-                        canvas.removeEventListener('mousedown', startDrawing);
-                        canvas.removeEventListener('mousemove', draw);
-                        canvas.removeEventListener('mouseup', stopDrawing);
-                        canvas.removeEventListener('mouseout', stopDrawing);
-                        canvas.removeEventListener('touchstart', startDrawing);
-                        canvas.removeEventListener('touchmove', draw);
-                        canvas.removeEventListener('touchend', stopDrawing);
-
-                        // Add event listeners
-                        canvas.addEventListener('mousedown', startDrawing);
-                        canvas.addEventListener('mousemove', draw);
-                        canvas.addEventListener('mouseup', stopDrawing);
-                        canvas.addEventListener('mouseout', stopDrawing);
-                        canvas.addEventListener('touchstart', startDrawing);
-                        canvas.addEventListener('touchmove', draw);
-                        canvas.addEventListener('touchend', stopDrawing);
-
-                        // Load existing signature if any
-                        if (typeof localValue === 'string' && localValue.startsWith('data:image/')) {
-                          const img = new Image();
-                          img.onload = () => {
-                            ctx.drawImage(img, 0, 0);
-                          };
-                          img.src = localValue;
-                        }
-                      }
-                    }
-                  }}
-                  width={200}
-                  height={60}
-                  className="w-full touch-none"
-                  style={{ touchAction: 'none' }}
-                />
-              </div>
-            </div>
-            
             <div className="flex justify-center">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => {
-                  if (canvasRef) {
-                    const ctx = canvasRef.getContext('2d');
-                    if (ctx) {
-                      ctx.clearRect(0, 0, canvasRef.width, canvasRef.height);
-                      setLocalValue('');
-                      onFieldUpdate(currentElement.id, '');
-                    }
-                  }
+              <SignatureCanvas
+                width={250}
+                height={100}
+                onSignatureComplete={(dataURL) => {
+                  setLocalValue(dataURL);
+                  onFieldUpdate(currentElement.id, dataURL);
                 }}
-                className="flex items-center gap-1"
-              >
-                <Trash2 className="w-3 h-3" />
-                Clear
-              </Button>
+                onCancel={() => {
+                  // No cancel action needed in mobile nav
+                }}
+              />
             </div>
           </div>
         );
