@@ -3,11 +3,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 export class DocxToPdfConverter {
-  static async convertDocxToPdf(file: File): Promise<{ 
-    pdfBlob: Blob; 
-    fileName: string;
-    pageImages: string[]; // Add page images for display
-  }> {
+  static async convertDocxToPdf(file: File): Promise<{ pdfBlob: Blob; fileName: string }> {
     console.log('Starting DOCX to PDF conversion for file:', file.name, 'Size:', file.size);
     
     try {
@@ -18,14 +14,12 @@ export class DocxToPdfConverter {
       const html = result.value;
       
       console.log('HTML conversion complete. Length:', html.length);
-      console.log('Conversion messages:', result.messages);
       
       if (!html || html.trim().length === 0) {
         throw new Error('No content extracted from DOCX file');
       }
 
       // Step 2: Create a temporary DOM element to render the HTML
-      console.log('Creating temporary DOM element...');
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = html;
       tempDiv.style.position = 'fixed';
@@ -58,9 +52,6 @@ export class DocxToPdfConverter {
       const pageWidth = 794; // A4 width in pixels
       let yPosition = 0;
       let pageNumber = 0;
-      const pageImages: string[] = []; // Store page images
-      
-      console.log('Starting page-by-page conversion...');
       
       while (yPosition < contentHeight) {
         console.log(`Processing page ${pageNumber + 1}, yPosition: ${yPosition}`);
@@ -88,7 +79,7 @@ export class DocxToPdfConverter {
           // Convert this page to canvas
           const canvas = await html2canvas(wrapper, {
             backgroundColor: 'white',
-            scale: 1.5, // Good balance between quality and performance
+            scale: 1.5,
             useCORS: true,
             allowTaint: true,
             width: pageWidth,
@@ -98,25 +89,21 @@ export class DocxToPdfConverter {
           
           console.log(`Page ${pageNumber + 1} canvas created:`, canvas.width, 'x', canvas.height);
           
-          // Store page image for display
-          const pageImageData = canvas.toDataURL('image/png', 0.95);
-          pageImages.push(pageImageData);
-          
           // Add page to PDF
           if (pageNumber > 0) {
             pdf.addPage();
           }
           
-          pdf.addImage(pageImageData, 'PNG', 0, 0, pageWidth, pageHeight);
+          const imgData = canvas.toDataURL('image/png', 0.95);
+          pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
           
         } finally {
           document.body.removeChild(wrapper);
         }
         
-        yPosition += pageHeight - 50; // Small overlap to avoid cutting text
+        yPosition += pageHeight - 50;
         pageNumber++;
         
-        // Safety break for very large documents
         if (pageNumber > 50) {
           console.warn('Document too large, stopping at 50 pages');
           break;
@@ -128,16 +115,14 @@ export class DocxToPdfConverter {
       // Clean up
       document.body.removeChild(tempDiv);
 
-      // Step 4: Generate PDF blob
+      // Generate PDF blob
       const pdfBlob = new Blob([pdf.output('arraybuffer')], { type: 'application/pdf' });
       
       console.log('PDF blob created. Size:', pdfBlob.size);
-      console.log('Page images created:', pageImages.length);
       
       return {
         pdfBlob,
-        fileName: file.name.replace(/\.docx$/i, '.pdf'),
-        pageImages
+        fileName: file.name.replace(/\.docx$/i, '.pdf')
       };
 
     } catch (error) {
