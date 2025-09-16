@@ -69,7 +69,7 @@ export const FileUploader = ({ onFileUpload }: FileUploaderProps) => {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <CardContent className="flex flex-col items-center justify-center py-12 px-6">
+        <CardContent className="relative flex flex-col items-center justify-center py-12 px-6">
           {selectedFile ? (
             <div className="text-center space-y-3">
               <div className="w-12 h-12 bg-success/20 rounded-full flex items-center justify-center mx-auto">
