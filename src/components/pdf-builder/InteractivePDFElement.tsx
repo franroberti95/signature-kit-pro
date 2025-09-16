@@ -70,13 +70,16 @@ export const InteractivePDFElement = ({
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
         onUpdate(result);
       };
       reader.readAsDataURL(file);
+    } else if (file) {
+      console.error('Selected file is not an image');
+      // You could add a toast here to inform the user
     }
     // Clear the input value to allow selecting the same file again
     event.target.value = '';
