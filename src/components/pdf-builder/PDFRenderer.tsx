@@ -28,8 +28,10 @@ export const PDFRenderer = ({
       const url = URL.createObjectURL(fileUrl);
       objectUrlRef.current = url;
       setDocumentUrl(url);
+      console.log('PDFRenderer: Created object URL for File:', url);
     } else {
       setDocumentUrl(fileUrl);
+      console.log('PDFRenderer: Using provided URL:', fileUrl);
     }
 
     // Cleanup object URL on unmount
@@ -48,6 +50,13 @@ export const PDFRenderer = ({
       singlePageViewer: true,
     }
   );
+
+  // Log PDF loading state
+  const store = usePDFSlickStore();
+  
+  useEffect(() => {
+    console.log('PDFSlick store state:', store);
+  }, [store]);
 
   if (!documentUrl) {
     return (

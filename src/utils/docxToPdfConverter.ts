@@ -14,6 +14,7 @@ export class DocxToPdfConverter {
       const html = result.value;
       
       console.log('HTML conversion complete. Length:', html.length);
+      console.log('Extracted HTML content preview:', html.substring(0, 500));
       
       if (!html || html.trim().length === 0) {
         throw new Error('No content extracted from DOCX file');

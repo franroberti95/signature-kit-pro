@@ -197,16 +197,19 @@ export const PDFCanvas = ({
                             <p className="text-xs mt-1 opacity-75">You can still add form fields</p>
                           </div>
                         </div>
-                      ) : (
-                        // PDF file
-                        <PDFRenderer
-                          fileUrl={page.backgroundImage}
-                          width={displayWidth}
-                          height={displayHeight}
-                          pageNumber={(page as any).pageNumber || pageIndex + 1}
-                          className="absolute inset-0"
-                        />
-                      )
+                       ) : (
+                         // PDF file
+                         <>
+                           {console.log('Rendering PDF page:', pageIndex + 1, 'backgroundImage:', page.backgroundImage, 'pageNumber:', (page as any).pageNumber)}
+                           <PDFRenderer
+                             fileUrl={page.backgroundImage}
+                             width={displayWidth}
+                             height={displayHeight}
+                             pageNumber={(page as any).pageNumber || pageIndex + 1}
+                             className="absolute inset-0"
+                           />
+                         </>
+                       )
                     ) : (
                       <div className="absolute inset-0 bg-white" />
                     )}
