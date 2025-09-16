@@ -35,6 +35,8 @@ const PDFCompletionPage = () => {
         
         console.log('Pages data in completion:', pagesData);
         console.log('First page background:', pagesData[0]?.backgroundImage);
+        console.log('Background image type:', typeof pagesData[0]?.backgroundImage);
+        console.log('Pages length:', pagesData.length);
         setPages(pagesData);
         
         // Collect all form elements from all pages
@@ -129,7 +131,15 @@ const PDFCompletionPage = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-semibold mb-4">No form elements found</h2>
+          <h2 className="text-2xl font-semibold mb-4">Debug Info</h2>
+          <p className="text-muted-foreground mb-2">Pages found: {pages.length}</p>
+          <p className="text-muted-foreground mb-2">Elements found: {allElements.length}</p>
+          {pages.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm">First page background: {String(pages[0]?.backgroundImage).substring(0, 50)}...</p>
+              <p className="text-sm">Background type: {typeof pages[0]?.backgroundImage}</p>
+            </div>
+          )}
           <p className="text-muted-foreground mb-4">Please go back and add some form elements to your PDF.</p>
           <Button onClick={() => navigate('/pdf-builder')}>
             <ArrowLeft className="w-4 h-4 mr-2" />

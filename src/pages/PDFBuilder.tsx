@@ -114,6 +114,7 @@ const PDFBuilderPage = () => {
   };
 
   const updateStoredData = (updatedPages: PDFPage[], activePageIndex: number) => {
+    console.log('Updating stored data:', { pages: updatedPages, activePage: activePageIndex });
     sessionStorage.setItem('pdfBuilderData', JSON.stringify({
       pages: updatedPages,
       activePage: activePageIndex,
@@ -142,7 +143,11 @@ const PDFBuilderPage = () => {
               {pages.length} {pages.length === 1 ? 'page' : 'pages'} • {pages[activePage]?.format}
             </p>
           </div>
-            <Button onClick={() => navigate('/pdf-completion')} className="bg-green-600 hover:bg-green-700">
+            <Button onClick={() => {
+              console.log('Navigating to completion with current pages:', pages);
+              updateStoredData(pages, activePage);
+              navigate('/pdf-completion');
+            }} className="bg-green-600 hover:bg-green-700">
               Continue to Form Completion
             </Button>
         </div>
