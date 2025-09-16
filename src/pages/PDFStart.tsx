@@ -27,33 +27,49 @@ const PDFStart = () => {
     navigate('/pdf-builder');
   };
 
-  const handleFileUpload = (file: File) => {
+  const handleFileUpload = async (file: File) => {
     if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
       // Handle DOCX file - parse it first
       handleDocxUpload(file);
     } else if (file.type === 'application/pdf') {
-      // Handle PDF file - convert to blob URL for persistence
-      const blobUrl = URL.createObjectURL(file);
-      
-      const newPage = {
-        id: `page-${Date.now()}`,
-        format: "A4", // Default, would be detected from uploaded PDF
-        elements: [],
-        backgroundImage: blobUrl,
-        originalFileName: file.name,
-      };
-      
-      // Store in sessionStorage for the builder page
-      sessionStorage.setItem('pdfBuilderData', JSON.stringify({
-        pages: [newPage],
-        activePage: 0,
-        selectedFormat: "A4",
-        hasUploadedFile: true,
-        pdfBlobUrl: blobUrl // Store blob URL separately for cleanup
-      }));
-      
-      toast(`PDF "${file.name}" loaded successfully!`);
-      navigate('/pdf-builder');
+      // Handle PDF file - detect page count and create pages
+      try {
+        const blobUrl = URL.createObjectURL(file);
+        
+        // Load the PDF to get page count
+        const { PDFDocument } = await import('pdf-lib');
+        const pdfBytes = await file.arrayBuffer();
+        const pdfDoc = await PDFDocument.load(pdfBytes);
+        const pageCount = pdfDoc.getPageCount();
+        
+        console.log(`PDF has ${pageCount} pages`);
+        
+        // Create page objects for each page in the PDF
+        const newPages = Array.from({ length: pageCount }, (_, index) => ({
+          id: `page-${Date.now()}-${index}`,
+          format: "A4" as PDFFormat,
+          elements: [],
+          backgroundImage: blobUrl, // Same blob URL for all pages
+          originalFileName: file.name,
+          pageNumber: index + 1 // PDFRenderer will use this to show the correct page
+        }));
+        
+        // Store in sessionStorage for the builder page
+        sessionStorage.setItem('pdfBuilderData', JSON.stringify({
+          pages: newPages,
+          activePage: 0,
+          selectedFormat: "A4",
+          hasUploadedFile: true,
+          pdfBlobUrl: blobUrl,
+          totalPages: pageCount
+        }));
+        
+        toast(`PDF "${file.name}" loaded successfully! ${pageCount} pages detected.`);
+        navigate('/pdf-builder');
+      } catch (error) {
+        console.error('Error processing PDF:', error);
+        toast.error("Failed to process PDF file");
+      }
     } else {
       toast.error("Please upload a PDF or DOCX file");
     }
@@ -77,14 +93,14 @@ const PDFStart = () => {
       // Create a blob URL for the converted PDF
       const blobUrl = URL.createObjectURL(pdfBlob);
       
-      // Create page objects for each page in the PDF (same as regular PDF upload)
+      // Create page objects for each page in the PDF (using the same blob URL)
       const newPages = Array.from({ length: pageCount }, (_, index) => ({
         id: `page-${Date.now()}-${index}`,
         format: "A4" as PDFFormat,
         elements: [],
-        backgroundImage: blobUrl,
+        backgroundImage: blobUrl, // Same blob URL for all pages
         originalFileName: fileName,
-        pageNumber: index + 1
+        pageNumber: index + 1 // PDFRenderer will use this to show the correct page
       }));
       
       sessionStorage.setItem('pdfBuilderData', JSON.stringify({

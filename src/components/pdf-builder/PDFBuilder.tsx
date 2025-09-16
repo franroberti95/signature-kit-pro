@@ -1,8 +1,6 @@
-import { useState } from "react";
-import { FormatSelector } from "./FormatSelector";
+import { useState, useEffect } from "react";
 import { ToolbarPanel } from "./ToolbarPanel";
 import { PDFCanvas } from "./PDFCanvas";
-import { FileUploader } from "./FileUploader";
 import { toast } from "sonner";
 
 export type PDFFormat = "A4" | "A5" | "Letter";
@@ -29,37 +27,25 @@ export interface PDFPage {
 }
 
 const PDFBuilder = () => {
-  const [currentStep, setCurrentStep] = useState<"format" | "upload" | "build">("format");
   const [pages, setPages] = useState<PDFPage[]>([]);
   const [activePage, setActivePage] = useState<number>(0);
   const [selectedFormat, setSelectedFormat] = useState<PDFFormat>("A4");
 
-  const handleFormatSelect = (format: PDFFormat) => {
-    setSelectedFormat(format);
-    const newPage: PDFPage = {
-      id: `page-${Date.now()}`,
-      format,
-      elements: [],
-    };
-    setPages([newPage]);
-    setActivePage(0);
-    setCurrentStep("build");
-    toast(`New ${format} document created!`);
-  };
-
-  const handleFileUpload = (file: File) => {
-    // Handle PDF upload by passing the File object directly to react-pdf
-    const newPage: PDFPage = {
-      id: `page-${Date.now()}`,
-      format: "A4", // Default, would be detected from uploaded PDF
-      elements: [],
-      backgroundImage: file, // Pass File object directly to PDFRenderer
-    };
-    setPages([newPage]);
-    setActivePage(0);
-    setCurrentStep("build");
-    toast(`PDF "${file.name}" loaded successfully!`);
-  };
+  // Load data from sessionStorage on component mount
+  useEffect(() => {
+    const savedData = sessionStorage.getItem('pdfBuilderData');
+    if (savedData) {
+      try {
+        const data = JSON.parse(savedData);
+        setPages(data.pages || []);
+        setActivePage(data.activePage || 0);
+        setSelectedFormat(data.selectedFormat || "A4");
+      } catch (error) {
+        console.error('Error loading PDF builder data:', error);
+        toast.error("Failed to load document data");
+      }
+    }
+  }, []);
 
   const addElement = (type: ElementType) => {
     if (pages.length === 0) return;
@@ -113,35 +99,18 @@ const PDFBuilder = () => {
     toast("New page added");
   };
 
-  if (currentStep === "format") {
+  if (!pages || pages.length === 0) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b border-border bg-card px-6 py-4">
-          <h1 className="text-2xl font-bold text-foreground">PDF Builder</h1>
-          <p className="text-muted-foreground">Create fillable PDF documents with drag-and-drop ease</p>
-        </header>
-        
-        <div className="container mx-auto px-6 py-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-foreground mb-4">Get Started</h2>
-              <p className="text-lg text-muted-foreground">Choose how you want to create your PDF document</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-foreground">Start from Blank</h3>
-                <p className="text-muted-foreground mb-6">Create a new document from scratch with your preferred format</p>
-                <FormatSelector onFormatSelect={handleFormatSelect} />
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-foreground">Upload Existing PDF</h3>
-                <p className="text-muted-foreground mb-6">Add form fields to an existing PDF document</p>
-                <FileUploader onFileUpload={handleFileUpload} />
-              </div>
-            </div>
-          </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-medium text-foreground mb-2">No Document Found</h2>
+          <p className="text-muted-foreground mb-4">Please start by creating or uploading a document</p>
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="text-primary hover:underline"
+          >
+            ← Go Back to Start
+          </button>
         </div>
       </div>
     );
@@ -159,7 +128,7 @@ const PDFBuilder = () => {
           </div>
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => setCurrentStep("format")}
+              onClick={() => window.location.href = '/'}
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
               ← Back to Start
