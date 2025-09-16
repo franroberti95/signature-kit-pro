@@ -203,6 +203,7 @@ export const PDFCanvas = ({
                           fileUrl={page.backgroundImage}
                           width={displayWidth}
                           height={displayHeight}
+                          pageNumber={(page as any).pageNumber || pageIndex + 1}
                           className="absolute inset-0"
                         />
                       )
