@@ -3,7 +3,7 @@ import { FormatSelector } from "@/components/pdf-builder/FormatSelector";
 import { FileUploader } from "@/components/pdf-builder/FileUploader";
 import { PDFFormat } from "@/components/pdf-builder/PDFBuilder";
 import { toast } from "sonner";
-import { DocxParser } from "@/utils/docxParser";
+import { DocxToPdfConverter } from "@/utils/docxToPdfConverter";
 
 const PDFStart = () => {
   const navigate = useNavigate();
@@ -61,35 +61,42 @@ const PDFStart = () => {
 
   const handleDocxUpload = async (file: File) => {
     try {
-      toast("Processing DOCX file...", { duration: 2000 });
+      toast("Converting DOCX to PDF...", { duration: 3000 });
       
-      // Parse DOCX using client-side library
-      const parsedPages = await DocxParser.parseDocxFile(file);
+      // Convert DOCX to PDF first
+      const { pdfBlob, fileName } = await DocxToPdfConverter.convertDocxToPdf(file);
       
-      // Create pages from the parsed DOCX
-      const newPages = parsedPages.map((parsedPage, index) => ({
-        id: `page-${Date.now()}-${index}`,
+      // Create a new File object from the PDF blob
+      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+      
+      // Now handle it as a regular PDF upload
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      
+      const newPage = {
+        id: `page-${Date.now()}`,
         format: "A4" as PDFFormat,
         elements: [],
-        backgroundImage: parsedPage.imageData, // Use the page image as background
-      }));
+        backgroundImage: blobUrl,
+        originalFileName: fileName,
+      };
       
       sessionStorage.setItem('pdfBuilderData', JSON.stringify({
-        pages: newPages,
+        pages: [newPage],
         activePage: 0,
         selectedFormat: "A4",
         hasUploadedFile: true,
-        isDocx: true
+        pdfBlobUrl: blobUrl,
+        convertedFromDocx: true
       }));
       
-      toast(`DOCX "${file.name}" loaded successfully! ${newPages.length} pages created.`, { 
+      toast(`DOCX converted to PDF successfully! "${fileName}" loaded.`, { 
         duration: 3000 
       });
-      navigate('/pdf-builder', { state: { isDocx: true, parsedPages: newPages } });
+      navigate('/pdf-builder');
       
     } catch (error) {
-      console.error('Error processing DOCX:', error);
-      toast.error("Failed to process DOCX file. The file might be corrupted or password protected.");
+      console.error('Error converting DOCX:', error);
+      toast.error("Failed to convert DOCX file: " + error.message);
     }
   };
 
