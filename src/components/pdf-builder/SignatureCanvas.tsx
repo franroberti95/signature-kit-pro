@@ -18,6 +18,7 @@ export const SignatureCanvas = ({
 }: SignatureCanvasProps) => {
   const signatureRef = useRef<ReactSignatureCanvas>(null);
   const [isEmpty, setIsEmpty] = useState(true);
+  const [lastSignature, setLastSignature] = useState<string>('');
 
   const handleClear = () => {
     if (signatureRef.current) {
@@ -26,10 +27,9 @@ export const SignatureCanvas = ({
     }
   };
 
-  const handleComplete = () => {
-    if (signatureRef.current && !isEmpty) {
-      const dataURL = signatureRef.current.toDataURL('image/png');
-      onSignatureComplete(dataURL);
+  const handleUseSame = () => {
+    if (lastSignature) {
+      onSignatureComplete(lastSignature);
     }
   };
 
@@ -37,54 +37,57 @@ export const SignatureCanvas = ({
     setIsEmpty(false);
   };
 
+  const handleEnd = () => {
+    if (signatureRef.current && !isEmpty) {
+      const dataURL = signatureRef.current.toDataURL('image/png');
+      setLastSignature(dataURL);
+      onSignatureComplete(dataURL);
+    }
+  };
+
   return (
-    <div className="bg-white border rounded-lg p-4 shadow-lg">
+    <div className="bg-card border border-border rounded-lg p-4 shadow-lg">
       <div className="mb-3">
-        <h3 className="text-sm font-medium text-foreground mb-1">Sign here</h3>
+        <h3 className="text-sm font-medium text-card-foreground mb-1">Sign here</h3>
         <p className="text-xs text-muted-foreground">Draw your signature using your mouse or finger</p>
       </div>
       
-      <div className="border-2 border-dashed border-muted-foreground/30 rounded mb-3">
-        <ReactSignatureCanvas 
-          ref={signatureRef}
-          canvasProps={{
-            width,
-            height,
-            className: 'signature-canvas'
-          }}
-          onBegin={handleBegin}
-        />
-      </div>
-      
-      <div className="flex items-center justify-between gap-2">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleClear}
-          disabled={isEmpty}
-          className="flex items-center gap-1"
-        >
-          <Trash2 className="w-3 h-3" />
-          Clear
-        </Button>
+      <div className="flex gap-3">
+        <div className="flex-1 border-2 border-dashed border-border rounded">
+          <ReactSignatureCanvas 
+            ref={signatureRef}
+            canvasProps={{
+              width,
+              height,
+              className: 'signature-canvas bg-background'
+            }}
+            onBegin={handleBegin}
+            onEnd={handleEnd}
+          />
+        </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2">
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-          <Button 
-            size="sm" 
-            onClick={handleComplete}
+            onClick={handleClear}
             disabled={isEmpty}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 text-card-foreground border-border hover:bg-muted"
           >
-            <Check className="w-3 h-3" />
-            Done
+            <Trash2 className="w-3 h-3" />
+            Clear
           </Button>
+          
+          {lastSignature && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleUseSame}
+              className="flex items-center gap-1 text-card-foreground border-border hover:bg-muted whitespace-nowrap"
+            >
+              Use Same
+            </Button>
+          )}
         </div>
       </div>
     </div>

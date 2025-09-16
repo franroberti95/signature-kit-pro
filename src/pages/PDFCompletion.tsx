@@ -24,7 +24,7 @@ const PDFCompletionPage = () => {
   const [activeElement, setActiveElement] = useState<string | null>(null);
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0);
   
-  const [showOverlay, setShowOverlay] = useState(true);
+  const [showOverlay, setShowOverlay] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const elementRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
@@ -101,9 +101,9 @@ const PDFCompletionPage = () => {
             
             // Calculate target scroll position
             // We want the element to be centered in viewport, accounting for mobile bottom panel
-            const mobileBottomPanelHeight = isMobile ? 200 : 0;
+            const mobileBottomPanelHeight = isMobile ? 250 : 0;
             const availableViewportHeight = viewportHeight - mobileBottomPanelHeight;
-            const targetOffsetFromTop = (availableViewportHeight / 2) - (elementRect.height / 2);
+            const targetOffsetFromTop = Math.max(100, (availableViewportHeight / 2) - (elementRect.height / 2));
             
             const targetScroll = window.scrollY + elementRect.top - targetOffsetFromTop;
             
@@ -309,14 +309,6 @@ const PDFCompletionPage = () => {
           </div>
           {!isMobile && (
             <div className="flex items-center gap-2">
-              <Button 
-                variant="secondary" 
-                onClick={() => setShowOverlay(!showOverlay)}
-                className="flex items-center gap-2"
-              >
-                {showOverlay ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                {showOverlay ? 'Hide Fields' : 'Show Fields'}
-              </Button>
               <Button onClick={downloadPDF} variant="default">
                 <Download className="w-4 h-4 mr-2" />
                 Download PDF
