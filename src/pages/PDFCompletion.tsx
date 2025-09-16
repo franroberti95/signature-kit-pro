@@ -83,9 +83,9 @@ const PDFCompletionPage = () => {
   const scrollToElement = (elementId: string) => {
     const elementRef = elementRefs.current[elementId];
     if (elementRef) {
-      // On mobile, account for bottom navigation height (approximately 200px)
+      // On mobile, account for bottom navigation height (approximately 300px now that input is always shown)
       const block = isMobile ? 'start' : 'center';
-      const topOffset = isMobile ? 100 : 0;
+      const topOffset = isMobile ? 200 : 0;
       
       elementRef.scrollIntoView({ 
         behavior: 'smooth', 
@@ -614,13 +614,16 @@ const PDFCompletionPage = () => {
 
         {/* Mobile Field Navigation */}
         {isMobile && (
-          <MobileFieldNavigation
-            elements={allElements}
-            currentIndex={currentFieldIndex}
-            onNavigate={handleNavigateToField}
-            formData={formData}
-            onFieldUpdate={handleInputChange}
-          />
+          <>
+            <div className="h-80" /> {/* Spacer for mobile navigation */}
+            <MobileFieldNavigation
+              elements={allElements}
+              currentIndex={currentFieldIndex}
+              onNavigate={handleNavigateToField}
+              formData={formData}
+              onFieldUpdate={handleInputChange}
+            />
+          </>
         )}
       </div>
     </div>

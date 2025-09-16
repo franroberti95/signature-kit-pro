@@ -25,7 +25,6 @@ export const MobileFieldNavigation = ({
   onFieldUpdate
 }: MobileFieldNavigationProps) => {
   const [localValue, setLocalValue] = useState<string | boolean>('');
-  const [isEditing, setIsEditing] = useState(false);
   const currentElement = elements[currentIndex];
   
   const completedCount = elements.filter(el => 
@@ -36,43 +35,34 @@ export const MobileFieldNavigation = ({
   
   const canGoPrevious = currentIndex > 0;
   const canGoNext = currentIndex < elements.length - 1;
-  const isCompleted = formData[currentElement?.id] && formData[currentElement?.id] !== false;
 
   // Update local value when current element changes
   useEffect(() => {
     if (currentElement) {
       setLocalValue(formData[currentElement.id] || (currentElement.type === 'checkbox' ? false : ''));
-      setIsEditing(false);
     }
   }, [currentIndex, currentElement, formData]);
 
   const handleSave = () => {
     if (currentElement) {
       onFieldUpdate(currentElement.id, localValue);
-      setIsEditing(false);
     }
   };
 
   const handleCancel = () => {
     if (currentElement) {
       setLocalValue(formData[currentElement.id] || (currentElement.type === 'checkbox' ? false : ''));
-      setIsEditing(false);
     }
   };
 
   const handleSignatureComplete = (dataURL: string) => {
     if (currentElement) {
       onFieldUpdate(currentElement.id, dataURL);
-      setIsEditing(false);
     }
   };
 
-  const startEditing = () => {
-    setIsEditing(true);
-  };
-
   const renderFieldEditor = () => {
-    if (!currentElement || !isEditing) return null;
+    if (!currentElement) return null;
 
     switch (currentElement.type) {
       case 'signature':
@@ -97,14 +87,14 @@ export const MobileFieldNavigation = ({
               onChange={(date) => setLocalValue(date)}
             />
             <div className="flex gap-2 mt-3">
-            <Button variant="secondary" size="sm" onClick={handleCancel} className="flex-1">
-              <X className="w-4 h-4 mr-1" />
-              Cancel
-            </Button>
-            <Button variant="default" size="sm" onClick={handleSave} className="flex-1">
-              <Check className="w-4 h-4 mr-1" />
-              Save
-            </Button>
+              <Button variant="secondary" size="sm" onClick={handleCancel} className="flex-1">
+                <X className="w-4 h-4 mr-1" />
+                Cancel
+              </Button>
+              <Button variant="default" size="sm" onClick={handleSave} className="flex-1">
+                <Check className="w-4 h-4 mr-1" />
+                Save
+              </Button>
             </div>
           </div>
         );
@@ -120,7 +110,6 @@ export const MobileFieldNavigation = ({
                   onCheckedChange={(checked) => {
                     setLocalValue(checked as boolean);
                     onFieldUpdate(currentElement.id, checked as boolean);
-                    setIsEditing(false);
                   }}
                 />
                 <label htmlFor="mobile-checkbox" className="text-sm font-medium">
@@ -182,7 +171,7 @@ export const MobileFieldNavigation = ({
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-50">
-      {/* Field Editor */}
+      {/* Field Editor - Always shown */}
       {renderFieldEditor()}
       
       {/* Navigation Panel */}
@@ -203,25 +192,17 @@ export const MobileFieldNavigation = ({
               <div className="flex items-center justify-center gap-2">
                 <p className="text-sm font-medium capitalize">
                   {currentElement.type}
-                  {isCompleted && <Check className="inline w-4 h-4 ml-1 text-green-500" />}
+                  {formData[currentElement.id] && formData[currentElement.id] !== false && (
+                    <Check className="inline w-4 h-4 ml-1 text-green-500" />
+                  )}
                 </p>
-                {!isEditing && !isCompleted && (
-                  <Button 
-                    size="sm" 
-                    variant="default" 
-                    onClick={startEditing}
-                    className="px-2 py-1 text-xs"
-                  >
-                    Fill
-                  </Button>
-                )}
               </div>
               {currentElement.placeholder && (
                 <p className="text-xs text-muted-foreground mt-1">
                   {currentElement.placeholder}
                 </p>
               )}
-              {isCompleted && formData[currentElement.id] && (
+              {formData[currentElement.id] && formData[currentElement.id] !== false && (
                 <p className="text-xs text-green-600 mt-1">
                   {currentElement.type === 'checkbox' 
                     ? 'Checked' 
@@ -240,7 +221,7 @@ export const MobileFieldNavigation = ({
               variant="secondary"
               size="sm"
               onClick={() => onNavigate(currentIndex - 1)}
-              disabled={!canGoPrevious || isEditing}
+              disabled={!canGoPrevious}
               className="flex-1"
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
@@ -251,7 +232,7 @@ export const MobileFieldNavigation = ({
               variant="default"
               size="sm"
               onClick={() => onNavigate(currentIndex + 1)}
-              disabled={!canGoNext || isEditing}
+              disabled={!canGoNext}
               className="flex-1"
             >
               Next
