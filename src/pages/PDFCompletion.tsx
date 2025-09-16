@@ -212,13 +212,24 @@ const PDFCompletionPage = () => {
                                   alt={`Page ${pageIndex + 1}`}
                                   className="w-full h-full object-contain bg-white"
                                 />
-                              ) : (
+                              ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('/') ? (
+                                // PDF file path - create a new URL for each page
                                 <PDFRenderer
-                                  key={`pdf-page-${pageIndex}`} // Force new instance for each page
-                                  fileUrl={page.backgroundImage}
+                                  key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
+                                  fileUrl={`${page.backgroundImage}#page=${pageIndex + 1}`}
                                   width={600}
                                   height={750}
                                   pageNumber={pageIndex + 1}
+                                  className="w-full"
+                                />
+                              ) : (
+                                // File object or other format
+                                <PDFRenderer
+                                  key={`pdf-page-${pageIndex}`}
+                                  fileUrl={page.backgroundImage}
+                                  width={600}
+                                  height={750}
+                                  pageNumber={1}
                                   className="w-full"
                                 />
                               )

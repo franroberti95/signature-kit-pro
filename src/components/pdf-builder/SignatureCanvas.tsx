@@ -32,9 +32,19 @@ export const SignatureCanvas = ({
     // Enable drawing mode
     canvas.isDrawingMode = true;
     
-    // Configure the brush immediately after canvas creation
-    canvas.freeDrawingBrush.color = "#000000";
-    canvas.freeDrawingBrush.width = 2;
+    // Configure the brush - ensure it exists first
+    if (canvas.freeDrawingBrush) {
+      canvas.freeDrawingBrush.color = "#000000";
+      canvas.freeDrawingBrush.width = 2;
+    } else {
+      // If brush doesn't exist immediately, try again after a short delay
+      setTimeout(() => {
+        if (canvas.freeDrawingBrush) {
+          canvas.freeDrawingBrush.color = "#000000";
+          canvas.freeDrawingBrush.width = 2;
+        }
+      }, 50);
+    }
 
     // Track when drawing happens
     canvas.on('path:created', () => {
