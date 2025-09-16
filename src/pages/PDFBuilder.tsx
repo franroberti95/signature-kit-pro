@@ -23,11 +23,25 @@ const PDFBuilderPage = () => {
         
         // If there was an uploaded file passed via navigation state
         if (location.state?.uploadedFile && data.hasUploadedFile) {
-          // Update the page with the actual file object
-          pagesData = pagesData.map((page: PDFPage) => ({
-            ...page,
-            backgroundImage: location.state.uploadedFile
-          }));
+          if (location.state?.isDocx) {
+            // Handle DOCX files - add placeholder flag
+            pagesData = pagesData.map((page: PDFPage) => ({
+              ...page,
+              backgroundImage: location.state.uploadedFile,
+              isDocxPlaceholder: true
+            }));
+          } else {
+            // Handle PDF files normally
+            pagesData = pagesData.map((page: PDFPage) => ({
+              ...page,
+              backgroundImage: location.state.uploadedFile
+            }));
+          }
+        }
+        
+        // Handle parsed DOCX pages
+        if (location.state?.isDocx && location.state?.parsedPages) {
+          pagesData = location.state.parsedPages;
         }
         
         setPages(pagesData);

@@ -54,25 +54,20 @@ const PDFStart = () => {
 
   const handleDocxUpload = async (file: File) => {
     try {
-      // Save file to user-uploads first
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      // Create a temporary file path for parsing
-      const fileName = `user-uploads://${file.name}`;
-      
-      // Copy file to user-uploads
-      const fileUrl = URL.createObjectURL(file);
-      
       toast("Processing DOCX file...");
       
-      // For now, create a single page with the file - 
-      // In a real implementation, you'd parse the DOCX and extract page images
+      // Show a helpful message for now since DOCX parsing requires backend processing
+      toast.error("DOCX support is coming soon! Please use PDF files for now.", {
+        duration: 5000
+      });
+      
+      // For now, create a placeholder page to show the user what would happen
       const newPage = {
         id: `page-${Date.now()}`,
-        format: "A4",
+        format: "A4" as PDFFormat,
         elements: [],
-        backgroundImage: file, // Will be processed later
+        // Don't store the file in sessionStorage, pass via navigation state
+        isDocxPlaceholder: true
       };
       
       sessionStorage.setItem('pdfBuilderData', JSON.stringify({
@@ -83,13 +78,21 @@ const PDFStart = () => {
         isDocx: true
       }));
       
-      toast(`DOCX "${file.name}" loaded successfully!`);
       navigate('/pdf-builder', { state: { uploadedFile: file, isDocx: true } });
       
     } catch (error) {
       console.error('Error processing DOCX:', error);
-      toast.error("Failed to process DOCX file");
+      toast.error("Failed to process DOCX file. Please try with a PDF instead.");
     }
+  };
+
+  // Helper function would be used for actual parsing in the future
+  const parseDocument = async (file: File) => {
+    // Future implementation would:
+    // 1. Copy file to user-uploads using lov-copy tool
+    // 2. Use document--parse_document tool to extract pages
+    // 3. Return page screenshots as data URLs
+    return null;
   };
 
   return (
