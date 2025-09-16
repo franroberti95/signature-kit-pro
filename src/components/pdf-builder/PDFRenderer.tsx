@@ -63,8 +63,8 @@ export const PDFRenderer = ({
     });
   }, [store, pageNumber]);
 
-  // Show loading state while PDF is loading
-  const isLoading = !store.isDocumentLoaded || !store.pagesReady;
+  // Only show loading if document hasn't started loading yet
+  const isLoading = !store.isDocumentLoaded && !store.pagesReady && store.numPages === 0;
 
   if (!documentUrl) {
     return (
