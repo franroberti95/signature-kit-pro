@@ -365,50 +365,20 @@ const PDFCompletionPage = () => {
                                 Page {pageIndex + 1}
                               </div>
                             )}
-                            
                              <div 
                                className="relative bg-white shadow-lg rounded-lg overflow-hidden" 
-                               style={{ minHeight: '750px' }}
+                               style={{ minHeight: '842px' }}
                              >
                                {page.backgroundImage ? (
-                                  typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
-                                    // Rendered page as image
-                                    <img
-                                     src={page.backgroundImage}
-                                     alt={`Page ${pageIndex + 1}`}
-                                     className="w-full h-full object-contain bg-white"
-                                   />
-                                 ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('blob:') ? (
                                    // Blob URL for PDF
                                    <PDFRenderer
                                      key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
                                      fileUrl={page.backgroundImage}
                                      width={600}
-                                     height={750}
+                                     height={842}
                                      pageNumber={pageIndex + 1}
                                      className="w-full"
                                    />
-                                 ) : page.backgroundImage instanceof File ? (
-                                    // File object (PDF or other file)
-                                    <PDFRenderer
-                                      key={`pdf-page-${pageIndex}-${page.backgroundImage.name}`}
-                                      fileUrl={page.backgroundImage}
-                                      width={600}
-                                      height={750}
-                                      pageNumber={pageIndex + 1}
-                                      className="w-full"
-                                    />
-                                  ) : (
-                                    // Other string format
-                                    <PDFRenderer
-                                      key={`pdf-page-${pageIndex}`}
-                                      fileUrl={page.backgroundImage}
-                                      width={600}
-                                      height={750}
-                                      pageNumber={pageIndex + 1}
-                                      className="w-full"
-                                    />
-                                  )
                                 ) : (
                                   <div className="w-full h-[750px] bg-white border border-gray-200 rounded flex items-center justify-center">
                                     <div className="text-center text-muted-foreground">
