@@ -3,7 +3,11 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 export class DocxToPdfConverter {
-  static async convertDocxToPdf(file: File): Promise<{ pdfBlob: Blob; fileName: string }> {
+  static async convertDocxToPdf(file: File): Promise<{ 
+    pdfBlob: Blob; 
+    fileName: string;
+    pageImages: string[]; // Add page images for display
+  }> {
     console.log('Starting DOCX to PDF conversion for file:', file.name, 'Size:', file.size);
     
     try {
@@ -54,6 +58,7 @@ export class DocxToPdfConverter {
       const pageWidth = 794; // A4 width in pixels
       let yPosition = 0;
       let pageNumber = 0;
+      const pageImages: string[] = []; // Store page images
       
       console.log('Starting page-by-page conversion...');
       
@@ -93,13 +98,16 @@ export class DocxToPdfConverter {
           
           console.log(`Page ${pageNumber + 1} canvas created:`, canvas.width, 'x', canvas.height);
           
+          // Store page image for display
+          const pageImageData = canvas.toDataURL('image/png', 0.95);
+          pageImages.push(pageImageData);
+          
           // Add page to PDF
           if (pageNumber > 0) {
             pdf.addPage();
           }
           
-          const imgData = canvas.toDataURL('image/png', 0.95); // Compress slightly for performance
-          pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
+          pdf.addImage(pageImageData, 'PNG', 0, 0, pageWidth, pageHeight);
           
         } finally {
           document.body.removeChild(wrapper);
@@ -124,10 +132,12 @@ export class DocxToPdfConverter {
       const pdfBlob = new Blob([pdf.output('arraybuffer')], { type: 'application/pdf' });
       
       console.log('PDF blob created. Size:', pdfBlob.size);
+      console.log('Page images created:', pageImages.length);
       
       return {
         pdfBlob,
-        fileName: file.name.replace(/\.docx$/i, '.pdf')
+        fileName: file.name.replace(/\.docx$/i, '.pdf'),
+        pageImages
       };
 
     } catch (error) {

@@ -64,27 +64,22 @@ const PDFStart = () => {
       toast("Converting DOCX to PDF...", { duration: 3000 });
       
       // Convert DOCX to PDF first
-      const { pdfBlob, fileName } = await DocxToPdfConverter.convertDocxToPdf(file);
+      const { pdfBlob, fileName, pageImages } = await DocxToPdfConverter.convertDocxToPdf(file);
       
-      // Load the PDF to get page count
-      const { PDFDocument } = await import('pdf-lib');
-      const pdfBytes = await pdfBlob.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(pdfBytes);
-      const pageCount = pdfDoc.getPageCount();
+      console.log(`Converted PDF has ${pageImages.length} pages with images`);
       
-      console.log(`Converted PDF has ${pageCount} pages`);
-      
-      // Create a blob URL for the converted PDF
+      // Create a blob URL for the converted PDF (for final export)
       const blobUrl = URL.createObjectURL(pdfBlob);
       
-      // Create page objects for each page in the PDF
-      const newPages = Array.from({ length: pageCount }, (_, index) => ({
+      // Create page objects using the page images for display
+      const newPages = pageImages.map((imageData, index) => ({
         id: `page-${Date.now()}-${index}`,
         format: "A4" as PDFFormat,
         elements: [],
-        backgroundImage: blobUrl,
+        backgroundImage: imageData, // Use the page image directly
         originalFileName: fileName,
-        pageNumber: index + 1 // Track which page of the PDF this represents
+        pageNumber: index + 1,
+        isFromDocx: true // Flag to identify DOCX-converted pages
       }));
       
       sessionStorage.setItem('pdfBuilderData', JSON.stringify({
@@ -92,12 +87,12 @@ const PDFStart = () => {
         activePage: 0,
         selectedFormat: "A4",
         hasUploadedFile: true,
-        pdfBlobUrl: blobUrl,
+        pdfBlobUrl: blobUrl, // Store for final export
         convertedFromDocx: true,
-        totalPages: pageCount
+        totalPages: pageImages.length
       }));
       
-      toast(`DOCX converted to PDF successfully! "${fileName}" loaded with ${pageCount} pages.`, { 
+      toast(`DOCX converted to PDF successfully! "${fileName}" loaded with ${pageImages.length} pages.`, { 
         duration: 3000 
       });
       navigate('/pdf-builder');
