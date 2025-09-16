@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { Canvas as FabricCanvas, PencilBrush } from "fabric";
+import { useRef, useState } from "react";
+import ReactSignatureCanvas from "react-signature-canvas";
 import { Button } from "@/components/ui/button";
-import { Eraser, Trash2, Check } from "lucide-react";
+import { Trash2, Check } from "lucide-react";
 
 interface SignatureCanvasProps {
   width?: number;
@@ -16,63 +16,25 @@ export const SignatureCanvas = ({
   onSignatureComplete,
   onCancel 
 }: SignatureCanvasProps) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
+  const signatureRef = useRef<ReactSignatureCanvas>(null);
   const [isEmpty, setIsEmpty] = useState(true);
 
-  useEffect(() => {
-    if (!canvasRef.current) return;
-
-    const canvas = new FabricCanvas(canvasRef.current, {
-      width,
-      height,
-      backgroundColor: "#ffffff",
-    });
-
-    // Enable drawing mode
-    canvas.isDrawingMode = true;
-    
-    // Create and configure the brush using Fabric.js v6 syntax
-    const brush = new PencilBrush(canvas);
-    brush.color = "#000000";
-    brush.width = 2;
-    canvas.freeDrawingBrush = brush;
-
-    // Track when drawing happens
-    canvas.on('path:created', () => {
-      setIsEmpty(false);
-    });
-
-    // Track when canvas is cleared
-    canvas.on('canvas:cleared', () => {
-      setIsEmpty(true);
-    });
-
-    setFabricCanvas(canvas);
-
-    return () => {
-      canvas.dispose();
-    };
-  }, [width, height]);
-
   const handleClear = () => {
-    if (!fabricCanvas) return;
-    fabricCanvas.clear();
-    fabricCanvas.backgroundColor = "#ffffff";
-    fabricCanvas.renderAll();
-    setIsEmpty(true);
+    if (signatureRef.current) {
+      signatureRef.current.clear();
+      setIsEmpty(true);
+    }
   };
 
   const handleComplete = () => {
-    if (!fabricCanvas || isEmpty) return;
-    
-    const dataURL = fabricCanvas.toDataURL({
-      format: 'png',
-      quality: 1,
-      multiplier: 2,
-    });
-    
-    onSignatureComplete(dataURL);
+    if (signatureRef.current && !isEmpty) {
+      const dataURL = signatureRef.current.toDataURL('image/png');
+      onSignatureComplete(dataURL);
+    }
+  };
+
+  const handleBegin = () => {
+    setIsEmpty(false);
   };
 
   return (
@@ -83,10 +45,14 @@ export const SignatureCanvas = ({
       </div>
       
       <div className="border-2 border-dashed border-muted-foreground/30 rounded mb-3">
-        <canvas 
-          ref={canvasRef} 
-          className="block cursor-crosshair"
-          style={{ width: `${width}px`, height: `${height}px` }}
+        <ReactSignatureCanvas 
+          ref={signatureRef}
+          canvasProps={{
+            width,
+            height,
+            className: 'signature-canvas'
+          }}
+          onBegin={handleBegin}
         />
       </div>
       
