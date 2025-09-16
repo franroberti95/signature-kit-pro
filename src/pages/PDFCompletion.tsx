@@ -67,7 +67,7 @@ const PDFCompletionPage = () => {
         if (elements.length > 0) {
           setActiveElement(elements[0].id);
           if (window.innerWidth < 768) {
-            setTimeout(() => scrollToElement(elements[0].id), 500);
+            setTimeout(() => scrollToElement(elements[0].id), 300);
           }
         }
         
@@ -80,49 +80,29 @@ const PDFCompletionPage = () => {
     }
   }, [navigate, location.state]);
 
-  const scrollToElement = (elementId: string, isBackward = false) => {
-    const attemptScrollWithRetry = (attempts = 0) => {
-      const maxAttempts = 8;
-      
-      const elementRef = elementRefs.current[elementId];
-      if (!elementRef) {
-        if (attempts < maxAttempts) {
-          setTimeout(() => attemptScrollWithRetry(attempts + 1), 100);
-        }
-        return;
-      }
+  const scrollToElement = (elementId: string) => {
+    const elementRef = elementRefs.current[elementId];
+    if (!elementRef) return;
 
-      // Ensure element is visible and positioned correctly
-      const elementRect = elementRef.getBoundingClientRect();
-      
-      // If element is not visible or has no height, retry
-      if (elementRect.height === 0 || elementRect.width === 0) {
-        if (attempts < maxAttempts) {
-          setTimeout(() => attemptScrollWithRetry(attempts + 1), 100);
-        }
-        return;
-      }
-
-      const headerHeight = 80;
-      const mobileBottomPanelHeight = isMobile ? 280 : 0;
-      const viewportHeight = window.innerHeight - mobileBottomPanelHeight;
-      
-      // Target position: center the element in the available viewport
-      const elementCenter = elementRect.top + (elementRect.height / 2);
-      const targetViewportCenter = viewportHeight / 2;
-      const scrollOffset = elementCenter - targetViewportCenter;
-      
-      const targetScroll = window.scrollY + scrollOffset;
-      
-      window.scrollTo({
-        top: Math.max(0, targetScroll),
-        behavior: 'smooth'
-      });
-    };
+    const headerHeight = 80;
+    const mobileBottomOffset = isMobile ? 140 : 0; // Account for mobile navigation
     
-    // Use longer delay for backward navigation to ensure DOM is fully updated
-    const delay = isBackward ? 250 : 150;
-    setTimeout(() => attemptScrollWithRetry(), delay);
+    elementRef.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+      inline: 'nearest'
+    });
+    
+    // Adjust for header and mobile navigation after scroll
+    setTimeout(() => {
+      const rect = elementRef.getBoundingClientRect();
+      if (rect.top < headerHeight + 20 || (isMobile && rect.bottom > window.innerHeight - mobileBottomOffset)) {
+        window.scrollBy({
+          top: -50,
+          behavior: 'smooth'
+        });
+      }
+    }, 100);
   };
 
   const handleInputChange = (elementId: string, value: string | boolean) => {
@@ -134,12 +114,10 @@ const PDFCompletionPage = () => {
 
   const handleNavigateToField = (index: number) => {
     if (index >= 0 && index < allElements.length) {
-      const isBackward = index < currentFieldIndex;
       setCurrentFieldIndex(index);
       const element = allElements[index];
       setActiveElement(element.id);
-      // Scroll to the element after state updates, with special handling for backward navigation
-      scrollToElement(element.id, isBackward);
+      setTimeout(() => scrollToElement(element.id), 100);
     }
   };
 
@@ -592,7 +570,7 @@ const PDFCompletionPage = () => {
         </div>
 
         {/* Field Navigation Stepper */}
-        <div className="h-64 md:h-48" /> {/* Spacer for bottom navigation */}
+        {isMobile && <div className="h-64" />} {/* Spacer for mobile navigation only */}
         <MobileFieldNavigation
           elements={allElements}
           currentIndex={currentFieldIndex}
