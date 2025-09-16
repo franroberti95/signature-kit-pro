@@ -3,6 +3,7 @@ import { FormatSelector } from "@/components/pdf-builder/FormatSelector";
 import { FileUploader } from "@/components/pdf-builder/FileUploader";
 import { PDFFormat } from "@/components/pdf-builder/PDFBuilder";
 import { toast } from "sonner";
+import { DocxParser } from "@/utils/docxParser";
 
 const PDFStart = () => {
   const navigate = useNavigate();
@@ -57,7 +58,6 @@ const PDFStart = () => {
       toast("Processing DOCX file...", { duration: 2000 });
       
       // Parse DOCX using client-side library
-      const { DocxParser } = await import('../utils/docxParser');
       const parsedPages = await DocxParser.parseDocxFile(file);
       
       // Create pages from the parsed DOCX
