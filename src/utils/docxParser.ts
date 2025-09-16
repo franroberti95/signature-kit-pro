@@ -95,11 +95,15 @@ export class DocxParser {
       return pages;
     }
     
-    // Split content into multiple pages
-    const numberOfPages = Math.ceil(containerHeight / A4_HEIGHT);
-    console.log('Splitting into', numberOfPages, 'pages');
+    // Find natural break points to avoid cutting text
+    const breakPoints = this.findPageBreakPoints(container, A4_HEIGHT);
+    console.log('Found break points:', breakPoints);
     
-    for (let i = 0; i < numberOfPages; i++) {
+    for (let i = 0; i < breakPoints.length; i++) {
+      const startY = i === 0 ? 0 : breakPoints[i - 1];
+      const endY = breakPoints[i];
+      const pageHeight = Math.min(endY - startY, A4_HEIGHT);
+      
       // Create a wrapper div for proper clipping
       const pageWrapper = document.createElement('div');
       pageWrapper.style.position = 'absolute';
@@ -113,7 +117,7 @@ export class DocxParser {
       // Clone the content and position it to show the correct section
       const contentClone = container.cloneNode(true) as HTMLElement;
       contentClone.style.position = 'relative';
-      contentClone.style.top = `-${i * A4_HEIGHT}px`;
+      contentClone.style.top = `-${startY}px`;
       contentClone.style.left = '0px';
       contentClone.style.width = '794px';
       
@@ -145,6 +149,66 @@ export class DocxParser {
     }
     
     return pages;
+  }
+
+  private static findPageBreakPoints(container: HTMLElement, pageHeight: number): number[] {
+    const breakPoints: number[] = [];
+    const containerHeight = container.scrollHeight;
+    
+    // Get all text nodes and elements that could be split
+    const textElements = container.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6, li, td');
+    const elementPositions: { top: number; bottom: number; element: Element }[] = [];
+    
+    // Calculate positions of all elements
+    textElements.forEach(el => {
+      const rect = el.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const relativeTop = rect.top - containerRect.top + container.scrollTop;
+      const relativeBottom = relativeTop + rect.height;
+      
+      elementPositions.push({
+        top: relativeTop,
+        bottom: relativeBottom,
+        element: el
+      });
+    });
+    
+    // Sort by position
+    elementPositions.sort((a, b) => a.top - b.top);
+    
+    let currentPageEnd = pageHeight;
+    
+    while (currentPageEnd < containerHeight) {
+      // Find the best break point near the current page end
+      let bestBreakPoint = currentPageEnd;
+      let minDistance = Infinity;
+      
+      // Look for elements that end within 100px of the ideal break point
+      for (const pos of elementPositions) {
+        if (pos.bottom > currentPageEnd - 100 && pos.bottom < currentPageEnd + 100) {
+          const distance = Math.abs(pos.bottom - currentPageEnd);
+          if (distance < minDistance) {
+            minDistance = distance;
+            bestBreakPoint = pos.bottom + 10; // Add small margin after element
+          }
+        }
+      }
+      
+      // If no good break point found, use the ideal position
+      if (minDistance === Infinity) {
+        bestBreakPoint = currentPageEnd;
+      }
+      
+      breakPoints.push(bestBreakPoint);
+      currentPageEnd = bestBreakPoint + pageHeight;
+    }
+    
+    // Add final break point for the last page
+    if (breakPoints[breakPoints.length - 1] < containerHeight) {
+      breakPoints.push(containerHeight);
+    }
+    
+    return breakPoints;
   }
   
   static async convertDocxToImages(file: File): Promise<string[]> {
