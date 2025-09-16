@@ -1,14 +1,15 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Upload, File, X } from "lucide-react";
+import { Upload, File, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface FileUploaderProps {
   onFileUpload: (file: File) => void;
+  isConverting?: boolean;
 }
 
-export const FileUploader = ({ onFileUpload }: FileUploaderProps) => {
+export const FileUploader = ({ onFileUpload, isConverting = false }: FileUploaderProps) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -49,7 +50,7 @@ export const FileUploader = ({ onFileUpload }: FileUploaderProps) => {
   }, []);
 
   const handleUpload = () => {
-    if (selectedFile) {
+    if (selectedFile && !isConverting) {
       onFileUpload(selectedFile);
     }
   };
@@ -123,8 +124,16 @@ export const FileUploader = ({ onFileUpload }: FileUploaderProps) => {
           onClick={handleUpload} 
           variant="pdf-action" 
           className="w-full"
+          disabled={isConverting}
         >
-          Continue with this {selectedFile.type === "application/pdf" ? "PDF" : "Document"}
+          {isConverting ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Converting to PDF...
+            </>
+          ) : (
+            `Continue with this ${selectedFile.type === "application/pdf" ? "PDF" : "Document"}`
+          )}
         </Button>
       )}
     </div>

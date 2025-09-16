@@ -1,12 +1,13 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { FormatSelector } from "@/components/pdf-builder/FormatSelector";
 import { FileUploader } from "@/components/pdf-builder/FileUploader";
 import { PDFFormat } from "@/components/pdf-builder/PDFBuilder";
 import { toast } from "sonner";
-import { DocxToPdfConverter } from "@/utils/docxToPdfConverter";
 
 const PDFStart = () => {
   const navigate = useNavigate();
+  const [isConverting, setIsConverting] = useState(false);
 
   const handleFormatSelect = (format: PDFFormat) => {
     // Store the selected format and navigate to builder
@@ -29,8 +30,8 @@ const PDFStart = () => {
 
   const handleFileUpload = async (file: File) => {
     if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-      // Handle DOCX file - parse it first
-      handleDocxUpload(file);
+      // Handle non-PDF file - send to backend for conversion
+      await handleNonPdfUpload(file);
     } else if (file.type === 'application/pdf') {
       // Handle PDF file - detect page count and create pages
       try {
@@ -75,12 +76,28 @@ const PDFStart = () => {
     }
   };
 
-  const handleDocxUpload = async (file: File) => {
+  const handleNonPdfUpload = async (file: File) => {
+    setIsConverting(true);
+    
     try {
-      toast("Converting DOCX to PDF...", { duration: 3000 });
+      toast("Converting document to PDF...", { duration: 3000 });
       
-      // Convert DOCX to PDF first
-      const { pdfBlob, fileName } = await DocxToPdfConverter.convertDocxToPdf(file);
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // TODO: Replace with your actual backend endpoint
+      const response = await fetch('/api/convert-to-pdf', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Conversion failed: ${response.statusText}`);
+      }
+      
+      // Get the converted PDF blob from the response
+      const pdfBlob = await response.blob();
       
       // Load the PDF to get page count
       const { PDFDocument } = await import('pdf-lib');
@@ -93,14 +110,14 @@ const PDFStart = () => {
       // Create a blob URL for the converted PDF
       const blobUrl = URL.createObjectURL(pdfBlob);
       
-      // Create page objects for each page in the PDF (using the same blob URL)
+      // Create page objects for each page in the PDF
       const newPages = Array.from({ length: pageCount }, (_, index) => ({
         id: `page-${Date.now()}-${index}`,
         format: "A4" as PDFFormat,
         elements: [],
-        backgroundImage: blobUrl, // Same blob URL for all pages
-        originalFileName: fileName,
-        pageNumber: index + 1 // PDFRenderer will use this to show the correct page
+        backgroundImage: blobUrl,
+        originalFileName: file.name,
+        pageNumber: index + 1
       }));
       
       sessionStorage.setItem('pdfBuilderData', JSON.stringify({
@@ -109,24 +126,20 @@ const PDFStart = () => {
         selectedFormat: "A4",
         hasUploadedFile: true,
         pdfBlobUrl: blobUrl,
-        convertedFromDocx: true,
+        convertedFromFile: true,
         totalPages: pageCount
       }));
       
-      console.log('Stored DOCX conversion data:', {
-        pagesCount: newPages.length,
-        blobUrl,
-        pageDetails: newPages.map(p => ({ id: p.id, pageNumber: p.pageNumber, hasBackground: !!p.backgroundImage }))
-      });
-      
-      toast(`DOCX converted to PDF successfully! "${fileName}" loaded with ${pageCount} pages.`, { 
+      toast(`Document converted to PDF successfully! "${file.name}" loaded with ${pageCount} pages.`, { 
         duration: 3000 
       });
       navigate('/pdf-builder');
       
     } catch (error) {
-      console.error('Error converting DOCX:', error);
-      toast.error("Failed to convert DOCX file: " + error.message);
+      console.error('Error converting file:', error);
+      toast.error(`Failed to convert file: ${error.message}`);
+    } finally {
+      setIsConverting(false);
     }
   };
 
@@ -154,7 +167,7 @@ const PDFStart = () => {
             <div className="space-y-4">
               <h3 className="text-xl font-semibold text-foreground">Upload Existing Document</h3>
               <p className="text-muted-foreground mb-6">Add form fields to an existing PDF or Word document</p>
-              <FileUploader onFileUpload={handleFileUpload} />
+              <FileUploader onFileUpload={handleFileUpload} isConverting={isConverting} />
             </div>
           </div>
         </div>
