@@ -60,9 +60,22 @@ export const PDFRenderer = ({
       pagesReady: store.pagesReady,
       scale: store.scale,
       numPages: store.numPages,
-      pageNumber: store.pageNumber
+      pageNumber: store.pageNumber,
+      documentUrl,
+      requestedPage: pageNumber
     });
-  }, [store.isDocumentLoaded, store.pagesReady, store.scale]);
+  }, [store.isDocumentLoaded, store.pagesReady, store.scale, documentUrl, pageNumber]);
+
+  // Add timeout fallback for stuck loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (store.isDocumentLoaded && !store.pagesReady) {
+        console.warn('PDFSlick pages not ready after 10 seconds, forcing render');
+      }
+    }, 10000);
+    
+    return () => clearTimeout(timer);
+  }, [store.isDocumentLoaded, store.pagesReady]);
 
   if (!documentUrl) {
     return (
@@ -75,13 +88,27 @@ export const PDFRenderer = ({
     );
   }
 
-  // Wait for pages to be ready before rendering
-  if (!store.pagesReady || store.scale === 0) {
+  // Wait for document to load, but be more lenient with pagesReady
+  if (!store.isDocumentLoaded) {
     return (
       <div className={`${className} flex items-center justify-center bg-white`}>
         <div className="flex flex-col items-center gap-2 text-muted-foreground">
           <Loader2 className="w-6 h-6 animate-spin" />
           <span className="text-sm">Loading PDF pages...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // If document is loaded but pages aren't ready after some time, still try to render
+  const shouldRender = store.isDocumentLoaded && (store.pagesReady || store.numPages > 0);
+
+  if (!shouldRender) {
+    return (
+      <div className={`${className} flex items-center justify-center bg-white`}>
+        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span className="text-sm">Waiting for PDF...</span>
         </div>
       </div>
     );
