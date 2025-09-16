@@ -202,6 +202,21 @@ export class DocxToPdfConverter {
       
       console.log('PDF blob created. Size:', pdfBlob.size);
       
+      // Test if the PDF blob is valid by trying to create a URL and load it
+      const testUrl = URL.createObjectURL(pdfBlob);
+      console.log('Created test blob URL:', testUrl);
+      
+      // Try to verify the PDF is valid by checking the first few bytes
+      const testBytes = await pdfBlob.slice(0, 10).arrayBuffer();
+      const testView = new Uint8Array(testBytes);
+      const isValidPdf = testView[0] === 0x25 && testView[1] === 0x50 && testView[2] === 0x44 && testView[3] === 0x46; // %PDF
+      console.log('PDF blob appears valid (starts with %PDF):', isValidPdf);
+      
+      if (!isValidPdf) {
+        console.error('Generated PDF blob does not appear to be a valid PDF!');
+        throw new Error('Generated PDF is invalid');
+      }
+      
       return {
         pdfBlob,
         fileName: file.name.replace(/\.docx$/i, '.pdf')

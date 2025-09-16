@@ -37,9 +37,20 @@ const PDFBuilder = () => {
     if (savedData) {
       try {
         const data = JSON.parse(savedData);
+        console.log('PDFBuilder: Loading data from sessionStorage:', data);
         setPages(data.pages || []);
         setActivePage(data.activePage || 0);
         setSelectedFormat(data.selectedFormat || "A4");
+        
+        // Log details about loaded pages
+        if (data.pages) {
+          console.log('PDFBuilder: Loaded pages:', data.pages.map(p => ({
+            id: p.id,
+            pageNumber: p.pageNumber,
+            hasBackground: !!p.backgroundImage,
+            backgroundUrl: typeof p.backgroundImage === 'string' ? p.backgroundImage.substring(0, 50) + '...' : 'File object'
+          })));
+        }
       } catch (error) {
         console.error('Error loading PDF builder data:', error);
         toast.error("Failed to load document data");

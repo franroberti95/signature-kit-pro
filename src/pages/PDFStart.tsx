@@ -113,6 +113,12 @@ const PDFStart = () => {
         totalPages: pageCount
       }));
       
+      console.log('Stored DOCX conversion data:', {
+        pagesCount: newPages.length,
+        blobUrl,
+        pageDetails: newPages.map(p => ({ id: p.id, pageNumber: p.pageNumber, hasBackground: !!p.backgroundImage }))
+      });
+      
       toast(`DOCX converted to PDF successfully! "${fileName}" loaded with ${pageCount} pages.`, { 
         duration: 3000 
       });
