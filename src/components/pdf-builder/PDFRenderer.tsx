@@ -43,6 +43,7 @@ export const PDFRenderer = ({
 
   const { viewerRef, usePDFSlickStore, PDFSlickViewer } = usePDFSlick(documentUrl || '', {
     scaleValue: 'page-fit',
+    singlePageViewer: true,
   });
 
   if (!documentUrl) {

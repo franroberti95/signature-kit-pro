@@ -214,6 +214,7 @@ const PDFCompletionPage = () => {
                                 />
                               ) : (
                                 <PDFRenderer
+                                  key={`pdf-page-${pageIndex}`} // Force new instance for each page
                                   fileUrl={page.backgroundImage}
                                   width={600}
                                   height={750}

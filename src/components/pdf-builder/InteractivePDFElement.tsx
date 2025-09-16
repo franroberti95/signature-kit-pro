@@ -58,7 +58,8 @@ export const InteractivePDFElement = ({
       setShowSignatureCanvas(true);
     } else if (element.type === 'text') {
       setShowInput(true);
-    } else if (element.type === 'image') {
+    } else if (element.type === 'image' && !value) {
+      // Only trigger file upload if no image is set
       fileInputRef.current?.click();
     }
   };
@@ -215,18 +216,33 @@ export const InteractivePDFElement = ({
         
       case "image":
         return (
-          <div className={baseClasses} onClick={handleClick}>
+          <div className={baseClasses}>
             {hasValue ? (
-              <img 
-                src={String(value)} 
-                alt="Uploaded" 
-                className="max-w-full max-h-full object-contain"
-              />
+              <div className="relative w-full h-full group">
+                <img 
+                  src={String(value)} 
+                  alt="Uploaded" 
+                  className="max-w-full max-h-full object-contain"
+                />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                  >
+                    <Edit3 className="w-3 h-3 mr-1" />
+                    Change
+                  </Button>
+                </div>
+              </div>
             ) : (
-              <>
+              <div onClick={handleClick}>
                 <Upload className="w-3 h-3 mr-1" />
                 Upload image
-              </>
+              </div>
             )}
             <input
               ref={fileInputRef}
