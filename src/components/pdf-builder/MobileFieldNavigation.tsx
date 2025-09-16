@@ -24,6 +24,7 @@ export const MobileFieldNavigation = ({
   onFieldUpdate
 }: MobileFieldNavigationProps) => {
   const [localValue, setLocalValue] = useState<string | boolean>('');
+  const [canvasRef, setCanvasRef] = useState<HTMLCanvasElement | null>(null);
   const currentElement = elements[currentIndex];
   
   const completedCount = elements.filter(el => 
@@ -38,9 +39,18 @@ export const MobileFieldNavigation = ({
   // Update local value when current element changes
   useEffect(() => {
     if (currentElement) {
-      setLocalValue(formData[currentElement.id] || (currentElement.type === 'checkbox' ? false : ''));
+      const currentValue = formData[currentElement.id] || (currentElement.type === 'checkbox' ? false : '');
+      setLocalValue(currentValue);
+      
+      // For signature fields, clear canvas only when switching to a different signature element
+      if (currentElement.type === 'signature' && canvasRef) {
+        const ctx = canvasRef.getContext('2d');
+        if (ctx && (!currentValue || typeof currentValue !== 'string' || !currentValue.startsWith('data:image/'))) {
+          ctx.clearRect(0, 0, canvasRef.width, canvasRef.height);
+        }
+      }
     }
-  }, [currentIndex, currentElement, formData]);
+  }, [currentIndex, currentElement, formData, canvasRef]);
 
   const handleSave = () => {
     if (currentElement) {
@@ -61,8 +71,6 @@ export const MobileFieldNavigation = ({
     }
   };
 
-  const [canvasRef, setCanvasRef] = useState<HTMLCanvasElement | null>(null);
-
   const renderFieldEditor = () => {
     if (!currentElement) return null;
 
@@ -76,15 +84,18 @@ export const MobileFieldNavigation = ({
             </div>
             
             <div className="flex justify-center mb-3">
-              <div className="border-2 border-dashed border-muted-foreground/30 rounded bg-white" style={{ width: '240px', height: '80px' }}>
+              <div className="border-2 border-dashed border-muted-foreground/30 rounded bg-white" style={{ width: '200px', height: '60px' }}>
                 <canvas
                   ref={(canvas) => {
                     setCanvasRef(canvas);
                     if (canvas) {
                       const ctx = canvas.getContext('2d');
                       if (ctx) {
-                        // Clear canvas first
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        // Only clear if this is a new canvas or no existing signature
+                        const hasExistingSignature = typeof localValue === 'string' && localValue.startsWith('data:image/');
+                        if (!hasExistingSignature) {
+                          ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        }
                         
                         let isDrawing = false;
                         let lastX = 0;
@@ -161,8 +172,8 @@ export const MobileFieldNavigation = ({
                       }
                     }
                   }}
-                  width={240}
-                  height={80}
+                  width={200}
+                  height={60}
                   className="w-full touch-none"
                   style={{ touchAction: 'none' }}
                 />
@@ -262,7 +273,7 @@ export const MobileFieldNavigation = ({
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-50 md:max-h-64">
+    <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-50">
       {/* Progress Bar at Top */}
       <div className="px-4 py-2 border-b bg-muted/50">
         <div className="max-w-sm mx-auto md:max-w-lg">
@@ -277,10 +288,9 @@ export const MobileFieldNavigation = ({
       {/* Field Editor */}
       {renderFieldEditor()}
       
-      {/* Navigation Panel - Always show regardless of field type */}
+      {/* Navigation Panel - Always show */}
       <div className="p-3 border-t bg-muted/30">
         <div className="max-w-sm mx-auto md:max-w-lg">
-          {/* Navigation Buttons */}
           <div className="flex items-center gap-2">
             <Button
               variant="secondary"

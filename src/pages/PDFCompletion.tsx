@@ -83,10 +83,9 @@ const PDFCompletionPage = () => {
   const scrollToElement = (elementId: string) => {
     const elementRef = elementRefs.current[elementId];
     if (elementRef) {
-      // Find which page this element is on
       const element = allElements.find(el => el.id === elementId);
       if (element) {
-        // Find the page containing this element
+        // Find which page this element is on
         const pageIndex = pages.findIndex(page => 
           page.elements.some(el => el.id === elementId)
         );
@@ -94,27 +93,24 @@ const PDFCompletionPage = () => {
         if (pageIndex !== -1) {
           // Get the page container
           const pageContainer = document.querySelector(`[data-page-index="${pageIndex}"]`) as HTMLElement;
-          if (pageContainer) {
-            // First scroll to the page
-            pageContainer.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'start'
-            });
+          if (pageContainer && elementRef) {
+            // Calculate the element's position relative to the viewport
+            const elementRect = elementRef.getBoundingClientRect();
+            const pageRect = pageContainer.getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
             
-            // Then scroll to the specific element within the page
-            setTimeout(() => {
-              const elementRect = elementRef.getBoundingClientRect();
-              const pageRect = pageContainer.getBoundingClientRect();
-              
-              // Calculate offset from page top plus some padding
-              const offsetFromPageTop = elementRect.top - pageRect.top;
-              const targetScroll = pageContainer.offsetTop + offsetFromPageTop - (isMobile ? 120 : 100);
-              
-              window.scrollTo({
-                top: targetScroll,
-                behavior: 'smooth'
-              });
-            }, 300);
+            // Calculate target scroll position
+            // We want the element to be centered in viewport, accounting for mobile bottom panel
+            const mobileBottomPanelHeight = isMobile ? 200 : 0;
+            const availableViewportHeight = viewportHeight - mobileBottomPanelHeight;
+            const targetOffsetFromTop = (availableViewportHeight / 2) - (elementRect.height / 2);
+            
+            const targetScroll = window.scrollY + elementRect.top - targetOffsetFromTop;
+            
+            window.scrollTo({
+              top: Math.max(0, targetScroll),
+              behavior: 'smooth'
+            });
           }
         }
       }
