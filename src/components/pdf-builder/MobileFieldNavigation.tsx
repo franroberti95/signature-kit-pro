@@ -164,18 +164,6 @@ export const MobileFieldNavigation = ({
       {/* Navigation Panel */}
       <div className="p-3">
         <div className="max-w-sm mx-auto md:max-w-lg">
-          {/* Current Field Info */}
-          {currentElement && (
-            <div className="text-center mb-3">
-              <p className="text-sm font-medium capitalize">
-                {currentElement.type}
-                {formData[currentElement.id] && formData[currentElement.id] !== false && (
-                  <Check className="inline w-4 h-4 ml-1 text-green-500" />
-                )}
-              </p>
-            </div>
-          )}
-
           {/* Navigation Buttons */}
           <div className="flex items-center gap-2">
             <Button
