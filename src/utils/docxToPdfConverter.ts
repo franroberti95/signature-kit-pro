@@ -3,7 +3,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 export class DocxToPdfConverter {
-  static async convertDocxToPdf(file: File): Promise<{ pdfBlob: Blob; fileName: string }> {
+  static async convertDocxToPdf(file: File): Promise<{ pdfBlob: Blob; fileName: string; pageImages: string[] }> {
     console.log('Starting DOCX to PDF conversion for file:', file.name, 'Size:', file.size);
     
     try {
@@ -53,6 +53,7 @@ export class DocxToPdfConverter {
       const pageWidth = 794; // A4 width in pixels
       let yPosition = 0;
       let pageNumber = 0;
+      const pageImages: string[] = []; // Store page images for display
       
       while (yPosition < contentHeight) {
         console.log(`Processing page ${pageNumber + 1}, yPosition: ${yPosition}`);
@@ -96,6 +97,7 @@ export class DocxToPdfConverter {
           }
           
           const imgData = canvas.toDataURL('image/png', 0.95);
+          pageImages.push(imgData); // Store for display
           pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
           
         } finally {
@@ -123,7 +125,8 @@ export class DocxToPdfConverter {
       
       return {
         pdfBlob,
-        fileName: file.name.replace(/\.docx$/i, '.pdf')
+        fileName: file.name.replace(/\.docx$/i, '.pdf'),
+        pageImages
       };
 
     } catch (error) {
