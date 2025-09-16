@@ -27,21 +27,24 @@ export const FileUploader = ({ onFileUpload }: FileUploaderProps) => {
     setIsDragOver(false);
     
     const files = Array.from(e.dataTransfer.files);
-    const pdfFile = files.find(file => file.type === "application/pdf");
+    const supportedFile = files.find(file => 
+      file.type === "application/pdf" || 
+      file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
     
-    if (pdfFile) {
-      setSelectedFile(pdfFile);
+    if (supportedFile) {
+      setSelectedFile(supportedFile);
     } else {
-      toast.error("Please upload a PDF file");
+      toast.error("Please upload a PDF or DOCX file");
     }
   }, []);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.type === "application/pdf") {
+    if (file && (file.type === "application/pdf" || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
       setSelectedFile(file);
     } else {
-      toast.error("Please select a PDF file");
+      toast.error("Please select a PDF or DOCX file");
     }
   }, []);
 
@@ -97,18 +100,18 @@ export const FileUploader = ({ onFileUpload }: FileUploaderProps) => {
                 <Upload className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <p className="text-lg font-medium text-foreground">Drop your PDF here</p>
+                <p className="text-lg font-medium text-foreground">Drop your PDF or DOCX here</p>
                 <p className="text-muted-foreground">or click to browse files</p>
               </div>
               <div className="text-sm text-muted-foreground">
-                Supported: PDF files up to 10MB
+                Supported: PDF and DOCX files up to 10MB
               </div>
             </div>
           )}
           
           <input
             type="file"
-            accept=".pdf"
+            accept=".pdf,.docx"
             onChange={handleFileSelect}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
@@ -121,7 +124,7 @@ export const FileUploader = ({ onFileUpload }: FileUploaderProps) => {
           variant="pdf-action" 
           className="w-full"
         >
-          Continue with this PDF
+          Continue with this {selectedFile.type === "application/pdf" ? "PDF" : "Document"}
         </Button>
       )}
     </div>

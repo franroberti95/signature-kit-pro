@@ -27,26 +27,69 @@ const PDFStart = () => {
   };
 
   const handleFileUpload = (file: File) => {
-    // Store the uploaded file and navigate to builder
-    const newPage = {
-      id: `page-${Date.now()}`,
-      format: "A4", // Default, would be detected from uploaded PDF
-      elements: [],
-      backgroundImage: file,
-    };
-    
-    // Store in sessionStorage for the builder page
-    sessionStorage.setItem('pdfBuilderData', JSON.stringify({
-      pages: [newPage],
-      activePage: 0,
-      selectedFormat: "A4",
-      hasUploadedFile: true
-    }));
-    
-    // Store the actual file in a global variable or use a different approach
-    // Since File objects can't be JSON serialized, we'll pass it via navigation state
-    toast(`PDF "${file.name}" loaded successfully!`);
-    navigate('/pdf-builder', { state: { uploadedFile: file } });
+    if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+      // Handle DOCX file - parse it first
+      handleDocxUpload(file);
+    } else {
+      // Handle PDF file as before
+      const newPage = {
+        id: `page-${Date.now()}`,
+        format: "A4", // Default, would be detected from uploaded PDF
+        elements: [],
+        backgroundImage: file,
+      };
+      
+      // Store in sessionStorage for the builder page
+      sessionStorage.setItem('pdfBuilderData', JSON.stringify({
+        pages: [newPage],
+        activePage: 0,
+        selectedFormat: "A4",
+        hasUploadedFile: true
+      }));
+      
+      toast(`PDF "${file.name}" loaded successfully!`);
+      navigate('/pdf-builder', { state: { uploadedFile: file } });
+    }
+  };
+
+  const handleDocxUpload = async (file: File) => {
+    try {
+      // Save file to user-uploads first
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Create a temporary file path for parsing
+      const fileName = `user-uploads://${file.name}`;
+      
+      // Copy file to user-uploads
+      const fileUrl = URL.createObjectURL(file);
+      
+      toast("Processing DOCX file...");
+      
+      // For now, create a single page with the file - 
+      // In a real implementation, you'd parse the DOCX and extract page images
+      const newPage = {
+        id: `page-${Date.now()}`,
+        format: "A4",
+        elements: [],
+        backgroundImage: file, // Will be processed later
+      };
+      
+      sessionStorage.setItem('pdfBuilderData', JSON.stringify({
+        pages: [newPage],
+        activePage: 0,
+        selectedFormat: "A4",
+        hasUploadedFile: true,
+        isDocx: true
+      }));
+      
+      toast(`DOCX "${file.name}" loaded successfully!`);
+      navigate('/pdf-builder', { state: { uploadedFile: file, isDocx: true } });
+      
+    } catch (error) {
+      console.error('Error processing DOCX:', error);
+      toast.error("Failed to process DOCX file");
+    }
   };
 
   return (
@@ -71,8 +114,8 @@ const PDFStart = () => {
             </div>
             
             <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-foreground">Upload Existing PDF</h3>
-              <p className="text-muted-foreground mb-6">Add form fields to an existing PDF document</p>
+              <h3 className="text-xl font-semibold text-foreground">Upload Existing Document</h3>
+              <p className="text-muted-foreground mb-6">Add form fields to an existing PDF or Word document</p>
               <FileUploader onFileUpload={handleFileUpload} />
             </div>
           </div>
