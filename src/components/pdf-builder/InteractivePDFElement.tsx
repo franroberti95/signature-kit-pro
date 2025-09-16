@@ -248,11 +248,14 @@ export const InteractivePDFElement = ({
       <div
         className={hideOverlay ? "absolute" : "absolute z-10"}
         style={{
+          position: 'absolute',
           left: `${element.x * scale}px`,
           top: `${element.y * scale}px`,
           width: `${element.width * scale}px`,
           height: `${element.height * scale}px`,
+          transform: 'translate3d(0, 0, 0)', // Force hardware acceleration for better positioning
         }}
+        onClick={handleClick}
       >
         {renderElementContent()}
       </div>

@@ -190,9 +190,9 @@ const PDFCompletionPage = () => {
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="pdf-renderer-container relative border rounded-lg overflow-hidden bg-gray-50">
+                <div className="pdf-renderer-container relative border rounded-lg overflow-auto bg-gray-50" style={{ maxHeight: '750px' }}>
                   {pages.length > 0 && pages[0].backgroundImage ? (
-                    <>
+                    <div className="relative">
                       <PDFRenderer
                         fileUrl={pages[0].backgroundImage}
                         width={600}
@@ -213,7 +213,7 @@ const PDFCompletionPage = () => {
                           hideOverlay={!showOverlay}
                         />
                       ))}
-                    </>
+                    </div>
                   ) : (
                     <div className="flex items-center justify-center h-[750px] text-muted-foreground">
                       <div className="text-center">

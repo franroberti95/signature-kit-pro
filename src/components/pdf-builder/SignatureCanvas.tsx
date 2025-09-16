@@ -27,12 +27,16 @@ export const SignatureCanvas = ({
       width,
       height,
       backgroundColor: "#ffffff",
-      isDrawingMode: true,
     });
 
-    // Configure drawing brush
-    canvas.freeDrawingBrush.color = "#000000";
-    canvas.freeDrawingBrush.width = 2;
+    // Enable drawing mode and configure brush
+    canvas.isDrawingMode = true;
+    
+    // Initialize the freeDrawingBrush after canvas creation
+    if (canvas.freeDrawingBrush) {
+      canvas.freeDrawingBrush.color = "#000000";
+      canvas.freeDrawingBrush.width = 2;
+    }
 
     // Track when drawing happens
     canvas.on('path:created', () => {
