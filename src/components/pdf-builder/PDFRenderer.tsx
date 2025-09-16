@@ -41,10 +41,13 @@ export const PDFRenderer = ({
     };
   }, [fileUrl]);
 
-  const { viewerRef, usePDFSlickStore, PDFSlickViewer } = usePDFSlick(documentUrl || '', {
-    scaleValue: 'page-fit',
-    singlePageViewer: true,
-  });
+  const { viewerRef, usePDFSlickStore, PDFSlickViewer } = usePDFSlick(
+    documentUrl ? `${documentUrl}#page=${pageNumber}` : '', 
+    {
+      scaleValue: 'page-fit',
+      singlePageViewer: true,
+    }
+  );
 
   if (!documentUrl) {
     return (

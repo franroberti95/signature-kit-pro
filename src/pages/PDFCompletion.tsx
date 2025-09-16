@@ -229,7 +229,7 @@ const PDFCompletionPage = () => {
                                   fileUrl={page.backgroundImage}
                                   width={600}
                                   height={750}
-                                  pageNumber={1}
+                                  pageNumber={pageIndex + 1}
                                   className="w-full"
                                 />
                               )
