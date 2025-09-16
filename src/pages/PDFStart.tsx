@@ -31,13 +31,16 @@ const PDFStart = () => {
     if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
       // Handle DOCX file - parse it first
       handleDocxUpload(file);
-    } else {
-      // Handle PDF file as before
+    } else if (file.type === 'application/pdf') {
+      // Handle PDF file - convert to blob URL for persistence
+      const blobUrl = URL.createObjectURL(file);
+      
       const newPage = {
         id: `page-${Date.now()}`,
         format: "A4", // Default, would be detected from uploaded PDF
         elements: [],
-        backgroundImage: file,
+        backgroundImage: blobUrl,
+        originalFileName: file.name,
       };
       
       // Store in sessionStorage for the builder page
@@ -45,11 +48,14 @@ const PDFStart = () => {
         pages: [newPage],
         activePage: 0,
         selectedFormat: "A4",
-        hasUploadedFile: true
+        hasUploadedFile: true,
+        pdfBlobUrl: blobUrl // Store blob URL separately for cleanup
       }));
       
       toast(`PDF "${file.name}" loaded successfully!`);
-      navigate('/pdf-builder', { state: { uploadedFile: file } });
+      navigate('/pdf-builder');
+    } else {
+      toast.error("Please upload a PDF or DOCX file");
     }
   };
 

@@ -220,6 +220,26 @@ const PDFCompletionPage = () => {
                                    alt={`Page ${pageIndex + 1}`}
                                    className="w-full h-full object-contain bg-white"
                                  />
+                               ) : typeof page.backgroundImage === 'string' && (page.backgroundImage.startsWith('blob:') || page.backgroundImage.startsWith('http')) ? (
+                                 // Blob URL or HTTP URL for PDF
+                                 <PDFRenderer
+                                   key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
+                                   fileUrl={page.backgroundImage}
+                                   width={600}
+                                   height={750}
+                                   pageNumber={pageIndex + 1}
+                                   className="w-full"
+                                 />
+                               ) : typeof page.backgroundImage === 'string' && (page.backgroundImage.startsWith('blob:') || page.backgroundImage.startsWith('http')) ? (
+                                 // Blob URL or HTTP URL for PDF
+                                 <PDFRenderer
+                                   key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
+                                   fileUrl={page.backgroundImage}
+                                   width={600}
+                                   height={750}
+                                   pageNumber={pageIndex + 1}
+                                   className="w-full"
+                                 />
                                ) : page.backgroundImage instanceof File ? (
                                  // File object (PDF or other file)
                                  <PDFRenderer
