@@ -75,27 +75,41 @@ const PDFCompletionPage = () => {
 
   const downloadPDF = async () => {
     try {
-      // Get the PDF renderer element
-      const pdfContainer = document.querySelector('.pdf-renderer-container');
-      if (!pdfContainer) {
-        toast.error("PDF not ready for download");
-        return;
-      }
-
-      // Use html2canvas to capture the PDF with form data
+      const jsPDF = (await import('jspdf')).default;
       const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(pdfContainer as HTMLElement, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        logging: false,
-      });
       
-      // Create download link
-      const link = document.createElement('a');
-      link.download = `completed-pdf-${Date.now()}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      // Create new PDF document
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
       
+      for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+        if (pageIndex > 0) {
+          pdf.addPage();
+        }
+        
+        // Find the specific page container
+        const pageContainer = document.querySelector(`[data-page-index="${pageIndex}"]`);
+        if (pageContainer) {
+          const canvas = await html2canvas(pageContainer as HTMLElement, {
+            scale: 2,
+            backgroundColor: '#ffffff',
+            logging: false,
+          });
+          
+          const imgData = canvas.toDataURL('image/png');
+          
+          // Calculate dimensions to fit page
+          const imgWidth = pageWidth;
+          const imgHeight = (canvas.height * pageWidth) / canvas.width;
+          
+          // Add image to PDF
+          pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pageHeight));
+        }
+      }
+      
+      // Download PDF
+      pdf.save(`completed-form-${Date.now()}.pdf`);
       toast.success("PDF downloaded successfully!");
     } catch (error) {
       console.error('Download error:', error);
@@ -189,7 +203,7 @@ const PDFCompletionPage = () => {
                   {pages.length > 0 ? (
                     <div className="space-y-8 p-4">
                       {pages.map((page, pageIndex) => (
-                        <div key={page.id} className="relative">
+                        <div key={page.id} className="relative" data-page-index={pageIndex}>
                           {/* Page Number Label */}
                           {pages.length > 1 && (
                             <div className="absolute -top-6 left-0 text-sm text-muted-foreground">
@@ -197,44 +211,54 @@ const PDFCompletionPage = () => {
                             </div>
                           )}
                           
-                          <div className="relative bg-white shadow-lg rounded-lg overflow-hidden" style={{ minHeight: '750px' }}>
-                            {page.backgroundImage ? (
-                              typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
-                                // Rendered DOCX page as image
-                                <img 
-                                  src={page.backgroundImage}
-                                  alt={`Page ${pageIndex + 1}`}
-                                  className="w-full h-full object-contain bg-white"
-                                />
-                              ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('/') ? (
-                                // PDF file path - create a new URL for each page
-                                <PDFRenderer
-                                  key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
-                                  fileUrl={`${page.backgroundImage}#page=${pageIndex + 1}`}
-                                  width={600}
-                                  height={750}
-                                  pageNumber={pageIndex + 1}
-                                  className="w-full"
-                                />
-                              ) : (
-                                // File object or other format
-                                <PDFRenderer
-                                  key={`pdf-page-${pageIndex}`}
-                                  fileUrl={page.backgroundImage}
-                                  width={600}
-                                  height={750}
-                                  pageNumber={pageIndex + 1}
-                                  className="w-full"
-                                />
-                              )
-                            ) : (
-                              <div className="w-full h-[750px] bg-white border border-gray-200 rounded flex items-center justify-center">
-                                <div className="text-center text-muted-foreground">
-                                  <p>Page {pageIndex + 1}</p>
-                                  <p className="text-sm">No background image</p>
-                                </div>
-                              </div>
-                            )}
+                           <div className="relative bg-white shadow-lg rounded-lg overflow-hidden" style={{ minHeight: '750px' }}>
+                             {page.backgroundImage ? (
+                               typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
+                                 // Rendered DOCX page as image
+                                 <img 
+                                   src={page.backgroundImage}
+                                   alt={`Page ${pageIndex + 1}`}
+                                   className="w-full h-full object-contain bg-white"
+                                 />
+                               ) : page.backgroundImage instanceof File ? (
+                                 // File object (PDF or other file)
+                                 <PDFRenderer
+                                   key={`pdf-page-${pageIndex}-${page.backgroundImage.name}`}
+                                   fileUrl={page.backgroundImage}
+                                   width={600}
+                                   height={750}
+                                   pageNumber={pageIndex + 1}
+                                   className="w-full"
+                                 />
+                               ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('/') ? (
+                                 // PDF file path - create a new URL for each page
+                                 <PDFRenderer
+                                   key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
+                                   fileUrl={`${page.backgroundImage}#page=${pageIndex + 1}`}
+                                   width={600}
+                                   height={750}
+                                   pageNumber={pageIndex + 1}
+                                   className="w-full"
+                                 />
+                               ) : (
+                                 // Other string format
+                                 <PDFRenderer
+                                   key={`pdf-page-${pageIndex}`}
+                                   fileUrl={page.backgroundImage}
+                                   width={600}
+                                   height={750}
+                                   pageNumber={pageIndex + 1}
+                                   className="w-full"
+                                 />
+                               )
+                             ) : (
+                               <div className="w-full h-[750px] bg-white border border-gray-200 rounded flex items-center justify-center">
+                                 <div className="text-center text-muted-foreground">
+                                   <p>Page {pageIndex + 1}</p>
+                                   <p className="text-sm">No background image</p>
+                                 </div>
+                               </div>
+                             )}
                             
                             {/* Interactive Elements Overlay */}
                             {page.elements.map((element) => (
