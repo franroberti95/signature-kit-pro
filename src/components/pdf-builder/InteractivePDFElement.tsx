@@ -26,6 +26,7 @@ interface InteractivePDFElementProps {
   onActivate?: () => void;
   hideOverlay?: boolean; // Hide visual boxes for export
   isMobile?: boolean; // Prevent modals on mobile
+  showHighlight?: boolean; // Show highlight border for active element
 }
 
 const elementIcons: Record<string, any> = {
@@ -45,7 +46,8 @@ export const InteractivePDFElement = ({
   isActive = false,
   onActivate,
   hideOverlay = false,
-  isMobile = false
+  isMobile = false,
+  showHighlight = false
 }: InteractivePDFElementProps) => {
   const [showSignatureCanvas, setShowSignatureCanvas] = useState(false);
   const [showInput, setShowInput] = useState(false);
@@ -273,7 +275,7 @@ export const InteractivePDFElement = ({
   return (
     <>
       <div
-        className={hideOverlay ? "absolute" : "absolute z-10"}
+        className={`${hideOverlay ? "absolute" : "absolute z-10"} ${showHighlight ? 'ring-2 ring-primary ring-offset-2 ring-offset-white' : ''}`}
         style={{
           position: 'absolute',
           left: `${element.x * scale}px`,
@@ -281,6 +283,7 @@ export const InteractivePDFElement = ({
           width: `${element.width * scale}px`,
           height: `${element.height * scale}px`,
           transform: 'translate3d(0, 0, 0)', // Force hardware acceleration for better positioning
+          borderRadius: showHighlight ? '4px' : undefined,
         }}
         onClick={handleClick}
       >

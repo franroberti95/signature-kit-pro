@@ -83,19 +83,41 @@ const PDFCompletionPage = () => {
   const scrollToElement = (elementId: string) => {
     const elementRef = elementRefs.current[elementId];
     if (elementRef) {
-      // Account for bottom navigation height (approximately 250px on mobile, 200px on desktop)
-      const topOffset = isMobile ? 250 : 200;
-      
-      elementRef.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'center',
-        inline: 'center'
-      });
-      
-      // Additional offset to account for bottom navigation
-      setTimeout(() => {
-        window.scrollBy(0, -topOffset);
-      }, 300);
+      // Find which page this element is on
+      const element = allElements.find(el => el.id === elementId);
+      if (element) {
+        // Find the page containing this element
+        const pageIndex = pages.findIndex(page => 
+          page.elements.some(el => el.id === elementId)
+        );
+        
+        if (pageIndex !== -1) {
+          // Get the page container
+          const pageContainer = document.querySelector(`[data-page-index="${pageIndex}"]`) as HTMLElement;
+          if (pageContainer) {
+            // First scroll to the page
+            pageContainer.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'start'
+            });
+            
+            // Then scroll to the specific element within the page
+            setTimeout(() => {
+              const elementRect = elementRef.getBoundingClientRect();
+              const pageRect = pageContainer.getBoundingClientRect();
+              
+              // Calculate offset from page top plus some padding
+              const offsetFromPageTop = elementRect.top - pageRect.top;
+              const targetScroll = pageContainer.offsetTop + offsetFromPageTop - (isMobile ? 120 : 100);
+              
+              window.scrollTo({
+                top: targetScroll,
+                behavior: 'smooth'
+              });
+            }, 300);
+          }
+        }
+      }
     }
   };
 
@@ -405,16 +427,17 @@ const PDFCompletionPage = () => {
                                   key={element.id}
                                   ref={(el) => elementRefs.current[element.id] = el}
                                 >
-                                    <InteractivePDFElement
-                                      element={element}
-                                      scale={600 / 595} // A4 width scale factor
-                                      value={formData[element.id] || ''}
-                                      onUpdate={(value) => handleInputChange(element.id, value)}
-                                      isActive={activeElement === element.id}
-                                      onActivate={() => handleElementClick(element.id)}
-                                      hideOverlay={!showOverlay}
-                                      isMobile={true}
-                                    />
+                                     <InteractivePDFElement
+                                       element={element}
+                                       scale={600 / 595} // A4 width scale factor
+                                       value={formData[element.id] || ''}
+                                       onUpdate={(value) => handleInputChange(element.id, value)}
+                                       isActive={activeElement === element.id}
+                                       onActivate={() => handleElementClick(element.id)}
+                                       hideOverlay={!showOverlay}
+                                       isMobile={true}
+                                       showHighlight={activeElement === element.id}
+                                     />
                                 </div>
                               ))}
                             </div>

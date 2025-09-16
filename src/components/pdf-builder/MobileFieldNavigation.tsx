@@ -73,95 +73,97 @@ export const MobileFieldNavigation = ({
               <p className="text-xs text-muted-foreground">Draw your signature using your mouse or finger</p>
             </div>
             
-            <div className="border-2 border-dashed border-muted-foreground/30 rounded mb-3 bg-white">
-              <canvas
-                ref={(canvas) => {
-                  if (canvas) {
-                    const ctx = canvas.getContext('2d');
-                    if (ctx) {
-                      let isDrawing = false;
-                      let lastX = 0;
-                      let lastY = 0;
+            <div className="flex justify-center mb-3">
+              <div className="border-2 border-dashed border-muted-foreground/30 rounded bg-white" style={{ width: '240px', height: '80px' }}>
+                <canvas
+                  ref={(canvas) => {
+                    if (canvas) {
+                      const ctx = canvas.getContext('2d');
+                      if (ctx) {
+                        let isDrawing = false;
+                        let lastX = 0;
+                        let lastY = 0;
 
-                      const startDrawing = (e: MouseEvent | TouchEvent) => {
-                        isDrawing = true;
-                        const rect = canvas.getBoundingClientRect();
-                        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-                        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-                        lastX = clientX - rect.left;
-                        lastY = clientY - rect.top;
-                      };
-
-                      const draw = (e: MouseEvent | TouchEvent) => {
-                        if (!isDrawing) return;
-                        e.preventDefault();
-                        
-                        const rect = canvas.getBoundingClientRect();
-                        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-                        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-                        const currentX = clientX - rect.left;
-                        const currentY = clientY - rect.top;
-
-                        ctx.strokeStyle = '#000';
-                        ctx.lineWidth = 2;
-                        ctx.lineCap = 'round';
-                        ctx.lineJoin = 'round';
-                        
-                        ctx.beginPath();
-                        ctx.moveTo(lastX, lastY);
-                        ctx.lineTo(currentX, currentY);
-                        ctx.stroke();
-
-                        lastX = currentX;
-                        lastY = currentY;
-
-                        // Save signature when drawing
-                        const dataURL = canvas.toDataURL('image/png');
-                        setLocalValue(dataURL);
-                        onFieldUpdate(currentElement.id, dataURL);
-                      };
-
-                      const stopDrawing = () => {
-                        isDrawing = false;
-                      };
-
-                      // Mouse events
-                      canvas.addEventListener('mousedown', startDrawing);
-                      canvas.addEventListener('mousemove', draw);
-                      canvas.addEventListener('mouseup', stopDrawing);
-                      canvas.addEventListener('mouseout', stopDrawing);
-
-                      // Touch events
-                      canvas.addEventListener('touchstart', startDrawing);
-                      canvas.addEventListener('touchmove', draw);
-                      canvas.addEventListener('touchend', stopDrawing);
-
-                      // Clear canvas button functionality
-                      const clearCanvas = () => {
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        setLocalValue('');
-                        onFieldUpdate(currentElement.id, '');
-                      };
-
-                      // Store clear function for button access
-                      (canvas as any).clearSignature = clearCanvas;
-
-                      // Load existing signature if any
-                      if (typeof localValue === 'string' && localValue.startsWith('data:image/')) {
-                        const img = new Image();
-                        img.onload = () => {
-                          ctx.drawImage(img, 0, 0);
+                        const startDrawing = (e: MouseEvent | TouchEvent) => {
+                          isDrawing = true;
+                          const rect = canvas.getBoundingClientRect();
+                          const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+                          const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+                          lastX = clientX - rect.left;
+                          lastY = clientY - rect.top;
                         };
-                        img.src = localValue;
+
+                        const draw = (e: MouseEvent | TouchEvent) => {
+                          if (!isDrawing) return;
+                          e.preventDefault();
+                          
+                          const rect = canvas.getBoundingClientRect();
+                          const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+                          const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+                          const currentX = clientX - rect.left;
+                          const currentY = clientY - rect.top;
+
+                          ctx.strokeStyle = '#000';
+                          ctx.lineWidth = 2;
+                          ctx.lineCap = 'round';
+                          ctx.lineJoin = 'round';
+                          
+                          ctx.beginPath();
+                          ctx.moveTo(lastX, lastY);
+                          ctx.lineTo(currentX, currentY);
+                          ctx.stroke();
+
+                          lastX = currentX;
+                          lastY = currentY;
+
+                          // Save signature when drawing
+                          const dataURL = canvas.toDataURL('image/png');
+                          setLocalValue(dataURL);
+                          onFieldUpdate(currentElement.id, dataURL);
+                        };
+
+                        const stopDrawing = () => {
+                          isDrawing = false;
+                        };
+
+                        // Mouse events
+                        canvas.addEventListener('mousedown', startDrawing);
+                        canvas.addEventListener('mousemove', draw);
+                        canvas.addEventListener('mouseup', stopDrawing);
+                        canvas.addEventListener('mouseout', stopDrawing);
+
+                        // Touch events
+                        canvas.addEventListener('touchstart', startDrawing);
+                        canvas.addEventListener('touchmove', draw);
+                        canvas.addEventListener('touchend', stopDrawing);
+
+                        // Clear canvas button functionality
+                        const clearCanvas = () => {
+                          ctx.clearRect(0, 0, canvas.width, canvas.height);
+                          setLocalValue('');
+                          onFieldUpdate(currentElement.id, '');
+                        };
+
+                        // Store clear function for button access
+                        (canvas as any).clearSignature = clearCanvas;
+
+                        // Load existing signature if any
+                        if (typeof localValue === 'string' && localValue.startsWith('data:image/')) {
+                          const img = new Image();
+                          img.onload = () => {
+                            ctx.drawImage(img, 0, 0);
+                          };
+                          img.src = localValue;
+                        }
                       }
                     }
-                  }
-                }}
-                width={280}
-                height={120}
-                className="w-full touch-none"
-                style={{ touchAction: 'none' }}
-              />
+                  }}
+                  width={240}
+                  height={80}
+                  className="w-full touch-none"
+                  style={{ touchAction: 'none' }}
+                />
+              </div>
             </div>
             
             <div className="flex justify-center">
@@ -186,12 +188,14 @@ export const MobileFieldNavigation = ({
       case 'date':
         return (
           <div className="p-4 bg-background border-t">
-            <DatePicker
+            <Input
+              type="date"
               value={typeof localValue === 'string' ? localValue : ''}
-              onChange={(date) => {
-                setLocalValue(date);
-                onFieldUpdate(currentElement.id, date);
+              onChange={(e) => {
+                setLocalValue(e.target.value);
+                onFieldUpdate(currentElement.id, e.target.value);
               }}
+              className="bg-card text-card-foreground border-input"
             />
           </div>
         );
