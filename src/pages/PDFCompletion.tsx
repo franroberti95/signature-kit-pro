@@ -78,36 +78,48 @@ const PDFCompletionPage = () => {
   const downloadPDF = async () => {
     try {
       const jsPDF = (await import('jspdf')).default;
-      const html2canvas = (await import('html2canvas')).default;
       
       // Create new PDF document
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       
+      let isFirstPage = true;
+      
       for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
-        if (pageIndex > 0) {
+        const page = pages[pageIndex];
+        
+        if (!isFirstPage) {
           pdf.addPage();
         }
+        isFirstPage = false;
         
-        // Find the specific page container
-        const pageContainer = document.querySelector(`[data-page-index="${pageIndex}"]`);
-        if (pageContainer) {
-          const canvas = await html2canvas(pageContainer as HTMLElement, {
-            scale: 2,
-            backgroundColor: '#ffffff',
-            logging: false,
-          });
-          
-          const imgData = canvas.toDataURL('image/png');
-          
-          // Calculate dimensions to fit page
-          const imgWidth = pageWidth;
-          const imgHeight = (canvas.height * pageWidth) / canvas.width;
-          
-          // Add image to PDF
-          pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pageHeight));
+        // Add page background if it's an image (DOCX)
+        if (page.backgroundImage && typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/')) {
+          // Compress and add the background image
+          pdf.addImage(page.backgroundImage, 'JPEG', 0, 0, pageWidth, pageHeight, undefined, 'MEDIUM');
         }
+        
+        // Add form fields as text overlays (much lighter than images)
+        page.elements.forEach(element => {
+          const value = formData[element.id];
+          if (value && String(value) !== 'false') {
+            // Calculate position (convert from pixels to mm)
+            const x = (element.x / 595) * pageWidth; // 595 is A4 width in pixels
+            const y = (element.y / 842) * pageHeight; // 842 is A4 height in pixels
+            
+            pdf.setFontSize(12); // Default font size
+            pdf.setTextColor(0, 0, 0);
+            
+            if (element.type === 'checkbox' && value === true) {
+              pdf.text('☑', x, y + 4);
+            } else if (typeof value === 'string' && value.trim()) {
+              // Handle multi-line text
+              const lines = pdf.splitTextToSize(value, (element.width || 100) * pageWidth / 595);
+              pdf.text(lines, x, y + 4);
+            }
+          }
+        });
       }
       
       // Download PDF
@@ -115,7 +127,7 @@ const PDFCompletionPage = () => {
       toast.success("PDF downloaded successfully!");
     } catch (error) {
       console.error('Download error:', error);
-      toast.error("Failed to download PDF");
+      toast.error("Failed to download PDF: " + error.message);
     }
   };
 
