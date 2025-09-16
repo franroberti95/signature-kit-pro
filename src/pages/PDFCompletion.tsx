@@ -1,13 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { PDFRenderer } from "@/components/pdf-builder/PDFRenderer";
 import { InteractivePDFElement } from "@/components/pdf-builder/InteractivePDFElement";
+import { MobileFieldNavigation } from "@/components/pdf-builder/MobileFieldNavigation";
+import { FieldEditModal } from "@/components/pdf-builder/FieldEditModal";
 import { PDFFormat, ElementType, PDFElement, PDFPage } from "@/components/pdf-builder/PDFBuilder";
 import { toast } from "sonner";
-import { ArrowLeft, FileCheck, Download, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, FileCheck, Download, Eye, EyeOff, Edit } from "lucide-react";
 
 interface FormData {
   [elementId: string]: string | boolean;
@@ -20,23 +22,31 @@ const PDFCompletionPage = () => {
   const [formData, setFormData] = useState<FormData>({});
   const [allElements, setAllElements] = useState<PDFElement[]>([]);
   const [activeElement, setActiveElement] = useState<string | null>(null);
+  const [currentFieldIndex, setCurrentFieldIndex] = useState(0);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const elementRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  useEffect(() => {
+    // Check if mobile
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     // Load data from sessionStorage
     const storedData = sessionStorage.getItem('pdfBuilderData');
-    console.log('Raw stored data:', storedData);
-    console.log('Navigation state:', location.state);
     
     if (storedData) {
       try {
         const data = JSON.parse(storedData);
         let pagesData = data.pages || [];
         
-        console.log('Pages data in completion:', pagesData);
-        console.log('First page background:', pagesData[0]?.backgroundImage);
-        console.log('Background image type:', typeof pagesData[0]?.backgroundImage);
-        console.log('Pages length:', pagesData.length);
         setPages(pagesData);
         
         // Collect all form elements from all pages
@@ -53,6 +63,14 @@ const PDFCompletionPage = () => {
         });
         setFormData(initialFormData);
         
+        // Focus first element if mobile
+        if (elements.length > 0) {
+          setActiveElement(elements[0].id);
+          if (window.innerWidth < 768) {
+            setTimeout(() => scrollToElement(elements[0].id), 500);
+          }
+        }
+        
       } catch (error) {
         console.error('Error parsing stored PDF builder data:', error);
         navigate('/');
@@ -62,11 +80,49 @@ const PDFCompletionPage = () => {
     }
   }, [navigate, location.state]);
 
+  const scrollToElement = (elementId: string) => {
+    const elementRef = elementRefs.current[elementId];
+    if (elementRef) {
+      elementRef.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center',
+        inline: 'center'
+      });
+    }
+  };
+
   const handleInputChange = (elementId: string, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       [elementId]: value
     }));
+  };
+
+  const handleNavigateToField = (index: number) => {
+    if (index >= 0 && index < allElements.length) {
+      setCurrentFieldIndex(index);
+      const element = allElements[index];
+      setActiveElement(element.id);
+      scrollToElement(element.id);
+    }
+  };
+
+  const handleElementClick = (elementId: string) => {
+    setActiveElement(elementId);
+    const elementIndex = allElements.findIndex(el => el.id === elementId);
+    if (elementIndex !== -1) {
+      setCurrentFieldIndex(elementIndex);
+    }
+    
+    if (isMobile) {
+      setShowEditModal(true);
+    }
+  };
+
+  const handleEditModalSave = (value: string | boolean) => {
+    if (activeElement) {
+      handleInputChange(activeElement, value);
+    }
   };
 
   const handleComplete = () => {
@@ -219,216 +275,355 @@ const PDFCompletionPage = () => {
               className="flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Builder
+              {isMobile ? 'Back' : 'Back to Builder'}
             </Button>
             <div>
-              <h1 className="text-xl font-semibold">Complete PDF Form</h1>
-              <p className="text-sm text-muted-foreground">
-                Click directly on the PDF to fill out fields
-              </p>
+              <h1 className={`font-semibold ${isMobile ? 'text-lg' : 'text-xl'}`}>
+                Complete PDF Form
+              </h1>
+              {!isMobile && (
+                <p className="text-sm text-muted-foreground">
+                  Click directly on the PDF to fill out fields
+                </p>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowOverlay(!showOverlay)}
-              className="flex items-center gap-2"
-            >
-              {showOverlay ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              {showOverlay ? 'Hide Fields' : 'Show Fields'}
+          {!isMobile && (
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowOverlay(!showOverlay)}
+                className="flex items-center gap-2"
+              >
+                {showOverlay ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showOverlay ? 'Hide Fields' : 'Show Fields'}
+              </Button>
+              <Button onClick={downloadPDF} variant="outline">
+                <Download className="w-4 h-4 mr-2" />
+                Download PDF
+              </Button>
+            </div>
+          )}
+          {isMobile && (
+            <Button onClick={downloadPDF} size="sm" variant="outline">
+              <Download className="w-4 h-4" />
             </Button>
-            <Button onClick={downloadPDF} variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Download PDF
-            </Button>
-          </div>
+          )}
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Progress Bar */}
-        <div className="mb-6">
-          <Progress value={getCompletionProgress()} className="w-full" />
-          <p className="text-sm text-muted-foreground mt-2">
-            {getCompletionProgress()}% completed ({allElements.filter(el => formData[el.id] && formData[el.id] !== false).length} of {allElements.length} fields)
-          </p>
-        </div>
+      <div className={`mx-auto p-6 ${isMobile ? 'pb-32' : 'max-w-7xl'}`}>
+        {/* Progress Bar - Only show on desktop */}
+        {!isMobile && (
+          <div className="mb-6">
+            <Progress value={getCompletionProgress()} className="w-full" />
+            <p className="text-sm text-muted-foreground mt-2">
+              {getCompletionProgress()}% completed ({allElements.filter(el => formData[el.id] && formData[el.id] !== false).length} of {allElements.length} fields)
+            </p>
+          </div>
+        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className={isMobile ? "space-y-4" : "grid grid-cols-1 lg:grid-cols-3 gap-6"}>
           {/* PDF with Interactive Elements */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Interactive PDF</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Click on the highlighted areas to fill out the form
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="pdf-renderer-container relative border rounded-lg bg-gray-50 overflow-hidden">
-                  {pages.length > 0 ? (
-                    <div className="space-y-8 p-4">
-                      {pages.map((page, pageIndex) => (
-                        <div key={page.id} className="relative" data-page-index={pageIndex}>
-                          {/* Page Number Label */}
-                          {pages.length > 1 && (
-                            <div className="absolute -top-6 left-0 text-sm text-muted-foreground">
-                              Page {pageIndex + 1}
-                            </div>
-                          )}
-                          
-                           <div className="relative bg-white shadow-lg rounded-lg overflow-hidden" style={{ minHeight: '750px' }}>
-                             {page.backgroundImage ? (
-                                typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
-                                  // Rendered page as image
-                                  <img
-                                   src={page.backgroundImage}
-                                   alt={`Page ${pageIndex + 1}`}
-                                   className="w-full h-full object-contain bg-white"
-                                 />
-                               ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('blob:') ? (
-                                 // Blob URL for PDF
-                                 <PDFRenderer
-                                   key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
-                                   fileUrl={page.backgroundImage}
-                                   width={600}
-                                   height={750}
-                                   pageNumber={pageIndex + 1}
-                                   className="w-full"
-                                 />
-                               ) : page.backgroundImage instanceof File ? (
-                                  // File object (PDF or other file)
-                                  <PDFRenderer
-                                    key={`pdf-page-${pageIndex}-${page.backgroundImage.name}`}
-                                    fileUrl={page.backgroundImage}
-                                    width={600}
-                                    height={750}
-                                    pageNumber={pageIndex + 1}
-                                    className="w-full"
-                                  />
+          <div className={isMobile ? "" : "lg:col-span-2"}>
+            {!isMobile ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Interactive PDF</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Click on the highlighted areas to fill out the form
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="pdf-renderer-container relative border rounded-lg bg-gray-50 overflow-hidden">
+                    {pages.length > 0 ? (
+                      <div className="space-y-8 p-4">
+                        {pages.map((page, pageIndex) => (
+                          <div key={page.id} className="relative" data-page-index={pageIndex}>
+                            {/* Page Number Label */}
+                            {pages.length > 1 && (
+                              <div className="absolute -top-6 left-0 text-sm text-muted-foreground">
+                                Page {pageIndex + 1}
+                              </div>
+                            )}
+                            
+                             <div 
+                               className="relative bg-white shadow-lg rounded-lg overflow-hidden" 
+                               style={{ minHeight: '750px' }}
+                             >
+                               {page.backgroundImage ? (
+                                  typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
+                                    // Rendered page as image
+                                    <img
+                                     src={page.backgroundImage}
+                                     alt={`Page ${pageIndex + 1}`}
+                                     className="w-full h-full object-contain bg-white"
+                                   />
+                                 ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('blob:') ? (
+                                   // Blob URL for PDF
+                                   <PDFRenderer
+                                     key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
+                                     fileUrl={page.backgroundImage}
+                                     width={600}
+                                     height={750}
+                                     pageNumber={pageIndex + 1}
+                                     className="w-full"
+                                   />
+                                 ) : page.backgroundImage instanceof File ? (
+                                    // File object (PDF or other file)
+                                    <PDFRenderer
+                                      key={`pdf-page-${pageIndex}-${page.backgroundImage.name}`}
+                                      fileUrl={page.backgroundImage}
+                                      width={600}
+                                      height={750}
+                                      pageNumber={pageIndex + 1}
+                                      className="w-full"
+                                    />
+                                  ) : (
+                                    // Other string format
+                                    <PDFRenderer
+                                      key={`pdf-page-${pageIndex}`}
+                                      fileUrl={page.backgroundImage}
+                                      width={600}
+                                      height={750}
+                                      pageNumber={pageIndex + 1}
+                                      className="w-full"
+                                    />
+                                  )
                                 ) : (
-                                  // Other string format
-                                  <PDFRenderer
-                                    key={`pdf-page-${pageIndex}`}
-                                    fileUrl={page.backgroundImage}
-                                    width={600}
-                                    height={750}
-                                    pageNumber={pageIndex + 1}
-                                    className="w-full"
-                                  />
-                                )
-                              ) : (
-                                <div className="w-full h-[750px] bg-white border border-gray-200 rounded flex items-center justify-center">
-                                  <div className="text-center text-muted-foreground">
-                                    <p>Page {pageIndex + 1}</p>
-                                    <p className="text-sm">No background image</p>
+                                  <div className="w-full h-[750px] bg-white border border-gray-200 rounded flex items-center justify-center">
+                                    <div className="text-center text-muted-foreground">
+                                      <p>Page {pageIndex + 1}</p>
+                                      <p className="text-sm">No background image</p>
+                                    </div>
                                   </div>
+                                )}
+                              {/* Interactive Elements Overlay */}
+                              {page.elements.map((element) => (
+                                <div
+                                  key={element.id}
+                                  ref={(el) => elementRefs.current[element.id] = el}
+                                >
+                                  <InteractivePDFElement
+                                    element={element}
+                                    scale={600 / 595} // A4 width scale factor
+                                    value={formData[element.id] || ''}
+                                    onUpdate={(value) => handleInputChange(element.id, value)}
+                                    isActive={activeElement === element.id}
+                                    onActivate={() => handleElementClick(element.id)}
+                                    hideOverlay={!showOverlay}
+                                  />
                                 </div>
-                              )}
-                            {/* Interactive Elements Overlay */}
-                            {page.elements.map((element) => (
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-[750px] text-muted-foreground">
+                        <div className="text-center">
+                          <p className="text-lg mb-2">No PDF uploaded</p>
+                          <p className="text-sm">Please go back and upload a PDF file first.</p>
+                          <Button 
+                            onClick={() => navigate('/pdf-builder')} 
+                            className="mt-4"
+                            variant="outline"
+                          >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to Builder
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              // Mobile View
+              <div className="pdf-renderer-container relative bg-gray-50 overflow-hidden">
+                {pages.length > 0 ? (
+                  <div className="space-y-8 p-2">
+                    {pages.map((page, pageIndex) => (
+                      <div key={page.id} className="relative" data-page-index={pageIndex}>
+                         <div 
+                           className="relative bg-white shadow-lg rounded overflow-hidden" 
+                           style={{ minHeight: '600px' }}
+                         >
+                           {page.backgroundImage ? (
+                              typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
+                                // Rendered page as image
+                                <img
+                                 src={page.backgroundImage}
+                                 alt={`Page ${pageIndex + 1}`}
+                                 className="w-full h-full object-contain bg-white"
+                               />
+                             ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('blob:') ? (
+                               // Blob URL for PDF
+                               <PDFRenderer
+                                 key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
+                                 fileUrl={page.backgroundImage}
+                                 width={350}
+                                 height={500}
+                                 pageNumber={pageIndex + 1}
+                                 className="w-full"
+                               />
+                             ) : page.backgroundImage instanceof File ? (
+                                // File object (PDF or other file)
+                                <PDFRenderer
+                                  key={`pdf-page-${pageIndex}-${page.backgroundImage.name}`}
+                                  fileUrl={page.backgroundImage}
+                                  width={350}
+                                  height={500}
+                                  pageNumber={pageIndex + 1}
+                                  className="w-full"
+                                />
+                              ) : (
+                                // Other string format
+                                <PDFRenderer
+                                  key={`pdf-page-${pageIndex}`}
+                                  fileUrl={page.backgroundImage}
+                                  width={350}
+                                  height={500}
+                                  pageNumber={pageIndex + 1}
+                                  className="w-full"
+                                />
+                              )
+                            ) : (
+                              <div className="w-full h-[500px] bg-white border border-gray-200 rounded flex items-center justify-center">
+                                <div className="text-center text-muted-foreground">
+                                  <p>Page {pageIndex + 1}</p>
+                                  <p className="text-sm">No background image</p>
+                                </div>
+                              </div>
+                            )}
+                          {/* Interactive Elements Overlay */}
+                          {page.elements.map((element) => (
+                            <div
+                              key={element.id}
+                              ref={(el) => elementRefs.current[element.id] = el}
+                            >
                               <InteractivePDFElement
-                                key={element.id}
                                 element={element}
-                                scale={600 / 595} // A4 width scale factor
+                                scale={350 / 595} // A4 width scale factor for mobile
                                 value={formData[element.id] || ''}
                                 onUpdate={(value) => handleInputChange(element.id, value)}
                                 isActive={activeElement === element.id}
-                                onActivate={() => setActiveElement(element.id)}
+                                onActivate={() => handleElementClick(element.id)}
                                 hideOverlay={!showOverlay}
                               />
-                            ))}
-                          </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-[750px] text-muted-foreground">
-                      <div className="text-center">
-                        <p className="text-lg mb-2">No PDF uploaded</p>
-                        <p className="text-sm">Please go back and upload a PDF file first.</p>
-                        <Button 
-                          onClick={() => navigate('/pdf-builder')} 
-                          className="mt-4"
-                          variant="outline"
-                        >
-                          <ArrowLeft className="w-4 h-4 mr-2" />
-                          Back to Builder
-                        </Button>
                       </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Fields Overview */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Form Fields</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Track your progress
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {allElements.map((element, index) => {
-                    const hasValue = formData[element.id] && formData[element.id] !== false;
-                    return (
-                      <div
-                        key={element.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer ${
-                          activeElement === element.id 
-                            ? 'bg-primary/10 border-primary' 
-                            : hasValue
-                              ? 'bg-green-50 border-green-200' 
-                              : 'bg-muted/30 border-border hover:bg-muted/50'
-                        }`}
-                        onClick={() => setActiveElement(element.id)}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-[500px] text-muted-foreground">
+                    <div className="text-center">
+                      <p className="text-lg mb-2">No PDF uploaded</p>
+                      <p className="text-sm">Please go back and upload a PDF file first.</p>
+                      <Button 
+                        onClick={() => navigate('/pdf-builder')} 
+                        className="mt-4"
+                        variant="outline"
                       >
-                        <div className="flex items-center gap-2">
-                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                            hasValue 
-                              ? 'bg-green-500 text-white' 
-                              : 'bg-muted text-muted-foreground'
-                          }`}>
-                            {hasValue ? '✓' : index + 1}
-                          </span>
-                          <div>
-                            <p className="text-sm font-medium capitalize">
-                              {element.type}
-                            </p>
-                            {element.placeholder && (
-                              <p className="text-xs text-muted-foreground">
-                                {element.placeholder}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <span className="text-xs">
-                          {hasValue ? '✅' : '⏳'}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                {getCompletionProgress() === 100 && (
-                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm text-green-800 font-medium">
-                      🎉 All fields completed!
-                    </p>
-                    <p className="text-xs text-green-600 mt-1">
-                      You can now download or submit your PDF.
-                    </p>
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Builder
+                      </Button>
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            )}
           </div>
+
+          {/* Fields Overview - Desktop Only */}
+          {!isMobile && (
+            <div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Form Fields</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Track your progress
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {allElements.map((element, index) => {
+                      const hasValue = formData[element.id] && formData[element.id] !== false;
+                      return (
+                        <div
+                          key={element.id}
+                          className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer ${
+                            activeElement === element.id 
+                              ? 'bg-primary/10 border-primary' 
+                              : hasValue
+                                ? 'bg-green-50 border-green-200' 
+                                : 'bg-muted/30 border-border hover:bg-muted/50'
+                          }`}
+                          onClick={() => handleElementClick(element.id)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                              hasValue 
+                                ? 'bg-green-500 text-white' 
+                                : 'bg-muted text-muted-foreground'
+                            }`}>
+                              {hasValue ? '✓' : index + 1}
+                            </span>
+                            <div>
+                              <p className="text-sm font-medium capitalize">
+                                {element.type}
+                              </p>
+                              {element.placeholder && (
+                                <p className="text-xs text-muted-foreground">
+                                  {element.placeholder}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-xs">
+                            {hasValue ? '✅' : '⏳'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {getCompletionProgress() === 100 && (
+                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-800 font-medium">
+                        🎉 All fields completed!
+                      </p>
+                      <p className="text-xs text-green-600 mt-1">
+                        You can now download or submit your PDF.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
+
+        {/* Mobile Navigation */}
+        {isMobile && allElements.length > 0 && (
+          <MobileFieldNavigation
+            elements={allElements}
+            currentIndex={currentFieldIndex}
+            onNavigate={handleNavigateToField}
+            formData={formData}
+          />
+        )}
+
+        {/* Field Edit Modal */}
+        <FieldEditModal
+          element={activeElement ? allElements.find(el => el.id === activeElement) || null : null}
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          value={activeElement ? formData[activeElement] || '' : ''}
+          onSave={handleEditModalSave}
+        />
       </div>
     </div>
   );
