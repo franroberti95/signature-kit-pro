@@ -57,6 +57,7 @@ export const MobileFieldNavigation = ({
 
   const handleSignatureComplete = (dataURL: string) => {
     if (currentElement) {
+      setLocalValue(dataURL);
       onFieldUpdate(currentElement.id, dataURL);
     }
   };
@@ -73,7 +74,7 @@ export const MobileFieldNavigation = ({
               width={280}
               height={120}
               onSignatureComplete={handleSignatureComplete}
-              onCancel={handleCancel}
+              onCancel={() => {}}
             />
           </div>
         );
@@ -84,18 +85,11 @@ export const MobileFieldNavigation = ({
             <p className="text-sm font-medium mb-3">Select date:</p>
             <DatePicker
               value={typeof localValue === 'string' ? localValue : ''}
-              onChange={(date) => setLocalValue(date)}
+              onChange={(date) => {
+                setLocalValue(date);
+                onFieldUpdate(currentElement.id, date);
+              }}
             />
-            <div className="flex gap-2 mt-3">
-              <Button variant="secondary" size="sm" onClick={handleCancel} className="flex-1">
-                <X className="w-4 h-4 mr-1" />
-                Cancel
-              </Button>
-              <Button variant="default" size="sm" onClick={handleSave} className="flex-1">
-                <Check className="w-4 h-4 mr-1" />
-                Save
-              </Button>
-            </div>
           </div>
         );
 
@@ -126,20 +120,13 @@ export const MobileFieldNavigation = ({
             <p className="text-sm font-medium mb-3">Enter text:</p>
             <Textarea
               value={typeof localValue === 'string' ? localValue : ''}
-              onChange={(e) => setLocalValue(e.target.value)}
-              placeholder={currentElement.placeholder || 'Enter text...'}
-              className="min-h-[80px] mb-3"
+              onChange={(e) => {
+                setLocalValue(e.target.value);
+                onFieldUpdate(currentElement.id, e.target.value);
+              }}
+              placeholder={currentElement.placeholder || ''}
+              className="min-h-[80px]"
             />
-            <div className="flex gap-2">
-              <Button variant="secondary" size="sm" onClick={handleCancel} className="flex-1">
-                <X className="w-4 h-4 mr-1" />
-                Cancel
-              </Button>
-              <Button variant="default" size="sm" onClick={handleSave} className="flex-1">
-                <Check className="w-4 h-4 mr-1" />
-                Save
-              </Button>
-            </div>
           </div>
         );
 
@@ -150,33 +137,25 @@ export const MobileFieldNavigation = ({
             <Input
               type="text"
               value={typeof localValue === 'string' ? localValue : ''}
-              onChange={(e) => setLocalValue(e.target.value)}
-              placeholder={currentElement.placeholder || 'Enter text...'}
-              className="mb-3"
+              onChange={(e) => {
+                setLocalValue(e.target.value);
+                onFieldUpdate(currentElement.id, e.target.value);
+              }}
+              placeholder={currentElement.placeholder || ''}
             />
-            <div className="flex gap-2">
-              <Button variant="secondary" size="sm" onClick={handleCancel} className="flex-1">
-                <X className="w-4 h-4 mr-1" />
-                Cancel
-              </Button>
-              <Button variant="default" size="sm" onClick={handleSave} className="flex-1">
-                <Check className="w-4 h-4 mr-1" />
-                Save
-              </Button>
-            </div>
           </div>
         );
     }
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-50">
+    <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-50 md:max-h-64">
       {/* Field Editor - Always shown */}
       {renderFieldEditor()}
       
       {/* Navigation Panel */}
       <div className="p-4">
-        <div className="max-w-sm mx-auto space-y-3">
+        <div className="max-w-sm mx-auto space-y-3 md:max-w-lg">
           {/* Progress */}
           <div className="text-center">
             <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">

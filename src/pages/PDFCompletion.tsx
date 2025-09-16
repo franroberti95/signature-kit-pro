@@ -83,22 +83,19 @@ const PDFCompletionPage = () => {
   const scrollToElement = (elementId: string) => {
     const elementRef = elementRefs.current[elementId];
     if (elementRef) {
-      // On mobile, account for bottom navigation height (approximately 300px now that input is always shown)
-      const block = isMobile ? 'start' : 'center';
-      const topOffset = isMobile ? 200 : 0;
+      // Account for bottom navigation height (approximately 250px on mobile, 200px on desktop)
+      const topOffset = isMobile ? 250 : 200;
       
       elementRef.scrollIntoView({ 
         behavior: 'smooth', 
-        block,
+        block: 'center',
         inline: 'center'
       });
       
-      // Additional offset for mobile to account for bottom navigation
-      if (isMobile) {
-        setTimeout(() => {
-          window.scrollBy(0, -topOffset);
-        }, 100);
-      }
+      // Additional offset to account for bottom navigation
+      setTimeout(() => {
+        window.scrollBy(0, -topOffset);
+      }, 300);
     }
   };
 
@@ -408,16 +405,16 @@ const PDFCompletionPage = () => {
                                   key={element.id}
                                   ref={(el) => elementRefs.current[element.id] = el}
                                 >
-                                   <InteractivePDFElement
-                                     element={element}
-                                     scale={600 / 595} // A4 width scale factor
-                                     value={formData[element.id] || ''}
-                                     onUpdate={(value) => handleInputChange(element.id, value)}
-                                     isActive={activeElement === element.id}
-                                     onActivate={() => handleElementClick(element.id)}
-                                     hideOverlay={!showOverlay}
-                                     isMobile={false}
-                                   />
+                                    <InteractivePDFElement
+                                      element={element}
+                                      scale={600 / 595} // A4 width scale factor
+                                      value={formData[element.id] || ''}
+                                      onUpdate={(value) => handleInputChange(element.id, value)}
+                                      isActive={activeElement === element.id}
+                                      onActivate={() => handleElementClick(element.id)}
+                                      hideOverlay={!showOverlay}
+                                      isMobile={true}
+                                    />
                                 </div>
                               ))}
                             </div>
@@ -613,7 +610,7 @@ const PDFCompletionPage = () => {
         </div>
 
         {/* Field Navigation Stepper */}
-        <div className="h-80" /> {/* Spacer for bottom navigation */}
+        <div className="h-64 md:h-48" /> {/* Spacer for bottom navigation */}
         <MobileFieldNavigation
           elements={allElements}
           currentIndex={currentFieldIndex}
