@@ -66,30 +66,38 @@ const PDFStart = () => {
       // Convert DOCX to PDF first
       const { pdfBlob, fileName } = await DocxToPdfConverter.convertDocxToPdf(file);
       
-      // Create a new File object from the PDF blob
-      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+      // Load the PDF to get page count
+      const { PDFDocument } = await import('pdf-lib');
+      const pdfBytes = await pdfBlob.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+      const pageCount = pdfDoc.getPageCount();
       
-      // Now handle it as a regular PDF upload
+      console.log(`Converted PDF has ${pageCount} pages`);
+      
+      // Create a blob URL for the converted PDF
       const blobUrl = URL.createObjectURL(pdfBlob);
       
-      const newPage = {
-        id: `page-${Date.now()}`,
+      // Create page objects for each page in the PDF
+      const newPages = Array.from({ length: pageCount }, (_, index) => ({
+        id: `page-${Date.now()}-${index}`,
         format: "A4" as PDFFormat,
         elements: [],
         backgroundImage: blobUrl,
         originalFileName: fileName,
-      };
+        pageNumber: index + 1 // Track which page of the PDF this represents
+      }));
       
       sessionStorage.setItem('pdfBuilderData', JSON.stringify({
-        pages: [newPage],
+        pages: newPages,
         activePage: 0,
         selectedFormat: "A4",
         hasUploadedFile: true,
         pdfBlobUrl: blobUrl,
-        convertedFromDocx: true
+        convertedFromDocx: true,
+        totalPages: pageCount
       }));
       
-      toast(`DOCX converted to PDF successfully! "${fileName}" loaded.`, { 
+      toast(`DOCX converted to PDF successfully! "${fileName}" loaded with ${pageCount} pages.`, { 
         duration: 3000 
       });
       navigate('/pdf-builder');
