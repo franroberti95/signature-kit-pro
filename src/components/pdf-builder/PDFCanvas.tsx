@@ -178,13 +178,16 @@ export const PDFCanvas = ({
                   >
                     {/* PDF Background or Blank Canvas */}
                     {page.backgroundImage ? (
-                      typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
+                      (page as any).isDocxConverted || (typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/')) ? (
                         // Rendered DOCX page as image
-                        <img 
-                          src={page.backgroundImage}
-                          alt={`Page ${pageIndex + 1}`}
-                          className="absolute inset-0 w-full h-full object-contain bg-white"
-                        />
+                        <>
+                          {console.log('Rendering DOCX page as image:', pageIndex + 1, 'backgroundImage type:', typeof page.backgroundImage, 'starts with data:image:', page.backgroundImage.startsWith('data:image/'))}
+                          <img 
+                            src={page.backgroundImage}
+                            alt={`Page ${pageIndex + 1}`}
+                            className="absolute inset-0 w-full h-full object-contain bg-white"
+                          />
+                        </>
                       ) : (page as any).isDocxPlaceholder ? (
                         // DOCX Placeholder (fallback)
                         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50 to-white border-2 border-dashed border-blue-300">
@@ -210,9 +213,9 @@ export const PDFCanvas = ({
                            />
                          </>
                        )
-                    ) : (
-                      <div className="absolute inset-0 bg-white" />
-                    )}
+                     ) : (
+                       <div className="absolute inset-0 bg-white" />
+                     )}
 
                     {/* Grid pattern for alignment */}
                     <div 

@@ -72,14 +72,18 @@ const PDFStart = () => {
       const blobUrl = URL.createObjectURL(pdfBlob);
       
       // Create page objects using the page images for display (not the PDF blob)
-      const newPages = pageImages.map((pageImage, index) => ({
-        id: `page-${Date.now()}-${index}`,
-        format: "A4" as PDFFormat,
-        elements: [],
-        backgroundImage: pageImage, // Use page image directly
-        originalFileName: fileName,
-        pageNumber: index + 1
-      }));
+      const newPages = pageImages.map((pageImage, index) => {
+        console.log(`Creating page ${index + 1} with image data (length: ${pageImage.length}):`, pageImage.substring(0, 50) + '...');
+        return {
+          id: `page-${Date.now()}-${index}`,
+          format: "A4" as PDFFormat,
+          elements: [],
+          backgroundImage: pageImage, // Use page image directly
+          originalFileName: fileName,
+          pageNumber: index + 1,
+          isDocxConverted: true // Flag to identify DOCX converted pages
+        };
+      });
       
       sessionStorage.setItem('pdfBuilderData', JSON.stringify({
         pages: newPages,
