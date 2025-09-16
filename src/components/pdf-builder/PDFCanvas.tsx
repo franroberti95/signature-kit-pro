@@ -178,44 +178,19 @@ export const PDFCanvas = ({
                   >
                     {/* PDF Background or Blank Canvas */}
                     {page.backgroundImage ? (
-                      (page as any).isDocxConverted || (typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/')) ? (
-                        // Rendered DOCX page as image
-                        <>
-                          {console.log('Rendering DOCX page as image:', pageIndex + 1, 'backgroundImage type:', typeof page.backgroundImage, 'starts with data:image:', page.backgroundImage.startsWith('data:image/'))}
-                          <img 
-                            src={page.backgroundImage}
-                            alt={`Page ${pageIndex + 1}`}
-                            className="absolute inset-0 w-full h-full object-contain bg-white"
-                          />
-                        </>
-                      ) : (page as any).isDocxPlaceholder ? (
-                        // DOCX Placeholder (fallback)
-                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50 to-white border-2 border-dashed border-blue-300">
-                          <div className="text-center text-blue-600 p-8">
-                            <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-lg flex items-center justify-center text-2xl">
-                              📄
-                            </div>
-                            <h3 className="font-medium mb-2">DOCX Document</h3>
-                            <p className="text-sm">Processing failed - using placeholder</p>
-                            <p className="text-xs mt-1 opacity-75">You can still add form fields</p>
-                          </div>
-                        </div>
-                       ) : (
-                         // PDF file
-                         <>
-                           {console.log('Rendering PDF page:', pageIndex + 1, 'backgroundImage:', page.backgroundImage, 'pageNumber:', (page as any).pageNumber)}
-                           <PDFRenderer
-                             fileUrl={page.backgroundImage}
-                             width={displayWidth}
-                             height={displayHeight}
-                             pageNumber={(page as any).pageNumber || pageIndex + 1}
-                             className="absolute inset-0"
-                           />
-                         </>
-                       )
-                     ) : (
-                       <div className="absolute inset-0 bg-white" />
-                     )}
+                      <>
+                        {console.log('Rendering PDF page:', pageIndex + 1, 'backgroundImage:', page.backgroundImage, 'pageNumber:', (page as any).pageNumber)}
+                        <PDFRenderer
+                          fileUrl={page.backgroundImage}
+                          width={displayWidth}
+                          height={displayHeight}
+                          pageNumber={(page as any).pageNumber || pageIndex + 1}
+                          className="absolute inset-0"
+                        />
+                      </>
+                    ) : (
+                      <div className="absolute inset-0 bg-white" />
+                    )}
 
                     {/* Grid pattern for alignment */}
                     <div 

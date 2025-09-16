@@ -68,22 +68,18 @@ const PDFStart = () => {
       
       console.log(`Converted PDF has ${pageImages.length} pages`);
       
-      // Create a blob URL for the converted PDF (for export)
+      // Create a blob URL for the converted PDF
       const blobUrl = URL.createObjectURL(pdfBlob);
       
-      // Create page objects using the page images for display (not the PDF blob)
-      const newPages = pageImages.map((pageImage, index) => {
-        console.log(`Creating page ${index + 1} with image data (length: ${pageImage.length}):`, pageImage.substring(0, 50) + '...');
-        return {
-          id: `page-${Date.now()}-${index}`,
-          format: "A4" as PDFFormat,
-          elements: [],
-          backgroundImage: pageImage, // Use page image directly
-          originalFileName: fileName,
-          pageNumber: index + 1,
-          isDocxConverted: true // Flag to identify DOCX converted pages
-        };
-      });
+      // Create page objects using the PDF blob (same as regular PDF upload)
+      const newPages = Array.from({ length: pageImages.length }, (_, index) => ({
+        id: `page-${Date.now()}-${index}`,
+        format: "A4" as PDFFormat,
+        elements: [],
+        backgroundImage: blobUrl, // Use PDF blob like regular PDF
+        originalFileName: fileName,
+        pageNumber: index + 1
+      }));
       
       sessionStorage.setItem('pdfBuilderData', JSON.stringify({
         pages: newPages,
