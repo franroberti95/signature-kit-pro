@@ -191,27 +191,49 @@ const PDFCompletionPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="pdf-renderer-container relative border rounded-lg bg-gray-50 overflow-hidden">
-                  {pages.length > 0 && pages[0].backgroundImage ? (
-                    <div className="relative" style={{ minHeight: '750px' }}>
-                      <PDFRenderer
-                        fileUrl={pages[0].backgroundImage}
-                        width={600}
-                        height={750}
-                        className="w-full"
-                      />
-                      
-                      {/* Interactive Elements Overlay */}
-                      {pages[0].elements.map((element) => (
-                        <InteractivePDFElement
-                          key={element.id}
-                          element={element}
-                          scale={600 / 595} // A4 width scale factor
-                          value={formData[element.id] || ''}
-                          onUpdate={(value) => handleInputChange(element.id, value)}
-                          isActive={activeElement === element.id}
-                          onActivate={() => setActiveElement(element.id)}
-                          hideOverlay={!showOverlay}
-                        />
+                  {pages.length > 0 ? (
+                    <div className="space-y-8 p-4">
+                      {pages.map((page, pageIndex) => (
+                        <div key={page.id} className="relative">
+                          {/* Page Number Label */}
+                          {pages.length > 1 && (
+                            <div className="absolute -top-6 left-0 text-sm text-muted-foreground">
+                              Page {pageIndex + 1}
+                            </div>
+                          )}
+                          
+                          <div className="relative bg-white shadow-lg rounded-lg overflow-hidden" style={{ minHeight: '750px' }}>
+                            {page.backgroundImage ? (
+                              <PDFRenderer
+                                fileUrl={page.backgroundImage}
+                                width={600}
+                                height={750}
+                                className="w-full"
+                              />
+                            ) : (
+                              <div className="w-full h-[750px] bg-white border border-gray-200 rounded flex items-center justify-center">
+                                <div className="text-center text-muted-foreground">
+                                  <p>Page {pageIndex + 1}</p>
+                                  <p className="text-sm">No background image</p>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Interactive Elements Overlay */}
+                            {page.elements.map((element) => (
+                              <InteractivePDFElement
+                                key={element.id}
+                                element={element}
+                                scale={600 / 595} // A4 width scale factor
+                                value={formData[element.id] || ''}
+                                onUpdate={(value) => handleInputChange(element.id, value)}
+                                isActive={activeElement === element.id}
+                                onActivate={() => setActiveElement(element.id)}
+                                hideOverlay={!showOverlay}
+                              />
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   ) : (
