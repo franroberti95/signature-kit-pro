@@ -83,18 +83,36 @@ const PDFCompletionPage = () => {
     const element = document.getElementById(`pdf-element-${elementId}`);
     if (!element) return;
 
+    // Find which page this element belongs to
+    const elementData = allElements.find(el => el.id === elementId);
+    if (!elementData) return;
+
+    const pageIndex = pages.findIndex(page => 
+      page.elements.some(el => el.id === elementId)
+    );
+    if (pageIndex === -1) return;
+
+    // Get the page container
+    const pageContainer = document.querySelector(`[data-page-index="${pageIndex}"]`);
+    if (!pageContainer) return;
+
     const headerHeight = 80;
-    const mobileBottomOffset = isMobile ? 280 : 0; // Account for mobile navigation height
-    const availableViewHeight = window.innerHeight - headerHeight - mobileBottomOffset;
+    const padding = 20;
     
-    // Get element position relative to document
-    const elementRect = element.getBoundingClientRect();
-    const elementTop = elementRect.top + window.scrollY;
+    // Get the page container's position in the document
+    const pageContainerTop = pageContainer.getBoundingClientRect().top + window.scrollY;
     
-    // Calculate target scroll position to center element in available viewport
-    const targetScrollTop = elementTop - headerHeight - (availableViewHeight / 2) + (elementRect.height / 2);
+    // Get element's position within the page (from its style)
+    const scale = isMobile ? 350 / 595 : 600 / 595;
+    const elementTopInPage = elementData.y * scale;
     
-    // Scroll to calculated position
+    // Calculate total position: page position + element position within page
+    const totalElementTop = pageContainerTop + elementTopInPage;
+    
+    // Calculate where to scroll
+    const targetScrollTop = totalElementTop - headerHeight - padding;
+    
+    // Scroll to the calculated position
     window.scrollTo({
       top: Math.max(0, targetScrollTop),
       behavior: 'smooth'
