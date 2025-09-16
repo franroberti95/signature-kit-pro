@@ -61,6 +61,8 @@ export const MobileFieldNavigation = ({
     }
   };
 
+  const [canvasRef, setCanvasRef] = useState<HTMLCanvasElement | null>(null);
+
   const renderFieldEditor = () => {
     if (!currentElement) return null;
 
@@ -77,9 +79,13 @@ export const MobileFieldNavigation = ({
               <div className="border-2 border-dashed border-muted-foreground/30 rounded bg-white" style={{ width: '240px', height: '80px' }}>
                 <canvas
                   ref={(canvas) => {
+                    setCanvasRef(canvas);
                     if (canvas) {
                       const ctx = canvas.getContext('2d');
                       if (ctx) {
+                        // Clear canvas first
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        
                         let isDrawing = false;
                         let lastX = 0;
                         let lastY = 0;
@@ -126,26 +132,23 @@ export const MobileFieldNavigation = ({
                           isDrawing = false;
                         };
 
-                        // Mouse events
+                        // Remove existing event listeners
+                        canvas.removeEventListener('mousedown', startDrawing);
+                        canvas.removeEventListener('mousemove', draw);
+                        canvas.removeEventListener('mouseup', stopDrawing);
+                        canvas.removeEventListener('mouseout', stopDrawing);
+                        canvas.removeEventListener('touchstart', startDrawing);
+                        canvas.removeEventListener('touchmove', draw);
+                        canvas.removeEventListener('touchend', stopDrawing);
+
+                        // Add event listeners
                         canvas.addEventListener('mousedown', startDrawing);
                         canvas.addEventListener('mousemove', draw);
                         canvas.addEventListener('mouseup', stopDrawing);
                         canvas.addEventListener('mouseout', stopDrawing);
-
-                        // Touch events
                         canvas.addEventListener('touchstart', startDrawing);
                         canvas.addEventListener('touchmove', draw);
                         canvas.addEventListener('touchend', stopDrawing);
-
-                        // Clear canvas button functionality
-                        const clearCanvas = () => {
-                          ctx.clearRect(0, 0, canvas.width, canvas.height);
-                          setLocalValue('');
-                          onFieldUpdate(currentElement.id, '');
-                        };
-
-                        // Store clear function for button access
-                        (canvas as any).clearSignature = clearCanvas;
 
                         // Load existing signature if any
                         if (typeof localValue === 'string' && localValue.startsWith('data:image/')) {
@@ -171,9 +174,13 @@ export const MobileFieldNavigation = ({
                 variant="outline" 
                 size="sm" 
                 onClick={() => {
-                  const canvas = document.querySelector('canvas') as HTMLCanvasElement & { clearSignature?: () => void };
-                  if (canvas?.clearSignature) {
-                    canvas.clearSignature();
+                  if (canvasRef) {
+                    const ctx = canvasRef.getContext('2d');
+                    if (ctx) {
+                      ctx.clearRect(0, 0, canvasRef.width, canvasRef.height);
+                      setLocalValue('');
+                      onFieldUpdate(currentElement.id, '');
+                    }
                   }
                 }}
                 className="flex items-center gap-1"
@@ -270,8 +277,8 @@ export const MobileFieldNavigation = ({
       {/* Field Editor */}
       {renderFieldEditor()}
       
-      {/* Navigation Panel */}
-      <div className="p-3">
+      {/* Navigation Panel - Always show regardless of field type */}
+      <div className="p-3 border-t bg-muted/30">
         <div className="max-w-sm mx-auto md:max-w-lg">
           {/* Navigation Buttons */}
           <div className="flex items-center gap-2">
