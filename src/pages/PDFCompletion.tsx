@@ -80,20 +80,29 @@ const PDFCompletionPage = () => {
     }
   }, [navigate, location.state]);
 
-  const scrollToElement = (elementId: string) => {
+  const scrollToElement = (elementId: string, isBackward = false) => {
     const attemptScrollWithRetry = (attempts = 0) => {
-      const maxAttempts = 5;
+      const maxAttempts = 8;
       
       const elementRef = elementRefs.current[elementId];
       if (!elementRef) {
         if (attempts < maxAttempts) {
-          setTimeout(() => attemptScrollWithRetry(attempts + 1), 50);
+          setTimeout(() => attemptScrollWithRetry(attempts + 1), 100);
         }
         return;
       }
 
-      // Simple scroll to element with proper offset
+      // Ensure element is visible and positioned correctly
       const elementRect = elementRef.getBoundingClientRect();
+      
+      // If element is not visible or has no height, retry
+      if (elementRect.height === 0 || elementRect.width === 0) {
+        if (attempts < maxAttempts) {
+          setTimeout(() => attemptScrollWithRetry(attempts + 1), 100);
+        }
+        return;
+      }
+
       const headerHeight = 80;
       const mobileBottomPanelHeight = isMobile ? 280 : 0;
       const viewportHeight = window.innerHeight - mobileBottomPanelHeight;
@@ -111,8 +120,9 @@ const PDFCompletionPage = () => {
       });
     };
     
-    // Start with a small delay to ensure DOM updates
-    setTimeout(() => attemptScrollWithRetry(), 150);
+    // Use longer delay for backward navigation to ensure DOM is fully updated
+    const delay = isBackward ? 250 : 150;
+    setTimeout(() => attemptScrollWithRetry(), delay);
   };
 
   const handleInputChange = (elementId: string, value: string | boolean) => {
@@ -124,11 +134,12 @@ const PDFCompletionPage = () => {
 
   const handleNavigateToField = (index: number) => {
     if (index >= 0 && index < allElements.length) {
+      const isBackward = index < currentFieldIndex;
       setCurrentFieldIndex(index);
       const element = allElements[index];
       setActiveElement(element.id);
-      // Scroll to the element after state updates
-      scrollToElement(element.id);
+      // Scroll to the element after state updates, with special handling for backward navigation
+      scrollToElement(element.id, isBackward);
     }
   };
 
