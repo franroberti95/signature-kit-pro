@@ -25,6 +25,7 @@ interface InteractivePDFElementProps {
   isActive?: boolean;
   onActivate?: () => void;
   hideOverlay?: boolean; // Hide visual boxes for export
+  isMobile?: boolean; // Prevent modals on mobile
 }
 
 const elementIcons: Record<string, any> = {
@@ -43,7 +44,8 @@ export const InteractivePDFElement = ({
   onUpdate,
   isActive = false,
   onActivate,
-  hideOverlay = false
+  hideOverlay = false,
+  isMobile = false
 }: InteractivePDFElementProps) => {
   const [showSignatureCanvas, setShowSignatureCanvas] = useState(false);
   const [showInput, setShowInput] = useState(false);
@@ -53,6 +55,11 @@ export const InteractivePDFElement = ({
 
   const handleClick = () => {
     onActivate?.();
+    
+    // On mobile, don't show modals - let mobile navigation handle editing
+    if (isMobile) {
+      return;
+    }
     
     if (element.type === 'signature') {
       setShowSignatureCanvas(true);

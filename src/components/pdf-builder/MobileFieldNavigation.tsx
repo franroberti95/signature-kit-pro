@@ -97,14 +97,14 @@ export const MobileFieldNavigation = ({
               onChange={(date) => setLocalValue(date)}
             />
             <div className="flex gap-2 mt-3">
-              <Button variant="outline" size="sm" onClick={handleCancel} className="flex-1">
-                <X className="w-4 h-4 mr-1" />
-                Cancel
-              </Button>
-              <Button size="sm" onClick={handleSave} className="flex-1">
-                <Check className="w-4 h-4 mr-1" />
-                Save
-              </Button>
+            <Button variant="secondary" size="sm" onClick={handleCancel} className="flex-1">
+              <X className="w-4 h-4 mr-1" />
+              Cancel
+            </Button>
+            <Button variant="default" size="sm" onClick={handleSave} className="flex-1">
+              <Check className="w-4 h-4 mr-1" />
+              Save
+            </Button>
             </div>
           </div>
         );
@@ -142,11 +142,11 @@ export const MobileFieldNavigation = ({
               className="min-h-[80px] mb-3"
             />
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleCancel} className="flex-1">
+              <Button variant="secondary" size="sm" onClick={handleCancel} className="flex-1">
                 <X className="w-4 h-4 mr-1" />
                 Cancel
               </Button>
-              <Button size="sm" onClick={handleSave} className="flex-1">
+              <Button variant="default" size="sm" onClick={handleSave} className="flex-1">
                 <Check className="w-4 h-4 mr-1" />
                 Save
               </Button>
@@ -166,11 +166,11 @@ export const MobileFieldNavigation = ({
               className="mb-3"
             />
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleCancel} className="flex-1">
+              <Button variant="secondary" size="sm" onClick={handleCancel} className="flex-1">
                 <X className="w-4 h-4 mr-1" />
                 Cancel
               </Button>
-              <Button size="sm" onClick={handleSave} className="flex-1">
+              <Button variant="default" size="sm" onClick={handleSave} className="flex-1">
                 <Check className="w-4 h-4 mr-1" />
                 Save
               </Button>
@@ -208,7 +208,7 @@ export const MobileFieldNavigation = ({
                 {!isEditing && !isCompleted && (
                   <Button 
                     size="sm" 
-                    variant="outline" 
+                    variant="default" 
                     onClick={startEditing}
                     className="px-2 py-1 text-xs"
                   >
@@ -237,7 +237,7 @@ export const MobileFieldNavigation = ({
           {/* Navigation Buttons */}
           <div className="flex items-center gap-2">
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => onNavigate(currentIndex - 1)}
               disabled={!canGoPrevious || isEditing}
@@ -248,6 +248,7 @@ export const MobileFieldNavigation = ({
             </Button>
             
             <Button
+              variant="default"
               size="sm"
               onClick={() => onNavigate(currentIndex + 1)}
               disabled={!canGoNext || isEditing}

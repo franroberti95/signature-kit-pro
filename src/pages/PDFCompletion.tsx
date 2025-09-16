@@ -83,11 +83,22 @@ const PDFCompletionPage = () => {
   const scrollToElement = (elementId: string) => {
     const elementRef = elementRefs.current[elementId];
     if (elementRef) {
+      // On mobile, account for bottom navigation height (approximately 200px)
+      const block = isMobile ? 'start' : 'center';
+      const topOffset = isMobile ? 100 : 0;
+      
       elementRef.scrollIntoView({ 
         behavior: 'smooth', 
-        block: 'center',
+        block,
         inline: 'center'
       });
+      
+      // Additional offset for mobile to account for bottom navigation
+      if (isMobile) {
+        setTimeout(() => {
+          window.scrollBy(0, -topOffset);
+        }, 100);
+      }
     }
   };
 
@@ -397,15 +408,16 @@ const PDFCompletionPage = () => {
                                   key={element.id}
                                   ref={(el) => elementRefs.current[element.id] = el}
                                 >
-                                  <InteractivePDFElement
-                                    element={element}
-                                    scale={600 / 595} // A4 width scale factor
-                                    value={formData[element.id] || ''}
-                                    onUpdate={(value) => handleInputChange(element.id, value)}
-                                    isActive={activeElement === element.id}
-                                    onActivate={() => handleElementClick(element.id)}
-                                    hideOverlay={!showOverlay}
-                                  />
+                                   <InteractivePDFElement
+                                     element={element}
+                                     scale={600 / 595} // A4 width scale factor
+                                     value={formData[element.id] || ''}
+                                     onUpdate={(value) => handleInputChange(element.id, value)}
+                                     isActive={activeElement === element.id}
+                                     onActivate={() => handleElementClick(element.id)}
+                                     hideOverlay={!showOverlay}
+                                     isMobile={false}
+                                   />
                                 </div>
                               ))}
                             </div>
@@ -503,6 +515,7 @@ const PDFCompletionPage = () => {
                                 isActive={activeElement === element.id}
                                 onActivate={() => handleElementClick(element.id)}
                                 hideOverlay={!showOverlay}
+                                isMobile={true}
                               />
                             </div>
                           ))}
