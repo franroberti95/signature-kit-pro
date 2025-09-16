@@ -3,6 +3,67 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 export class DocxToPdfConverter {
+  // Test method to verify PDF generation works
+  static async testPdfGeneration(): Promise<{ pdfBlob: Blob; fileName: string }> {
+    console.log('Testing PDF generation with simple HTML...');
+    
+    const testHtml = `
+      <h1>Test Document</h1>
+      <p>This is a test paragraph to verify PDF generation works.</p>
+      <p>Line 1 of content</p>
+      <p>Line 2 of content</p>
+      <p>Line 3 of content</p>
+    `;
+    
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = testHtml;
+    tempDiv.style.position = 'fixed';
+    tempDiv.style.top = '-10000px';
+    tempDiv.style.left = '-10000px';
+    tempDiv.style.width = '794px';
+    tempDiv.style.backgroundColor = 'white';
+    tempDiv.style.padding = '40px';
+    tempDiv.style.fontFamily = 'Arial, sans-serif';
+    tempDiv.style.fontSize = '14px';
+    tempDiv.style.lineHeight = '1.6';
+    tempDiv.style.color = 'black';
+    
+    document.body.appendChild(tempDiv);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'px',
+      format: 'a4'
+    });
+
+    const pageWidth = 794;
+    const pageHeight = 1123;
+    
+    const canvas = await html2canvas(tempDiv, {
+      backgroundColor: 'white',
+      scale: 1.0,
+      useCORS: true,
+      allowTaint: true,
+      width: pageWidth,
+      height: pageHeight,
+      logging: true
+    });
+    
+    const imgData = canvas.toDataURL('image/png', 0.95);
+    pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
+    
+    document.body.removeChild(tempDiv);
+    
+    const pdfBlob = new Blob([pdf.output('arraybuffer')], { type: 'application/pdf' });
+    console.log('Test PDF created. Size:', pdfBlob.size);
+    
+    return {
+      pdfBlob,
+      fileName: 'test.pdf'
+    };
+  }
+
   static async convertDocxToPdf(file: File): Promise<{ pdfBlob: Blob; fileName: string }> {
     console.log('Starting DOCX to PDF conversion for file:', file.name, 'Size:', file.size);
     
@@ -15,6 +76,11 @@ export class DocxToPdfConverter {
       
       console.log('HTML conversion complete. Length:', html.length);
       console.log('Extracted HTML content preview:', html.substring(0, 500));
+      
+      // Log conversion warnings and messages
+      if (result.messages && result.messages.length > 0) {
+        console.log('Mammoth conversion messages:', result.messages);
+      }
       
       if (!html || html.trim().length === 0) {
         throw new Error('No content extracted from DOCX file');
@@ -30,17 +96,24 @@ export class DocxToPdfConverter {
       tempDiv.style.backgroundColor = 'white';
       tempDiv.style.padding = '40px';
       tempDiv.style.fontFamily = 'Arial, sans-serif';
-      tempDiv.style.fontSize = '12px';
-      tempDiv.style.lineHeight = '1.5';
+      tempDiv.style.fontSize = '14px'; // Increased font size
+      tempDiv.style.lineHeight = '1.6';
       tempDiv.style.color = 'black';
+      tempDiv.style.minHeight = '400px'; // Ensure minimum height
       
       document.body.appendChild(tempDiv);
       
       // Wait for content to render
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Increased wait time
       
       const contentHeight = tempDiv.scrollHeight;
       console.log('Content rendered. Height:', contentHeight, 'px');
+      console.log('TempDiv innerHTML length:', tempDiv.innerHTML.length);
+      console.log('TempDiv text content:', tempDiv.textContent?.substring(0, 200));
+
+      // Ensure we have a minimum content height
+      const minContentHeight = Math.max(contentHeight, 800);
+      console.log('Using content height:', minContentHeight, 'px');
 
       // Step 3: Create PDF with proper page handling
       const pdf = new jsPDF({
@@ -54,7 +127,7 @@ export class DocxToPdfConverter {
       let yPosition = 0;
       let pageNumber = 0;
       
-      while (yPosition < contentHeight) {
+      while (yPosition < minContentHeight) {
         console.log(`Processing page ${pageNumber + 1}, yPosition: ${yPosition}`);
         
         // Create a clipped version for this page
@@ -80,15 +153,22 @@ export class DocxToPdfConverter {
           // Convert this page to canvas
           const canvas = await html2canvas(wrapper, {
             backgroundColor: 'white',
-            scale: 1.5,
+            scale: 1.0, // Reduced scale to avoid memory issues
             useCORS: true,
             allowTaint: true,
             width: pageWidth,
             height: pageHeight,
-            logging: false
+            logging: true, // Enable logging to see what's happening
+            foreignObjectRendering: true // Better text rendering
           });
           
           console.log(`Page ${pageNumber + 1} canvas created:`, canvas.width, 'x', canvas.height);
+          
+          // Check if canvas is blank by examining image data
+          const ctx = canvas.getContext('2d');
+          const imageData = ctx?.getImageData(0, 0, canvas.width, canvas.height);
+          const isBlank = imageData && imageData.data.every((val, i) => i % 4 === 3 ? val === 255 : val === 255);
+          console.log(`Page ${pageNumber + 1} canvas is blank:`, isBlank);
           
           // Add page to PDF
           if (pageNumber > 0) {
@@ -96,6 +176,7 @@ export class DocxToPdfConverter {
           }
           
           const imgData = canvas.toDataURL('image/png', 0.95);
+          console.log(`Page ${pageNumber + 1} image data length:`, imgData.length);
           pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
           
         } finally {
