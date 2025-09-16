@@ -612,19 +612,15 @@ const PDFCompletionPage = () => {
           )}
         </div>
 
-        {/* Mobile Field Navigation */}
-        {isMobile && (
-          <>
-            <div className="h-80" /> {/* Spacer for mobile navigation */}
-            <MobileFieldNavigation
-              elements={allElements}
-              currentIndex={currentFieldIndex}
-              onNavigate={handleNavigateToField}
-              formData={formData}
-              onFieldUpdate={handleInputChange}
-            />
-          </>
-        )}
+        {/* Field Navigation Stepper */}
+        <div className="h-80" /> {/* Spacer for bottom navigation */}
+        <MobileFieldNavigation
+          elements={allElements}
+          currentIndex={currentFieldIndex}
+          onNavigate={handleNavigateToField}
+          formData={formData}
+          onFieldUpdate={handleInputChange}
+        />
       </div>
     </div>
   );
