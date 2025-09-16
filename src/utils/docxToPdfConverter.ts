@@ -72,7 +72,7 @@ export class DocxToPdfConverter {
       console.log('Converting DOCX to HTML...');
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.convertToHtml({ arrayBuffer });
-      const html = result.value;
+      let html = result.value;
       
       console.log('HTML conversion complete. Length:', html.length);
       console.log('Extracted HTML content preview:', html.substring(0, 500));
@@ -86,110 +86,43 @@ export class DocxToPdfConverter {
         throw new Error('No content extracted from DOCX file');
       }
 
-      // Step 2: Create PDF using canvas-based approach for better compatibility
+      // Step 2: Clean and optimize HTML for PDF conversion
+      // Remove problematic elements and improve formatting
+      html = html
+        .replace(/<img[^>]*>/g, '') // Remove images to reduce file size
+        .replace(/<style[^>]*>.*?<\/style>/gs, '') // Remove style tags
+        .replace(/style="[^"]*"/g, '') // Remove inline styles
+        .replace(/<\/p>/g, '</p><br/>') // Add spacing between paragraphs
+        .trim();
+
+      // Step 3: Create PDF using jsPDF's HTML method for lightweight output
       const pdf = new jsPDF({
         orientation: 'portrait',
-        unit: 'pt',
+        unit: 'mm',
         format: 'a4'
       });
 
-      // Create a temporary div with proper styling
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = html;
-      tempDiv.style.position = 'fixed';
-      tempDiv.style.top = '-10000px';
-      tempDiv.style.left = '-10000px';
-      tempDiv.style.width = '595pt'; // A4 width in points
-      tempDiv.style.backgroundColor = 'white';
-      tempDiv.style.padding = '40pt';
-      tempDiv.style.fontFamily = 'Arial, sans-serif';
-      tempDiv.style.fontSize = '12pt';
-      tempDiv.style.lineHeight = '1.5';
-      tempDiv.style.color = 'black';
-      tempDiv.style.wordWrap = 'break-word';
-      
-      document.body.appendChild(tempDiv);
-      
-      // Wait for content to render
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const contentHeight = tempDiv.scrollHeight;
-      console.log('Content rendered. Height:', contentHeight, 'pt');
-      console.log('Text content preview:', tempDiv.textContent?.substring(0, 200));
-
-      // Create canvas and convert to PDF
-      const canvas = await html2canvas(tempDiv, {
-        backgroundColor: 'white',
-        scale: 1.5,
-        useCORS: true,
-        allowTaint: true,
-        width: 595,
-        height: contentHeight,
-        logging: false
+      // Use jsPDF's html method for efficient, text-based PDF generation
+      await new Promise<void>((resolve, reject) => {
+        pdf.html(html, {
+          callback: (doc) => {
+            console.log('PDF generation completed using HTML method');
+            resolve();
+          },
+          x: 15,
+          y: 15,
+          width: 180, // A4 width minus margins (210mm - 30mm)
+          windowWidth: 650,
+          margin: [15, 15, 15, 15] // [top, right, bottom, left]
+        });
       });
-      
-      console.log('Canvas created:', canvas.width, 'x', canvas.height);
-      
-      const pageHeight = 842; // A4 height in points
-      const pageWidth = 595; // A4 width in points
-      const canvasHeight = canvas.height;
-      
-      let yPosition = 0;
-      let pageNum = 0;
-      
-      while (yPosition < canvasHeight) {
-        if (pageNum > 0) {
-          pdf.addPage();
-        }
-        
-        const remainingHeight = Math.min(pageHeight, canvasHeight - yPosition);
-        
-        // Create a temporary canvas for this page
-        const pageCanvas = document.createElement('canvas');
-        const pageCtx = pageCanvas.getContext('2d');
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = remainingHeight * (canvas.width / pageWidth);
-        
-        if (pageCtx) {
-          pageCtx.fillStyle = 'white';
-          pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-          
-          pageCtx.drawImage(
-            canvas,
-            0, yPosition * (canvas.width / pageWidth),
-            canvas.width, pageCanvas.height,
-            0, 0,
-            canvas.width, pageCanvas.height
-          );
-          
-          const imgData = pageCanvas.toDataURL('image/png', 0.95);
-          pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, remainingHeight);
-        }
-        
-        yPosition += pageHeight;
-        pageNum++;
-        
-        if (pageNum >= 20) {
-          console.warn('Document too large, stopping at 20 pages');
-          break;
-        }
-      }
-      
-      console.log(`PDF creation complete. Total pages: ${pageNum}`);
-      
-      // Clean up
-      document.body.removeChild(tempDiv);
 
       // Generate PDF blob
       const pdfBlob = new Blob([pdf.output('arraybuffer')], { type: 'application/pdf' });
       
       console.log('PDF blob created. Size:', pdfBlob.size);
       
-      // Test if the PDF blob is valid by trying to create a URL and load it
-      const testUrl = URL.createObjectURL(pdfBlob);
-      console.log('Created test blob URL:', testUrl);
-      
-      // Try to verify the PDF is valid by checking the first few bytes
+      // Verify the PDF is valid
       const testBytes = await pdfBlob.slice(0, 10).arrayBuffer();
       const testView = new Uint8Array(testBytes);
       const isValidPdf = testView[0] === 0x25 && testView[1] === 0x50 && testView[2] === 0x44 && testView[3] === 0x46; // %PDF
