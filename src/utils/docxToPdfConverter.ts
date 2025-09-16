@@ -86,113 +86,103 @@ export class DocxToPdfConverter {
         throw new Error('No content extracted from DOCX file');
       }
 
-      // Step 2: Create a temporary DOM element to render the HTML
+      // Step 2: Create PDF directly from HTML using jsPDF
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Create a temporary div for measuring content
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = html;
       tempDiv.style.position = 'fixed';
       tempDiv.style.top = '-10000px';
       tempDiv.style.left = '-10000px';
-      tempDiv.style.width = '794px'; // A4 width in pixels at 96 DPI
+      tempDiv.style.width = '210mm'; // A4 width
+      tempDiv.style.maxWidth = '210mm';
       tempDiv.style.backgroundColor = 'white';
-      tempDiv.style.padding = '40px';
+      tempDiv.style.padding = '20mm';
       tempDiv.style.fontFamily = 'Arial, sans-serif';
-      tempDiv.style.fontSize = '14px'; // Increased font size
-      tempDiv.style.lineHeight = '1.6';
+      tempDiv.style.fontSize = '12px';
+      tempDiv.style.lineHeight = '1.5';
       tempDiv.style.color = 'black';
-      tempDiv.style.minHeight = '400px'; // Ensure minimum height
+      tempDiv.style.wordWrap = 'break-word';
+      tempDiv.style.overflow = 'visible';
       
       document.body.appendChild(tempDiv);
       
       // Wait for content to render
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Increased wait time
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      const contentHeight = tempDiv.scrollHeight;
-      console.log('Content rendered. Height:', contentHeight, 'px');
-      console.log('TempDiv innerHTML length:', tempDiv.innerHTML.length);
-      console.log('TempDiv text content:', tempDiv.textContent?.substring(0, 200));
+      console.log('Content rendered for PDF generation');
+      console.log('Text content preview:', tempDiv.textContent?.substring(0, 200));
 
-      // Ensure we have a minimum content height
-      const minContentHeight = Math.max(contentHeight, 800);
-      console.log('Using content height:', minContentHeight, 'px');
-
-      // Step 3: Create PDF with proper page handling
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'px',
-        format: 'a4'
-      });
-
-      const pageHeight = 1123; // A4 height in pixels
-      const pageWidth = 794; // A4 width in pixels
-      let yPosition = 0;
-      let pageNumber = 0;
-      
-      while (yPosition < minContentHeight) {
-        console.log(`Processing page ${pageNumber + 1}, yPosition: ${yPosition}`);
+      try {
+        // Use jsPDF's built-in HTML to PDF conversion
+        await pdf.html(tempDiv, {
+          callback: () => {
+            console.log('PDF generation completed using jsPDF HTML method');
+          },
+          x: 0,
+          y: 0,
+          width: 210, // A4 width in mm
+          windowWidth: 794, // Viewport width for rendering
+          margin: [20, 20, 20, 20], // top, right, bottom, left margins in mm
+        });
+      } catch (htmlError) {
+        console.warn('HTML method failed, falling back to manual method:', htmlError);
         
-        // Create a clipped version for this page
-        const pageDiv = tempDiv.cloneNode(true) as HTMLElement;
-        pageDiv.style.position = 'absolute';
-        pageDiv.style.top = `-${yPosition}px`;
-        pageDiv.style.width = `${pageWidth}px`;
-        pageDiv.style.height = `${pageHeight}px`;
-        pageDiv.style.overflow = 'hidden';
+        // Fallback: Create canvas and convert to image
+        const canvas = await html2canvas(tempDiv, {
+          backgroundColor: 'white',
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          width: 794,
+          height: Math.max(tempDiv.scrollHeight, 1123),
+          logging: false
+        });
         
-        const wrapper = document.createElement('div');
-        wrapper.style.position = 'fixed';
-        wrapper.style.top = '-20000px';
-        wrapper.style.left = '-20000px';
-        wrapper.style.width = `${pageWidth}px`;
-        wrapper.style.height = `${pageHeight}px`;
-        wrapper.style.backgroundColor = 'white';
-        wrapper.appendChild(pageDiv);
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgWidth = 210; // A4 width in mm
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
         
-        document.body.appendChild(wrapper);
+        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
         
-        try {
-          // Convert this page to canvas
-          const canvas = await html2canvas(wrapper, {
-            backgroundColor: 'white',
-            scale: 1.0, // Reduced scale to avoid memory issues
-            useCORS: true,
-            allowTaint: true,
-            width: pageWidth,
-            height: pageHeight,
-            logging: true, // Enable logging to see what's happening
-            foreignObjectRendering: true // Better text rendering
-          });
+        // Handle multiple pages if content is too tall
+        if (imgHeight > 297) { // A4 height in mm
+          let yPosition = 297;
+          let pageNum = 1;
           
-          console.log(`Page ${pageNumber + 1} canvas created:`, canvas.width, 'x', canvas.height);
-          
-          // Check if canvas is blank by examining image data
-          const ctx = canvas.getContext('2d');
-          const imageData = ctx?.getImageData(0, 0, canvas.width, canvas.height);
-          const isBlank = imageData && imageData.data.every((val, i) => i % 4 === 3 ? val === 255 : val === 255);
-          console.log(`Page ${pageNumber + 1} canvas is blank:`, isBlank);
-          
-          // Add page to PDF
-          if (pageNumber > 0) {
+          while (yPosition < imgHeight && pageNum < 10) {
             pdf.addPage();
+            const remainingHeight = Math.min(297, imgHeight - yPosition);
+            
+            // Create a new canvas for this page section
+            const pageCanvas = document.createElement('canvas');
+            const pageCtx = pageCanvas.getContext('2d');
+            pageCanvas.width = canvas.width;
+            pageCanvas.height = (remainingHeight * canvas.width) / imgWidth;
+            
+            if (pageCtx) {
+              pageCtx.drawImage(
+                canvas,
+                0, (yPosition * canvas.width) / imgWidth,
+                canvas.width, pageCanvas.height,
+                0, 0,
+                canvas.width, pageCanvas.height
+              );
+              
+              const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+              pdf.addImage(pageImgData, 'JPEG', 0, 0, imgWidth, remainingHeight);
+            }
+            
+            yPosition += 297;
+            pageNum++;
           }
-          
-          const imgData = canvas.toDataURL('image/png', 0.95);
-          console.log(`Page ${pageNumber + 1} image data length:`, imgData.length);
-          pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
-          
-        } finally {
-          document.body.removeChild(wrapper);
-        }
-        
-        yPosition += pageHeight - 50;
-        pageNumber++;
-        
-        if (pageNumber > 50) {
-          console.warn('Document too large, stopping at 50 pages');
-          break;
         }
       }
-      
-      console.log(`PDF creation complete. Total pages: ${pageNumber}`);
 
       // Clean up
       document.body.removeChild(tempDiv);
