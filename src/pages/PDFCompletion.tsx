@@ -26,7 +26,6 @@ const PDFCompletionPage = () => {
   
   const [showOverlay, setShowOverlay] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const elementRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   useEffect(() => {
     // Check if mobile
@@ -81,13 +80,13 @@ const PDFCompletionPage = () => {
   }, [navigate, location.state]);
 
   const scrollToElement = (elementId: string) => {
-    const elementRef = elementRefs.current[elementId];
-    if (!elementRef) return;
+    const element = document.getElementById(`pdf-element-${elementId}`);
+    if (!element) return;
 
     const headerHeight = 80;
     const mobileBottomOffset = isMobile ? 140 : 0; // Account for mobile navigation
     
-    elementRef.scrollIntoView({
+    element.scrollIntoView({
       behavior: 'smooth',
       block: 'center',
       inline: 'nearest'
@@ -95,7 +94,7 @@ const PDFCompletionPage = () => {
     
     // Adjust for header and mobile navigation after scroll
     setTimeout(() => {
-      const rect = elementRef.getBoundingClientRect();
+      const rect = element.getBoundingClientRect();
       if (rect.top < headerHeight + 20 || (isMobile && rect.bottom > window.innerHeight - mobileBottomOffset)) {
         window.scrollBy({
           top: -50,
@@ -362,7 +361,7 @@ const PDFCompletionPage = () => {
                               {page.elements.map((element) => (
                                 <div
                                   key={element.id}
-                                  ref={(el) => elementRefs.current[element.id] = el}
+                                  id={`pdf-element-${element.id}`}
                                 >
                                      <InteractivePDFElement
                                        element={element}
@@ -462,7 +461,7 @@ const PDFCompletionPage = () => {
                           {page.elements.map((element) => (
                             <div
                               key={element.id}
-                              ref={(el) => elementRefs.current[element.id] = el}
+                              id={`pdf-element-${element.id}`}
                             >
                               <InteractivePDFElement
                                 element={element}
