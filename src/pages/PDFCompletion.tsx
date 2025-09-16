@@ -25,12 +25,16 @@ const PDFCompletionPage = () => {
   useEffect(() => {
     // Load data from sessionStorage
     const storedData = sessionStorage.getItem('pdfBuilderData');
+    console.log('Raw stored data:', storedData);
+    console.log('Navigation state:', location.state);
+    
     if (storedData) {
       try {
         const data = JSON.parse(storedData);
         let pagesData = data.pages || [];
         
         console.log('Pages data in completion:', pagesData);
+        console.log('First page background:', pagesData[0]?.backgroundImage);
         setPages(pagesData);
         
         // Collect all form elements from all pages
