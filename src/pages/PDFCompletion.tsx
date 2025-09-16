@@ -30,17 +30,7 @@ const PDFCompletionPage = () => {
         const data = JSON.parse(storedData);
         let pagesData = data.pages || [];
         
-        // If there was an uploaded file passed via navigation state
-        if (location.state?.uploadedFile) {
-          pagesData = pagesData.map((page: PDFPage) => ({
-            ...page,
-            // Only apply background to pages that originally had one
-            backgroundImage: page.backgroundImage ? location.state.uploadedFile : page.backgroundImage
-          }));
-        }
-        
         console.log('Pages data in completion:', pagesData);
-        console.log('Background image:', pagesData[0]?.backgroundImage);
         setPages(pagesData);
         
         // Collect all form elements from all pages
