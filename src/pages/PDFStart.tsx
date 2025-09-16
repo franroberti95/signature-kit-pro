@@ -54,45 +54,37 @@ const PDFStart = () => {
 
   const handleDocxUpload = async (file: File) => {
     try {
-      toast("Processing DOCX file...");
+      toast("Processing DOCX file...", { duration: 2000 });
       
-      // Show a helpful message for now since DOCX parsing requires backend processing
-      toast.error("DOCX support is coming soon! Please use PDF files for now.", {
-        duration: 5000
-      });
+      // Parse DOCX using client-side library
+      const { DocxParser } = await import('../utils/docxParser');
+      const parsedPages = await DocxParser.parseDocxFile(file);
       
-      // For now, create a placeholder page to show the user what would happen
-      const newPage = {
-        id: `page-${Date.now()}`,
+      // Create pages from the parsed DOCX
+      const newPages = parsedPages.map((parsedPage, index) => ({
+        id: `page-${Date.now()}-${index}`,
         format: "A4" as PDFFormat,
         elements: [],
-        // Don't store the file in sessionStorage, pass via navigation state
-        isDocxPlaceholder: true
-      };
+        backgroundImage: parsedPage.imageData, // Use the page image as background
+      }));
       
       sessionStorage.setItem('pdfBuilderData', JSON.stringify({
-        pages: [newPage],
+        pages: newPages,
         activePage: 0,
         selectedFormat: "A4",
         hasUploadedFile: true,
         isDocx: true
       }));
       
-      navigate('/pdf-builder', { state: { uploadedFile: file, isDocx: true } });
+      toast(`DOCX "${file.name}" loaded successfully! ${newPages.length} pages created.`, { 
+        duration: 3000 
+      });
+      navigate('/pdf-builder', { state: { isDocx: true, parsedPages: newPages } });
       
     } catch (error) {
       console.error('Error processing DOCX:', error);
-      toast.error("Failed to process DOCX file. Please try with a PDF instead.");
+      toast.error("Failed to process DOCX file. The file might be corrupted or password protected.");
     }
-  };
-
-  // Helper function would be used for actual parsing in the future
-  const parseDocument = async (file: File) => {
-    // Future implementation would:
-    // 1. Copy file to user-uploads using lov-copy tool
-    // 2. Use document--parse_document tool to extract pages
-    // 3. Return page screenshots as data URLs
-    return null;
   };
 
   return (

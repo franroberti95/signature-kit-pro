@@ -21,10 +21,12 @@ const PDFBuilderPage = () => {
         const data = JSON.parse(storedData);
         let pagesData = data.pages || [];
         
-        // If there was an uploaded file passed via navigation state
-        if (location.state?.uploadedFile && data.hasUploadedFile) {
+        // Handle parsed DOCX pages
+        if (location.state?.isDocx && location.state?.parsedPages) {
+          pagesData = location.state.parsedPages;
+        } else if (location.state?.uploadedFile && data.hasUploadedFile) {
           if (location.state?.isDocx) {
-            // Handle DOCX files - add placeholder flag
+            // This shouldn't happen anymore with proper parsing, but keep as fallback
             pagesData = pagesData.map((page: PDFPage) => ({
               ...page,
               backgroundImage: location.state.uploadedFile,
@@ -37,11 +39,6 @@ const PDFBuilderPage = () => {
               backgroundImage: location.state.uploadedFile
             }));
           }
-        }
-        
-        // Handle parsed DOCX pages
-        if (location.state?.isDocx && location.state?.parsedPages) {
-          pagesData = location.state.parsedPages;
         }
         
         setPages(pagesData);

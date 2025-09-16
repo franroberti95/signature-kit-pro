@@ -205,12 +205,21 @@ const PDFCompletionPage = () => {
                           
                           <div className="relative bg-white shadow-lg rounded-lg overflow-hidden" style={{ minHeight: '750px' }}>
                             {page.backgroundImage ? (
-                              <PDFRenderer
-                                fileUrl={page.backgroundImage}
-                                width={600}
-                                height={750}
-                                className="w-full"
-                              />
+                              typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
+                                // Rendered DOCX page as image
+                                <img 
+                                  src={page.backgroundImage}
+                                  alt={`Page ${pageIndex + 1}`}
+                                  className="w-full h-full object-contain bg-white"
+                                />
+                              ) : (
+                                <PDFRenderer
+                                  fileUrl={page.backgroundImage}
+                                  width={600}
+                                  height={750}
+                                  className="w-full"
+                                />
+                              )
                             ) : (
                               <div className="w-full h-[750px] bg-white border border-gray-200 rounded flex items-center justify-center">
                                 <div className="text-center text-muted-foreground">
