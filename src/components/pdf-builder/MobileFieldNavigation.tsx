@@ -69,7 +69,6 @@ export const MobileFieldNavigation = ({
       case 'signature':
         return (
           <div className="p-4 bg-background border-t">
-            <p className="text-sm font-medium mb-3">Draw your signature:</p>
             <SignatureCanvas
               width={280}
               height={120}
@@ -82,7 +81,6 @@ export const MobileFieldNavigation = ({
       case 'date':
         return (
           <div className="p-4 bg-background border-t">
-            <p className="text-sm font-medium mb-3">Select date:</p>
             <DatePicker
               value={typeof localValue === 'string' ? localValue : ''}
               onChange={(date) => {
@@ -117,15 +115,14 @@ export const MobileFieldNavigation = ({
       case 'text':
         return (
           <div className="p-4 bg-background border-t">
-            <p className="text-sm font-medium mb-3">Enter text:</p>
             <Textarea
               value={typeof localValue === 'string' ? localValue : ''}
               onChange={(e) => {
                 setLocalValue(e.target.value);
                 onFieldUpdate(currentElement.id, e.target.value);
               }}
-              placeholder={currentElement.placeholder || ''}
-              className="min-h-[80px]"
+              placeholder=""
+              className="min-h-[80px] bg-card text-foreground border-input"
             />
           </div>
         );
@@ -133,7 +130,6 @@ export const MobileFieldNavigation = ({
       default:
         return (
           <div className="p-4 bg-background border-t">
-            <p className="text-sm font-medium mb-3">Enter value:</p>
             <Input
               type="text"
               value={typeof localValue === 'string' ? localValue : ''}
@@ -141,7 +137,8 @@ export const MobileFieldNavigation = ({
                 setLocalValue(e.target.value);
                 onFieldUpdate(currentElement.id, e.target.value);
               }}
-              placeholder={currentElement.placeholder || ''}
+              placeholder=""
+              className="bg-card text-foreground border-input"
             />
           </div>
         );
@@ -150,47 +147,32 @@ export const MobileFieldNavigation = ({
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-50 md:max-h-64">
-      {/* Field Editor - Always shown */}
+      {/* Progress Bar at Top */}
+      <div className="px-4 py-2 border-b bg-muted/50">
+        <div className="max-w-sm mx-auto md:max-w-lg">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+            <span>Field {currentIndex + 1} of {elements.length}</span>
+            <span>{Math.round(progress)}%</span>
+          </div>
+          <Progress value={progress} className="h-1" />
+        </div>
+      </div>
+
+      {/* Field Editor */}
       {renderFieldEditor()}
       
       {/* Navigation Panel */}
-      <div className="p-4">
-        <div className="max-w-sm mx-auto space-y-3 md:max-w-lg">
-          {/* Progress */}
-          <div className="text-center">
-            <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
-              <span>Field {currentIndex + 1} of {elements.length}</span>
-              <span>{Math.round(progress)}% complete</span>
-            </div>
-            <Progress value={progress} className="h-2" />
-          </div>
-
+      <div className="p-3">
+        <div className="max-w-sm mx-auto md:max-w-lg">
           {/* Current Field Info */}
           {currentElement && (
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2">
-                <p className="text-sm font-medium capitalize">
-                  {currentElement.type}
-                  {formData[currentElement.id] && formData[currentElement.id] !== false && (
-                    <Check className="inline w-4 h-4 ml-1 text-green-500" />
-                  )}
-                </p>
-              </div>
-              {currentElement.placeholder && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {currentElement.placeholder}
-                </p>
-              )}
-              {formData[currentElement.id] && formData[currentElement.id] !== false && (
-                <p className="text-xs text-green-600 mt-1">
-                  {currentElement.type === 'checkbox' 
-                    ? 'Checked' 
-                    : currentElement.type === 'signature' 
-                      ? 'Signature added'
-                      : `"${String(formData[currentElement.id]).substring(0, 30)}${String(formData[currentElement.id]).length > 30 ? '...' : ''}"`
-                  }
-                </p>
-              )}
+            <div className="text-center mb-3">
+              <p className="text-sm font-medium capitalize">
+                {currentElement.type}
+                {formData[currentElement.id] && formData[currentElement.id] !== false && (
+                  <Check className="inline w-4 h-4 ml-1 text-green-500" />
+                )}
+              </p>
             </div>
           )}
 
