@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Canvas as FabricCanvas } from "fabric";
+import { Canvas as FabricCanvas, PencilBrush } from "fabric";
 import { Button } from "@/components/ui/button";
 import { Eraser, Trash2, Check } from "lucide-react";
 
@@ -32,9 +32,11 @@ export const SignatureCanvas = ({
     // Enable drawing mode
     canvas.isDrawingMode = true;
     
-    // Configure the brush using Fabric.js v6 syntax
-    canvas.freeDrawingBrush.color = "#000000";
-    canvas.freeDrawingBrush.width = 2;
+    // Create and configure the brush using Fabric.js v6 syntax
+    const brush = new PencilBrush(canvas);
+    brush.color = "#000000";
+    brush.width = 2;
+    canvas.freeDrawingBrush = brush;
 
     // Track when drawing happens
     canvas.on('path:created', () => {
