@@ -94,10 +94,16 @@ const PDFCompletionPage = () => {
         }
         isFirstPage = false;
         
-        // Add page background if it's an image (DOCX)
-        if (page.backgroundImage && typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/')) {
-          // Compress and add the background image
-          pdf.addImage(page.backgroundImage, 'JPEG', 0, 0, pageWidth, pageHeight, undefined, 'MEDIUM');
+        // Add page background
+        if (page.backgroundImage) {
+          if (typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/')) {
+            // DOCX background image - compress it
+            pdf.addImage(page.backgroundImage, 'JPEG', 0, 0, pageWidth, pageHeight, undefined, 'MEDIUM');
+          } else if (typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('blob:')) {
+            // PDF background - we need to render it differently since we can't directly add PDF to PDF
+            // For now, add a placeholder or skip background for PDF files
+            console.log('PDF background detected, skipping for lightweight download');
+          }
         }
         
         // Add form fields as text overlays (much lighter than images)
@@ -108,13 +114,25 @@ const PDFCompletionPage = () => {
             const x = (element.x / 595) * pageWidth; // 595 is A4 width in pixels
             const y = (element.y / 842) * pageHeight; // 842 is A4 height in pixels
             
-            pdf.setFontSize(12); // Default font size
-            pdf.setTextColor(0, 0, 0);
-            
-            if (element.type === 'checkbox' && value === true) {
+            if (element.type === 'signature' && typeof value === 'string' && value.startsWith('data:image/')) {
+              // Handle signature as image
+              try {
+                const imgWidth = (element.width || 100) * pageWidth / 595;
+                const imgHeight = (element.height || 50) * pageHeight / 842;
+                pdf.addImage(value, 'PNG', x, y, imgWidth, imgHeight);
+              } catch (error) {
+                console.error('Error adding signature:', error);
+                pdf.setFontSize(10);
+                pdf.text('[Signature]', x, y + 4);
+              }
+            } else if (element.type === 'checkbox' && value === true) {
+              pdf.setFontSize(12);
+              pdf.setTextColor(0, 0, 0);
               pdf.text('☑', x, y + 4);
             } else if (typeof value === 'string' && value.trim()) {
-              // Handle multi-line text
+              // Handle regular text
+              pdf.setFontSize(12);
+              pdf.setTextColor(0, 0, 0);
               const lines = pdf.splitTextToSize(value, (element.width || 100) * pageWidth / 595);
               pdf.text(lines, x, y + 4);
             }
@@ -143,15 +161,7 @@ const PDFCompletionPage = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-semibold mb-4">Debug Info</h2>
-          <p className="text-muted-foreground mb-2">Pages found: {pages.length}</p>
-          <p className="text-muted-foreground mb-2">Elements found: {allElements.length}</p>
-          {pages.length > 0 && (
-            <div className="mb-4">
-              <p className="text-sm">First page background: {String(pages[0]?.backgroundImage).substring(0, 50)}...</p>
-              <p className="text-sm">Background type: {typeof pages[0]?.backgroundImage}</p>
-            </div>
-          )}
+          <h2 className="text-2xl font-semibold mb-4">No form elements found</h2>
           <p className="text-muted-foreground mb-4">Please go back and add some form elements to your PDF.</p>
           <Button onClick={() => navigate('/pdf-builder')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -242,18 +252,8 @@ const PDFCompletionPage = () => {
                                    alt={`Page ${pageIndex + 1}`}
                                    className="w-full h-full object-contain bg-white"
                                  />
-                               ) : typeof page.backgroundImage === 'string' && (page.backgroundImage.startsWith('blob:') || page.backgroundImage.startsWith('http')) ? (
-                                 // Blob URL or HTTP URL for PDF
-                                 <PDFRenderer
-                                   key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
-                                   fileUrl={page.backgroundImage}
-                                   width={600}
-                                   height={750}
-                                   pageNumber={pageIndex + 1}
-                                   className="w-full"
-                                 />
-                               ) : typeof page.backgroundImage === 'string' && (page.backgroundImage.startsWith('blob:') || page.backgroundImage.startsWith('http')) ? (
-                                 // Blob URL or HTTP URL for PDF
+                               ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('blob:') ? (
+                                 // Blob URL for PDF
                                  <PDFRenderer
                                    key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
                                    fileUrl={page.backgroundImage}
@@ -263,45 +263,34 @@ const PDFCompletionPage = () => {
                                    className="w-full"
                                  />
                                ) : page.backgroundImage instanceof File ? (
-                                 // File object (PDF or other file)
-                                 <PDFRenderer
-                                   key={`pdf-page-${pageIndex}-${page.backgroundImage.name}`}
-                                   fileUrl={page.backgroundImage}
-                                   width={600}
-                                   height={750}
-                                   pageNumber={pageIndex + 1}
-                                   className="w-full"
-                                 />
-                               ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('/') ? (
-                                 // PDF file path - create a new URL for each page
-                                 <PDFRenderer
-                                   key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
-                                   fileUrl={`${page.backgroundImage}#page=${pageIndex + 1}`}
-                                   width={600}
-                                   height={750}
-                                   pageNumber={pageIndex + 1}
-                                   className="w-full"
-                                 />
-                               ) : (
-                                 // Other string format
-                                 <PDFRenderer
-                                   key={`pdf-page-${pageIndex}`}
-                                   fileUrl={page.backgroundImage}
-                                   width={600}
-                                   height={750}
-                                   pageNumber={pageIndex + 1}
-                                   className="w-full"
-                                 />
-                               )
-                             ) : (
-                               <div className="w-full h-[750px] bg-white border border-gray-200 rounded flex items-center justify-center">
-                                 <div className="text-center text-muted-foreground">
-                                   <p>Page {pageIndex + 1}</p>
-                                   <p className="text-sm">No background image</p>
-                                 </div>
-                               </div>
-                             )}
-                            
+                                  // File object (PDF or other file)
+                                  <PDFRenderer
+                                    key={`pdf-page-${pageIndex}-${page.backgroundImage.name}`}
+                                    fileUrl={page.backgroundImage}
+                                    width={600}
+                                    height={750}
+                                    pageNumber={pageIndex + 1}
+                                    className="w-full"
+                                  />
+                                ) : (
+                                  // Other string format
+                                  <PDFRenderer
+                                    key={`pdf-page-${pageIndex}`}
+                                    fileUrl={page.backgroundImage}
+                                    width={600}
+                                    height={750}
+                                    pageNumber={pageIndex + 1}
+                                    className="w-full"
+                                  />
+                                )
+                              ) : (
+                                <div className="w-full h-[750px] bg-white border border-gray-200 rounded flex items-center justify-center">
+                                  <div className="text-center text-muted-foreground">
+                                    <p>Page {pageIndex + 1}</p>
+                                    <p className="text-sm">No background image</p>
+                                  </div>
+                                </div>
+                              )}
                             {/* Interactive Elements Overlay */}
                             {page.elements.map((element) => (
                               <InteractivePDFElement
