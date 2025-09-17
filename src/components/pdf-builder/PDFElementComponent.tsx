@@ -126,7 +126,7 @@ export const PDFElementComponent = ({
     // Calculate font size based on container height (like DocuSeal)
     const minFontSize = 8;
     const maxFontSize = 24;
-    const calculatedFontSize = Math.max(minFontSize, Math.min(maxFontSize, (element.height * scale) * 0.4));
+    const calculatedFontSize = Math.max(minFontSize, Math.min(maxFontSize, (element.height * scale) * 0.8));
     
     const baseClasses = "w-full h-full border-2 border-dashed border-muted-foreground/40 bg-white/80 flex items-start justify-start text-muted-foreground font-medium p-0 leading-none";
     const fontSize = `${calculatedFontSize}px`;
