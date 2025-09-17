@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, ZoomIn, ZoomOut } from "lucide-react";
 import { PDFPage, PDFElement, ElementType } from "./PDFBuilder";
 import { PDFElementComponent } from "./PDFElementComponent";
 import { PDFRenderer } from "./PDFRenderer";
@@ -37,6 +37,7 @@ export const PDFCanvas = ({
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [selectedPage, setSelectedPage] = useState<number>(0);
   const [isDragOver, setIsDragOver] = useState<{ [key: number]: boolean }>({});
+  const [scale, setScale] = useState(1.0);
 
   const getPageDimensions = (format: string) => {
     switch (format) {
@@ -51,7 +52,7 @@ export const PDFCanvas = ({
     }
   };
 
-  const scale = 1.0; // Scale factor for display
+  
 
   const handleDragOver = useCallback((e: React.DragEvent, pageIndex: number) => {
     e.preventDefault();
@@ -130,6 +131,28 @@ export const PDFCanvas = ({
           </div>
         </div>
         
+        {/* Zoom Controls */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setScale(prev => Math.max(0.5, prev - 0.1))}
+            disabled={scale <= 0.5}
+          >
+            <ZoomOut className="w-4 h-4" />
+          </Button>
+          <span className="text-sm text-muted-foreground min-w-[60px] text-center">
+            {Math.round(scale * 100)}%
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setScale(prev => Math.min(2.0, prev + 0.1))}
+            disabled={scale >= 2.0}
+          >
+            <ZoomIn className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Canvas Area - All Pages Stacked */}

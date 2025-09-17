@@ -128,7 +128,7 @@ export const PDFElementComponent = ({
     const maxFontSize = 24;
     const calculatedFontSize = Math.max(minFontSize, Math.min(maxFontSize, (element.height * scale) * 0.4));
     
-    const baseClasses = "w-full h-full border-2 border-dashed border-muted-foreground/40 bg-white/80 flex items-center justify-start text-muted-foreground font-medium";
+    const baseClasses = "w-full h-full border-2 border-dashed border-muted-foreground/40 bg-white/80 flex items-center justify-start text-muted-foreground font-medium p-0";
     const fontSize = `${calculatedFontSize}px`;
     
     switch (element.type) {
