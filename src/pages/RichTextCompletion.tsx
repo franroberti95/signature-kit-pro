@@ -18,6 +18,11 @@ interface VariableType {
   type: 'text' | 'textarea' | 'signature' | 'date';
 }
 
+interface RichTextPDFPage extends PDFPage {
+  richTextContent?: string;
+  richTextVariables?: VariableType[];
+}
+
 const RichTextCompletionPage = () => {
   // Convert rich text data to PDF-like format for the completion component
   const validateRichTextData = (data: any) => {
@@ -48,7 +53,7 @@ const RichTextCompletionPage = () => {
     });
 
     // Create a virtual page that represents the rich text document as an image/background
-    const virtualPage: PDFPage = {
+    const virtualPage: RichTextPDFPage = {
       id: page.id || 'rich-text-page',
       format: data.selectedFormat || 'A4',
       elements,
@@ -102,7 +107,7 @@ const RichTextCompletionPage = () => {
     const { jsPDF } = await import('jspdf');
     const html2canvas = (await import('html2canvas')).default;
     
-    const page = pages[0];
+    const page = pages[0] as RichTextPDFPage;
     const richTextContent = page.richTextContent || "";
     const richTextVariables = page.richTextVariables || [];
     

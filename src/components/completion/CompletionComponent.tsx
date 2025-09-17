@@ -434,7 +434,7 @@ export const CompletionComponent = ({
                           ))}
                         </div>
                       </div>
-                    )))}
+                    ))}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center h-[495px] text-muted-foreground">
