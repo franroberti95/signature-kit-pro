@@ -200,9 +200,10 @@ const PDFCompletionPage = () => {
         for (const element of page.elements) {
           const value = formData[element.id];
           if (value && String(value) !== 'false') {
-            // Calculate position (convert from pixels to PDF coordinates)
+            // Calculate position - convert from canvas pixels to PDF points
+            // The canvas shows A4 as 595x842 points, so we use direct proportion
             const x = (element.x / 595) * width;
-            const y = height - ((element.y + (element.height || 20)) / 842) * height; // PDF coordinates are bottom-up
+            const y = height - ((element.y + 12) / 842) * height; // Adjust for text baseline, PDF coordinates are bottom-up
             
             if (element.type === 'signature' && typeof value === 'string' && value.startsWith('data:image/')) {
               try {
