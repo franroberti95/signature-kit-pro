@@ -6,10 +6,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { SignatureCanvas } from "@/components/pdf-builder/SignatureCanvas";
+import { DatePicker } from "@/components/pdf-builder/DatePicker";
 import { toast } from "sonner";
 import { ArrowLeft, Download, FileCheck, Stethoscope } from "lucide-react";
 
 interface FormData {
+  [variable: string]: string;
+}
+
+interface SignatureData {
   [variable: string]: string;
 }
 
@@ -18,6 +24,7 @@ const RichTextCompletionPage = () => {
   const [content, setContent] = useState("");
   const [variables, setVariables] = useState<string[]>([]);
   const [formData, setFormData] = useState<FormData>({});
+  const [signatures, setSignatures] = useState<SignatureData>({});
   const [selectedFormat, setSelectedFormat] = useState("A4");
 
   useEffect(() => {
@@ -57,6 +64,17 @@ const RichTextCompletionPage = () => {
     }));
   };
 
+  const handleSignatureComplete = (variable: string, signature: string) => {
+    setSignatures(prev => ({
+      ...prev,
+      [variable]: signature
+    }));
+    setFormData(prev => ({
+      ...prev,
+      [variable]: 'Signature provided'
+    }));
+  };
+
   const getCompletedVariables = () => {
     return variables.filter(variable => formData[variable]?.trim()).length;
   };
@@ -69,7 +87,15 @@ const RichTextCompletionPage = () => {
   const generatePreviewContent = () => {
     let previewContent = content;
     variables.forEach(variable => {
-      const value = formData[variable] || `[${variable}]`;
+      let value = formData[variable] || `[${variable}]`;
+      
+      // Special handling for signatures and dates
+      if (variable.toLowerCase().includes('signature') && signatures[variable]) {
+        value = '<img src="' + signatures[variable] + '" style="max-height: 50px; border: 1px solid #ccc;" alt="Signature" />';
+      } else if (variable.toLowerCase().includes('date') && formData[variable]) {
+        value = new Date(formData[variable]).toLocaleDateString();
+      }
+      
       const regex = new RegExp(`{{${variable}}}`, 'g');
       previewContent = previewContent.replace(regex, `<span style="background-color: #e3f2fd; padding: 2px 4px; border-radius: 3px; font-weight: bold;">${value}</span>`);
     });
@@ -86,6 +112,7 @@ const RichTextCompletionPage = () => {
       }
 
       const { jsPDF } = await import('jspdf');
+      const html2canvas = (await import('html2canvas')).default;
       
       // Create PDF with appropriate size
       let pdfFormat: any = 'a4';
@@ -98,27 +125,80 @@ const RichTextCompletionPage = () => {
         format: pdfFormat
       });
 
-      // Replace variables with actual values
+      // Create a temporary div with the final content
+      const tempDiv = document.createElement('div');
+      tempDiv.style.width = '800px';
+      tempDiv.style.padding = '40px';
+      tempDiv.style.backgroundColor = 'white';
+      tempDiv.style.fontFamily = 'system-ui, sans-serif';
+      tempDiv.style.lineHeight = '1.6';
+      tempDiv.style.fontSize = '14px';
+      
+      // Replace variables with actual values including signatures
       let finalContent = content;
       variables.forEach(variable => {
-        const value = formData[variable] || '';
+        let value = formData[variable] || '';
+        
+        if (variable.toLowerCase().includes('signature') && signatures[variable]) {
+          value = `<img src="${signatures[variable]}" style="max-height: 50px; border: 1px solid #ccc;" alt="Signature" />`;
+        } else if (variable.toLowerCase().includes('date') && formData[variable]) {
+          value = new Date(formData[variable]).toLocaleDateString();
+        }
+        
         const regex = new RegExp(`{{${variable}}}`, 'g');
         finalContent = finalContent.replace(regex, value);
       });
-
-      // Convert HTML to text for PDF (simple conversion)
-      const tempDiv = document.createElement('div');
+      
       tempDiv.innerHTML = finalContent;
-      const textContent = tempDiv.textContent || tempDiv.innerText || '';
+      document.body.appendChild(tempDiv);
+
+      // Convert HTML to canvas
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true
+      });
       
-      // Add content to PDF
+      // Remove temp div
+      document.body.removeChild(tempDiv);
+      
+      // Add canvas to PDF
+      const imgData = canvas.toDataURL('image/png');
       const pageWidth = pdf.internal.pageSize.getWidth();
-      const margin = 20;
-      const maxWidth = pageWidth - (margin * 2);
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth - 20;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      pdf.setFontSize(12);
-      const splitText = pdf.splitTextToSize(textContent, maxWidth);
-      pdf.text(splitText, margin, margin);
+      let remainingHeight = imgHeight;
+      let yPosition = 10;
+      
+      // Handle multiple pages if content is too long
+      while (remainingHeight > 0) {
+        const canvasHeight = Math.min(remainingHeight, pageHeight - 20);
+        const canvasData = canvas.getContext('2d')?.getImageData(
+          0, 
+          imgHeight - remainingHeight, 
+          canvas.width, 
+          (canvasHeight * canvas.width) / imgWidth
+        );
+        
+        if (canvasData) {
+          const pageCanvas = document.createElement('canvas');
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = (canvasHeight * canvas.width) / imgWidth;
+          pageCanvas.getContext('2d')?.putImageData(canvasData, 0, 0);
+          
+          const pageImgData = pageCanvas.toDataURL('image/png');
+          pdf.addImage(pageImgData, 'PNG', 10, yPosition, imgWidth, canvasHeight);
+        }
+        
+        remainingHeight -= canvasHeight;
+        
+        if (remainingHeight > 0) {
+          pdf.addPage();
+          yPosition = 10;
+        }
+      }
 
       // Download
       pdf.save(`completed-document-${Date.now()}.pdf`);
@@ -130,8 +210,13 @@ const RichTextCompletionPage = () => {
   };
 
   const getFieldType = (variable: string) => {
+    const lowerVar = variable.toLowerCase();
     const textareaFields = ['medical_conditions', 'medications', 'allergies', 'treatment_description'];
-    return textareaFields.includes(variable) ? 'textarea' : 'input';
+    
+    if (lowerVar.includes('signature')) return 'signature';
+    if (lowerVar.includes('date')) return 'date';
+    if (textareaFields.includes(variable)) return 'textarea';
+    return 'input';
   };
 
   const formatVariableName = (variable: string) => {
@@ -212,7 +297,53 @@ const RichTextCompletionPage = () => {
                     <Label htmlFor={variable} className="text-sm font-medium">
                       {formatVariableName(variable)}
                     </Label>
-                    {getFieldType(variable) === 'textarea' ? (
+                    {getFieldType(variable) === 'signature' ? (
+                      <div className="space-y-2">
+                        {signatures[variable] ? (
+                          <div className="p-4 border rounded-lg bg-muted/50">
+                            <img 
+                              src={signatures[variable]} 
+                              alt="Signature" 
+                              className="max-h-16 border"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSignatures(prev => {
+                                  const newSigs = { ...prev };
+                                  delete newSigs[variable];
+                                  return newSigs;
+                                });
+                                setFormData(prev => ({
+                                  ...prev,
+                                  [variable]: ''
+                                }));
+                              }}
+                              className="mt-2"
+                            >
+                              Clear Signature
+                            </Button>
+                          </div>
+                        ) : (
+                          <SignatureCanvas
+                            width={300}
+                            height={120}
+                            onSignatureComplete={(signature) => handleSignatureComplete(variable, signature)}
+                            onCancel={() => {}}
+                          />
+                        )}
+                      </div>
+                    ) : getFieldType(variable) === 'date' ? (
+                      <div className="relative">
+                        <Input
+                          id={variable}
+                          type="date"
+                          value={formData[variable] || ''}
+                          onChange={(e) => handleInputChange(variable, e.target.value)}
+                        />
+                      </div>
+                    ) : getFieldType(variable) === 'textarea' ? (
                       <Textarea
                         id={variable}
                         placeholder={`Enter ${formatVariableName(variable).toLowerCase()}`}
