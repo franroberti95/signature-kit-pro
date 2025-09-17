@@ -10,7 +10,6 @@ const PDFBuilderPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [pages, setPages] = useState<PDFPage[]>([]);
-  const [activePage, setActivePage] = useState<number>(0);
   const [selectedFormat, setSelectedFormat] = useState<PDFFormat>("A4");
 
   useEffect(() => {
@@ -31,7 +30,6 @@ const PDFBuilderPage = () => {
         }
         
         setPages(pagesData);
-        setActivePage(data.activePage || 0);
         setSelectedFormat(data.selectedFormat || "A4");
       } catch (error) {
         console.error('Error parsing stored PDF builder data:', error);
@@ -59,9 +57,10 @@ const PDFBuilderPage = () => {
     };
 
     const updatedPages = [...pages];
-    updatedPages[activePage].elements.push(newElement);
+    // Add to the first page by default
+    updatedPages[0].elements.push(newElement);
     setPages(updatedPages);
-    updateStoredData(updatedPages, activePage);
+    updateStoredData(updatedPages);
     toast(`${type.charAt(0).toUpperCase() + type.slice(1)} field added`);
   };
 
@@ -74,7 +73,7 @@ const PDFBuilderPage = () => {
         ...updates,
       };
       setPages(updatedPages);
-      updateStoredData(updatedPages, activePage);
+      updateStoredData(updatedPages);
     }
   };
 
@@ -84,7 +83,7 @@ const PDFBuilderPage = () => {
       el => el.id !== elementId
     );
     setPages(updatedPages);
-    updateStoredData(updatedPages, activePage);
+    updateStoredData(updatedPages);
     toast("Element removed");
   };
 
@@ -95,18 +94,15 @@ const PDFBuilderPage = () => {
       elements: [],
     };
     const updatedPages = [...pages, newPage];
-    const newActivePage = pages.length;
     setPages(updatedPages);
-    setActivePage(newActivePage);
-    updateStoredData(updatedPages, newActivePage);
+    updateStoredData(updatedPages);
     toast("New page added");
   };
 
-  const updateStoredData = (updatedPages: PDFPage[], activePageIndex: number) => {
-    console.log('Updating stored data:', { pages: updatedPages, activePage: activePageIndex });
+  const updateStoredData = (updatedPages: PDFPage[]) => {
+    console.log('Updating stored data:', { pages: updatedPages });
     sessionStorage.setItem('pdfBuilderData', JSON.stringify({
       pages: updatedPages,
-      activePage: activePageIndex,
       selectedFormat
     }));
   };
@@ -129,12 +125,12 @@ const PDFBuilderPage = () => {
           <div>
             <h1 className="text-xl font-semibold text-foreground">PDF Builder</h1>
             <p className="text-sm text-muted-foreground">
-              {pages.length} {pages.length === 1 ? 'page' : 'pages'} • {pages[activePage]?.format}
+              {pages.length} {pages.length === 1 ? 'page' : 'pages'} • {selectedFormat}
             </p>
           </div>
             <Button onClick={() => {
               console.log('Navigating to completion with current pages:', pages);
-              updateStoredData(pages, activePage);
+              updateStoredData(pages);
               navigate('/pdf-completion');
             }} className="bg-green-600 hover:bg-green-700">
               Continue to Form Completion
@@ -146,14 +142,13 @@ const PDFBuilderPage = () => {
         <ToolbarPanel onAddElement={addElement} />
         <PDFCanvas
           pages={pages}
-          activePage={activePage}
           onUpdateElement={updateElement}
           onDeleteElement={deleteElement}
           onAddElement={(pageIndex, element) => {
             const updatedPages = [...pages];
             updatedPages[pageIndex].elements.push(element);
             setPages(updatedPages);
-            updateStoredData(updatedPages, activePage);
+            updateStoredData(updatedPages);
           }}
           onAddPage={addPage}
         />

@@ -1,7 +1,7 @@
-import PDFBuilder from "@/components/pdf-builder/PDFBuilder";
+import PDFStart from "./PDFStart";
 
 const Index = () => {
-  return <PDFBuilder />;
+  return <PDFStart />;
 };
 
 export default Index;

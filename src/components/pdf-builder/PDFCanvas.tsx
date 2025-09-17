@@ -8,7 +8,6 @@ import { toast } from "sonner";
 
 interface PDFCanvasProps {
   pages: PDFPage[];
-  activePage: number;
   onUpdateElement: (pageIndex: number, elementId: string, updates: Partial<PDFElement>) => void;
   onDeleteElement: (pageIndex: number, elementId: string) => void;
   onAddElement: (pageIndex: number, element: PDFElement) => void;
@@ -30,7 +29,6 @@ const getPageDimensions = (format: string) => {
 
 export const PDFCanvas = ({
   pages,
-  activePage,
   onUpdateElement,
   onDeleteElement,
   onAddElement,
@@ -140,9 +138,7 @@ export const PDFCanvas = ({
                 </div>
                 
                 {/* PDF Page */}
-                <div className={`relative bg-card shadow-lg rounded-lg overflow-hidden border border-pdf-border ${
-                  pageIndex === activePage ? 'ring-2 ring-primary ring-opacity-50' : ''
-                }`}>
+                <div className="relative bg-card shadow-lg rounded-lg overflow-hidden border border-pdf-border">
                   <div
                     className={`relative bg-white transition-all duration-200 ${
                       isPageDragOver ? "bg-drop-active ring-2 ring-primary" : ""

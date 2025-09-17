@@ -20,7 +20,6 @@ const PDFStart = () => {
     // Store in sessionStorage for the builder page
     sessionStorage.setItem('pdfBuilderData', JSON.stringify({
       pages: [newPage],
-      activePage: 0,
       selectedFormat: format
     }));
     
@@ -58,7 +57,6 @@ const PDFStart = () => {
         // Store in sessionStorage for the builder page
         sessionStorage.setItem('pdfBuilderData', JSON.stringify({
           pages: newPages,
-          activePage: 0,
           selectedFormat: "A4",
           hasUploadedFile: true,
           pdfBlobUrl: blobUrl,

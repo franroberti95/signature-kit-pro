@@ -44,7 +44,7 @@ const PDFCompletionPage = () => {
     if (storedData) {
       try {
         const data = JSON.parse(storedData);
-        let pagesData = data.pages || [];
+        const pagesData = data.pages || [];
         
         setPages(pagesData);
         
