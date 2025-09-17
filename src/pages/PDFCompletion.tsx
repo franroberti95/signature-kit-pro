@@ -204,7 +204,8 @@ const PDFCompletionPage = () => {
             const scaleX = width / 595;  // A4 width in points
             const scaleY = height / 842; // A4 height in points
             const x = element.x * scaleX;
-            const y = height - (element.y * scaleY) - (element.height * scaleY); // PDF coordinates are bottom-up
+            // For text, position at the top of the element (not bottom) to match preview
+            const y = height - (element.y * scaleY) - (element.type === 'text' || element.type === 'date' ? 12 : element.height * scaleY); // PDF coordinates are bottom-up
             
             if (element.type === 'signature' && typeof value === 'string' && value.startsWith('data:image/')) {
               try {
