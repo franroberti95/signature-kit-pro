@@ -78,7 +78,7 @@ export const PDFCanvas = ({
       x: Math.max(0, x - 75), // Center the element
       y: Math.max(0, y - 20),
       width: elementType === "checkbox" ? 20 : 150,
-      height: elementType === "text" || elementType === "select" ? 40 : elementType === "checkbox" ? 20 : 60,
+      height: elementType === "text" ? 40 : elementType === "checkbox" ? 20 : 60,
       required: false,
       placeholder: `Enter ${elementType}...`,
     };

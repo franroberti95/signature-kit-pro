@@ -48,12 +48,6 @@ const toolbarElements = [
     description: "Yes/No checkbox",
   },
   {
-    type: "select" as ElementType,
-    icon: ChevronDown,
-    label: "Dropdown",
-    description: "Multiple choice selection",
-  },
-  {
     type: "image" as ElementType,
     icon: Image,
     label: "Image",

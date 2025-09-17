@@ -53,20 +53,29 @@ const PDFCompletionPage = () => {
         pagesData.forEach((page: PDFPage) => {
           elements.push(...page.elements);
         });
-        setAllElements(elements);
+        // Filter out date elements from interactive elements (they're auto-filled)
+        const interactiveElements = elements.filter(element => element.type !== 'date');
+        setAllElements(interactiveElements);
         
         // Initialize form data
         const initialFormData: FormData = {};
         elements.forEach(element => {
-          initialFormData[element.id] = element.type === 'checkbox' ? false : '';
+          if (element.type === 'checkbox') {
+            initialFormData[element.id] = false;
+          } else if (element.type === 'date') {
+            // Auto-fill with current date
+            initialFormData[element.id] = new Date().toLocaleDateString();
+          } else {
+            initialFormData[element.id] = '';
+          }
         });
         setFormData(initialFormData);
         
-        // Focus first element if mobile
-        if (elements.length > 0) {
-          setActiveElement(elements[0].id);
+        // Focus first interactive element if mobile
+        if (interactiveElements.length > 0) {
+          setActiveElement(interactiveElements[0].id);
           if (window.innerWidth < 768) {
-            setTimeout(() => scrollToElement(elements[0].id), 300);
+            setTimeout(() => scrollToElement(interactiveElements[0].id), 300);
           }
         }
         
@@ -372,7 +381,7 @@ const PDFCompletionPage = () => {
                                     </div>
                                   </div>
                                 )}
-                              {/* Interactive Elements Overlay */}
+                               {/* Interactive Elements Overlay */}
                               {page.elements.map((element) => (
                                 <div
                                   key={element.id}
@@ -386,7 +395,7 @@ const PDFCompletionPage = () => {
                                        isActive={activeElement === element.id}
                                        onActivate={() => handleElementClick(element.id)}
                                        hideOverlay={!showOverlay}
-                                       isMobile={true}
+                                       isMobile={element.type !== 'date'} // Dates are not interactive
                                        showHighlight={activeElement === element.id}
                                      />
                                 </div>

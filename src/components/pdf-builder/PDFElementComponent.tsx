@@ -29,7 +29,6 @@ const elementIcons: Record<ElementType, any> = {
   signature: PenTool,
   date: Calendar,
   checkbox: CheckSquare,
-  select: ChevronDown,
   image: Image,
   richtext: FileText,
 };
@@ -105,13 +104,6 @@ export const PDFElementComponent = ({
         return (
           <div className={`${baseClasses} w-5 h-5 min-w-5 min-h-5`}>
             <CheckSquare className="w-3 h-3" />
-          </div>
-        );
-      case "select":
-        return (
-          <div className={baseClasses}>
-            <ChevronDown className="w-3 h-3 mr-1" />
-            Dropdown
           </div>
         );
       case "image":
@@ -219,17 +211,6 @@ export const PDFElementComponent = ({
               />
               <label className="text-xs text-foreground">Required field</label>
             </div>
-            {element.type === "select" && (
-              <div>
-                <label className="text-xs font-medium text-foreground">Options (one per line)</label>
-                <textarea
-                  value={(element.options || []).join('\n')}
-                  onChange={(e) => onUpdate({ options: e.target.value.split('\n').filter(Boolean) })}
-                  className="w-full text-xs p-2 border border-input rounded h-16 resize-none"
-                  placeholder="Option 1&#10;Option 2&#10;Option 3"
-                />
-              </div>
-            )}
           </div>
         </div>
       )}
