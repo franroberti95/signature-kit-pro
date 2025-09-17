@@ -20,6 +20,7 @@ interface PDFElementComponentProps {
   isSelected: boolean;
   onSelect: () => void;
   onDrag: (deltaX: number, deltaY: number) => void;
+  onResize: (deltaX: number, deltaY: number, deltaWidth: number, deltaHeight: number) => void;
   onUpdate: (updates: Partial<PDFElement>) => void;
   onDelete: () => void;
 }
@@ -38,12 +39,15 @@ export const PDFElementComponent = ({
   isSelected,
   onSelect,
   onDrag,
+  onResize,
   onUpdate,
   onDelete
 }: PDFElementComponentProps) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const resizeStart = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
   const elementRef = useRef<HTMLDivElement>(null);
 
   const IconComponent = elementIcons[element.type];
@@ -72,6 +76,67 @@ export const PDFElementComponent = ({
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleResizeMouseDown = (e: React.MouseEvent, corner: 'se' | 'sw' | 'ne' | 'nw') => {
+    e.stopPropagation();
+    e.preventDefault();
+    onSelect();
+    setIsResizing(true);
+    resizeStart.current = { 
+      x: e.clientX, 
+      y: e.clientY, 
+      width: element.width * scale, 
+      height: element.height * scale 
+    };
+
+    const handleResizeMove = (e: MouseEvent) => {
+      if (!resizeStart.current) return;
+      
+      const deltaX = e.clientX - resizeStart.current.x;
+      const deltaY = e.clientY - resizeStart.current.y;
+      
+      let newWidth = resizeStart.current.width;
+      let newHeight = resizeStart.current.height;
+      let newX = element.x * scale;
+      let newY = element.y * scale;
+
+      // Calculate new dimensions based on corner
+      switch (corner) {
+        case 'se': // bottom-right
+          newWidth = Math.max(20 * scale, resizeStart.current.width + deltaX);
+          newHeight = Math.max(15 * scale, resizeStart.current.height + deltaY);
+          break;
+        case 'sw': // bottom-left
+          newWidth = Math.max(20 * scale, resizeStart.current.width - deltaX);
+          newHeight = Math.max(15 * scale, resizeStart.current.height + deltaY);
+          newX = element.x * scale + deltaX;
+          break;
+        case 'ne': // top-right
+          newWidth = Math.max(20 * scale, resizeStart.current.width + deltaX);
+          newHeight = Math.max(15 * scale, resizeStart.current.height - deltaY);
+          newY = element.y * scale + deltaY;
+          break;
+        case 'nw': // top-left
+          newWidth = Math.max(20 * scale, resizeStart.current.width - deltaX);
+          newHeight = Math.max(15 * scale, resizeStart.current.height - deltaY);
+          newX = element.x * scale + deltaX;
+          newY = element.y * scale + deltaY;
+          break;
+      }
+
+      onResize(newX, newY, newWidth, newHeight);
+    };
+
+    const handleResizeUp = () => {
+      setIsResizing(false);
+      resizeStart.current = null;
+      document.removeEventListener('mousemove', handleResizeMove);
+      document.removeEventListener('mouseup', handleResizeUp);
+    };
+
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeUp);
   };
 
   const renderElementContent = () => {
@@ -126,7 +191,7 @@ export const PDFElementComponent = ({
       ref={elementRef}
       className={`absolute cursor-move group transition-all duration-100 ${
         isSelected ? "z-10" : "z-0"
-      } ${isDragging ? "opacity-80" : ""}`}
+      } ${isDragging || isResizing ? "opacity-80" : ""}`}
       style={{
         left: `${element.x * scale}px`,
         top: `${element.y * scale}px`,
@@ -146,10 +211,22 @@ export const PDFElementComponent = ({
       {isSelected && (
         <div className="absolute inset-0 border-2 border-primary rounded pointer-events-none">
           {/* Resize handles */}
-          <div className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full"></div>
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full"></div>
-          <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary rounded-full"></div>
-          <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary rounded-full"></div>
+          <div 
+            className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-nw-resize pointer-events-auto hover:bg-primary/80"
+            onMouseDown={(e) => handleResizeMouseDown(e, 'nw')}
+          ></div>
+          <div 
+            className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-ne-resize pointer-events-auto hover:bg-primary/80"
+            onMouseDown={(e) => handleResizeMouseDown(e, 'ne')}
+          ></div>
+          <div 
+            className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-sw-resize pointer-events-auto hover:bg-primary/80"
+            onMouseDown={(e) => handleResizeMouseDown(e, 'sw')}
+          ></div>
+          <div 
+            className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-se-resize pointer-events-auto hover:bg-primary/80"
+            onMouseDown={(e) => handleResizeMouseDown(e, 'se')}
+          ></div>
         </div>
       )}
 

@@ -96,6 +96,17 @@ export const PDFCanvas = ({
     });
   }, [scale, pages, onUpdateElement]);
 
+  const handleElementResize = useCallback((pageIndex: number, elementId: string, deltaX: number, deltaY: number, deltaWidth: number, deltaHeight: number) => {
+    const page = pages[pageIndex];
+    const pageDimensions = getPageDimensions(page?.format || "A4");
+    onUpdateElement(pageIndex, elementId, {
+      x: Math.max(0, Math.min(pageDimensions.width - deltaWidth / scale, deltaX / scale)),
+      y: Math.max(0, Math.min(pageDimensions.height - deltaHeight / scale, deltaY / scale)),
+      width: Math.max(20, Math.min(pageDimensions.width - deltaX / scale, deltaWidth / scale)),
+      height: Math.max(15, Math.min(pageDimensions.height - deltaY / scale, deltaHeight / scale)),
+    });
+  }, [scale, pages, onUpdateElement]);
+
 
   const totalElements = pages.reduce((sum, page) => sum + page.elements.length, 0);
 
@@ -192,6 +203,7 @@ export const PDFCanvas = ({
                           setSelectedPage(pageIndex);
                         }}
                         onDrag={(deltaX, deltaY) => handleElementDrag(pageIndex, element.id, deltaX, deltaY)}
+                        onResize={(deltaX, deltaY, deltaWidth, deltaHeight) => handleElementResize(pageIndex, element.id, deltaX, deltaY, deltaWidth, deltaHeight)}
                         onUpdate={(updates) => onUpdateElement(pageIndex, element.id, updates)}
                         onDelete={() => onDeleteElement(pageIndex, element.id)}
                       />
