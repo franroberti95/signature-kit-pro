@@ -52,15 +52,21 @@ const RichTextCompletionPage = () => {
       };
     });
 
-    // Create a virtual page that represents the rich text document as an image/background
+    // Create the preview image synchronously first, then update async
     const virtualPage: RichTextPDFPage = {
       id: page.id || 'rich-text-page',
       format: data.selectedFormat || 'A4',
       elements,
-      backgroundImage: createRichTextPreview(richTextContent, richTextVariables),
+      backgroundImage: '', // Will be populated async
       richTextContent,
       richTextVariables
     };
+
+    // Generate the actual preview asynchronously and update the page
+    createRichTextPreview(richTextContent, richTextVariables).then(imageUrl => {
+      virtualPage.backgroundImage = imageUrl;
+      // Force re-render by triggering a state update if possible
+    });
 
     return {
       pages: [virtualPage],
@@ -69,37 +75,101 @@ const RichTextCompletionPage = () => {
   };
 
   // Create a preview of the rich text content as a data URL
-  const createRichTextPreview = (content: string, variables: any[]) => {
-    // For now, we'll use a simple placeholder approach
-    // In a real implementation, you might want to render the HTML to canvas
-    let previewContent = content;
+  const createRichTextPreview = async (content: string, variables: any[]): Promise<string> => {
+    // Create a temporary container for rendering the rich text
+    const container = document.createElement('div');
+    container.style.cssText = `
+      position: absolute;
+      left: -9999px;
+      top: -9999px;
+      width: 794px;
+      min-height: 1123px;
+      padding: 40px;
+      background: white;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #333;
+      box-sizing: border-box;
+    `;
     
+    // Show the actual rich text content with variables as visible placeholders
+    let displayContent = content;
     variables.forEach((variable: any) => {
       const varName = typeof variable === 'object' ? variable.name : variable;
-      const regex = new RegExp(`{{${varName}}}`, 'g');
-      previewContent = previewContent.replace(regex, `[${varName}]`);
+      const placeholder = `<span style="background-color: #e3f2fd; border: 1px dashed #1976d2; padding: 2px 6px; border-radius: 3px; display: inline-block; min-width: 80px; text-align: center; font-weight: 500;">[${varName}]</span>`;
+      displayContent = displayContent.replace(new RegExp(`{{${varName}}}`, 'g'), placeholder);
     });
-
-    // Convert HTML string to data URL (simplified approach)
-    const canvas = document.createElement('canvas');
-    canvas.width = 595; // A4 width in points
-    canvas.height = 842; // A4 height in points
-    const ctx = canvas.getContext('2d');
     
-    if (ctx) {
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Simple text rendering (in a real app, you'd use html2canvas or similar)
-      ctx.fillStyle = 'black';
-      ctx.font = '12px Arial';
-      const lines = previewContent.replace(/<[^>]*>/g, '').split('\n');
-      lines.forEach((line, index) => {
-        ctx.fillText(line.substring(0, 80), 40, 60 + index * 20);
+    // Add proper styling for rich text elements
+    const styledContent = `
+      <div style="width: 100%; height: 100%; overflow: hidden;">
+        <style>
+          .ql-editor { padding: 0 !important; }
+          .ql-editor p { margin-bottom: 1em; }
+          .ql-editor h1 { font-size: 2em; font-weight: bold; margin-bottom: 0.5em; margin-top: 1em; }
+          .ql-editor h2 { font-size: 1.5em; font-weight: bold; margin-bottom: 0.5em; margin-top: 1em; }
+          .ql-editor h3 { font-size: 1.2em; font-weight: bold; margin-bottom: 0.5em; margin-top: 1em; }
+          .ql-editor ul, .ql-editor ol { margin-bottom: 1em; padding-left: 1.5em; }
+          .ql-editor li { margin-bottom: 0.25em; }
+          .ql-editor strong { font-weight: bold; }
+          .ql-editor em { font-style: italic; }
+          .ql-editor u { text-decoration: underline; }
+          .ql-editor blockquote { border-left: 4px solid #ccc; padding-left: 1em; margin: 1em 0; }
+        </style>
+        <div class="ql-editor">${displayContent}</div>
+      </div>
+    `;
+    
+    container.innerHTML = styledContent;
+    document.body.appendChild(container);
+    
+    try {
+      // Use html2canvas to render the content
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(container, {
+        backgroundColor: '#ffffff',
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: true,
+        width: 794,
+        height: 1123,
       });
+      
+      // Convert to data URL
+      const dataUrl = canvas.toDataURL('image/png', 0.9);
+      
+      // Clean up
+      document.body.removeChild(container);
+      
+      return dataUrl;
+    } catch (error) {
+      console.error('Error creating preview:', error);
+      document.body.removeChild(container);
+      
+      // Fallback to a simple canvas approach
+      const canvas = document.createElement('canvas');
+      canvas.width = 794;
+      canvas.height = 1123;
+      const ctx = canvas.getContext('2d');
+      
+      if (ctx) {
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = 'black';
+        ctx.font = '14px Arial';
+        const textContent = content.replace(/<[^>]*>/g, '').substring(0, 500);
+        const lines = textContent.split('\n');
+        lines.forEach((line, index) => {
+          if (index < 40) {
+            ctx.fillText(line.substring(0, 70), 40, 60 + index * 20);
+          }
+        });
+      }
+      
+      return canvas.toDataURL();
     }
-    
-    return canvas.toDataURL();
   };
 
   // Rich text specific download handler
