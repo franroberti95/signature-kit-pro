@@ -190,8 +190,12 @@ export const PDFElementComponent = ({
               <Input
                 value={element.placeholder || ""}
                 onChange={(e) => onUpdate({ placeholder: e.target.value })}
+                onMouseDown={(e) => e.stopPropagation()}
+                onMouseUp={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
                 className="text-xs h-7"
                 placeholder="Enter placeholder text"
+                autoFocus
               />
             </div>
             <div className="flex items-center gap-2">
