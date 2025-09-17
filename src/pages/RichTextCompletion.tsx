@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { SignatureCanvas } from "@/components/pdf-builder/SignatureCanvas";
-import { DatePicker } from "@/components/pdf-builder/DatePicker";
 import { toast } from "sonner";
 import { ArrowLeft, Download, FileCheck, Stethoscope } from "lucide-react";
 
@@ -31,6 +30,8 @@ const RichTextCompletionPage = () => {
   const [formData, setFormData] = useState<FormData>({});
   const [signatures, setSignatures] = useState<SignatureData>({});
   const [selectedFormat, setSelectedFormat] = useState("A4");
+  const [editingVariable, setEditingVariable] = useState<VariableType | null>(null);
+  const [showFieldModal, setShowFieldModal] = useState(false);
 
   useEffect(() => {
     // Load data from sessionStorage
@@ -88,22 +89,31 @@ const RichTextCompletionPage = () => {
     return 'text';
   };
 
-  const handleInputChange = (variable: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [variable]: value
-    }));
+  const handleVariableClick = (variable: VariableType) => {
+    setEditingVariable(variable);
+    setShowFieldModal(true);
   };
 
-  const handleSignatureComplete = (variable: string, signature: string) => {
-    setSignatures(prev => ({
-      ...prev,
-      [variable]: signature
-    }));
-    setFormData(prev => ({
-      ...prev,
-      [variable]: 'Signature provided'
-    }));
+  const handleFieldSave = (value: string | boolean) => {
+    if (editingVariable) {
+      if (editingVariable.type === 'signature') {
+        setSignatures(prev => ({
+          ...prev,
+          [editingVariable.name]: value as string
+        }));
+        setFormData(prev => ({
+          ...prev,
+          [editingVariable.name]: 'Signature provided'
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          [editingVariable.name]: value as string
+        }));
+      }
+      setShowFieldModal(false);
+      setEditingVariable(null);
+    }
   };
 
   const getCompletedVariables = () => {
@@ -115,22 +125,36 @@ const RichTextCompletionPage = () => {
     return Math.round((getCompletedVariables() / variables.length) * 100);
   };
 
-  const generatePreviewContent = () => {
-    let previewContent = content;
+  const generateInteractiveContent = () => {
+    let interactiveContent = content;
     variables.forEach(variable => {
-      let value = formData[variable.name] || `[${variable.name}]`;
+      let value = formData[variable.name];
+      let displayValue = '';
+      let className = 'cursor-pointer inline-block min-w-[100px] min-h-[20px] px-2 py-1 border-2 border-dashed transition-all hover:bg-blue-50';
       
-      // Special handling for signatures and dates
+      if (value && value.trim()) {
+        className += ' bg-green-50 border-green-300';
+      } else {
+        className += ' bg-red-50 border-red-300';
+      }
+
       if (variable.type === 'signature' && signatures[variable.name]) {
-        value = '<img src="' + signatures[variable.name] + '" style="max-height: 50px; border: 1px solid #ccc;" alt="Signature" />';
-      } else if (variable.type === 'date' && formData[variable.name]) {
-        value = new Date(formData[variable.name]).toLocaleDateString();
+        displayValue = `<img src="${signatures[variable.name]}" style="max-height: 40px; border: 1px solid #ccc;" alt="Signature" />`;
+      } else if (variable.type === 'date' && value) {
+        displayValue = new Date(value).toLocaleDateString();
+      } else if (value) {
+        displayValue = value;
+      } else {
+        displayValue = `[Click to fill ${variable.name}]`;
       }
       
       const regex = new RegExp(`{{${variable.name}}}`, 'g');
-      previewContent = previewContent.replace(regex, `<span style="background-color: #e3f2fd; padding: 2px 4px; border-radius: 3px; font-weight: bold;">${value}</span>`);
+      interactiveContent = interactiveContent.replace(
+        regex, 
+        `<span class="${className}" data-variable="${variable.name}">${displayValue}</span>`
+      );
     });
-    return previewContent;
+    return interactiveContent;
   };
 
   const downloadPDF = async () => {
@@ -240,14 +264,77 @@ const RichTextCompletionPage = () => {
     }
   };
 
-  const getFieldType = (variable: VariableType) => {
-    return variable.type;
-  };
-
   const formatVariableName = (variable: string) => {
     return variable
       .replace(/_/g, ' ')
       .replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const renderFieldInput = () => {
+    if (!editingVariable) return null;
+
+    switch (editingVariable.type) {
+      case 'signature':
+        return (
+          <div className="space-y-4">
+            <SignatureCanvas
+              width={400}
+              height={150}
+              onSignatureComplete={(signature) => handleFieldSave(signature)}
+              onCancel={() => setShowFieldModal(false)}
+            />
+          </div>
+        );
+      case 'date':
+        return (
+          <div className="space-y-4">
+            <Label htmlFor="date-input">{formatVariableName(editingVariable.name)}</Label>
+            <Input
+              id="date-input"
+              type="date"
+              value={formData[editingVariable.name] || ''}
+              onChange={(e) => handleFieldSave(e.target.value)}
+              autoFocus
+            />
+          </div>
+        );
+      case 'textarea':
+        return (
+          <div className="space-y-4">
+            <Label htmlFor="textarea-input">{formatVariableName(editingVariable.name)}</Label>
+            <Textarea
+              id="textarea-input"
+              placeholder={`Enter ${formatVariableName(editingVariable.name).toLowerCase()}`}
+              value={formData[editingVariable.name] || ''}
+              onChange={(e) => handleFieldSave(e.target.value)}
+              className="min-h-[100px]"
+              autoFocus
+            />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowFieldModal(false)}>Cancel</Button>
+              <Button onClick={() => setShowFieldModal(false)}>Save</Button>
+            </div>
+          </div>
+        );
+      default:
+        return (
+          <div className="space-y-4">
+            <Label htmlFor="text-input">{formatVariableName(editingVariable.name)}</Label>
+            <Input
+              id="text-input"
+              placeholder={`Enter ${formatVariableName(editingVariable.name).toLowerCase()}`}
+              value={formData[editingVariable.name] || ''}
+              onChange={(e) => handleFieldSave(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && setShowFieldModal(false)}
+              autoFocus
+            />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowFieldModal(false)}>Cancel</Button>
+              <Button onClick={() => setShowFieldModal(false)}>Save</Button>
+            </div>
+          </div>
+        );
+    }
   };
 
   if (variables.length === 0) {
@@ -285,135 +372,64 @@ const RichTextCompletionPage = () => {
                 Complete Document
               </h1>
               <p className="text-sm text-muted-foreground">
-                Fill in the variables to complete your document
+                Click on any field in the document to fill it out
               </p>
             </div>
           </div>
-          <Button 
-            onClick={downloadPDF}
-            className="bg-green-600 hover:bg-green-700"
-            disabled={getCompletionProgress() < 100}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Download PDF
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Progress value={getCompletionProgress()} className="w-24" />
+              <span className="text-sm text-muted-foreground">
+                {getCompletedVariables()}/{variables.length}
+              </span>
+            </div>
+            <Button 
+              onClick={downloadPDF}
+              className="bg-green-600 hover:bg-green-700"
+              disabled={getCompletionProgress() < 100}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download PDF
+            </Button>
+          </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Form Fields */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Document Variables</span>
-                  <div className="flex items-center gap-2">
-                    <Progress value={getCompletionProgress()} className="w-20" />
-                    <span className="text-sm text-muted-foreground">
-                      {getCompletedVariables()}/{variables.length}
-                    </span>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {variables.map((variable) => (
-                  <div key={variable.name} className="space-y-2">
-                    <Label htmlFor={variable.name} className="text-sm font-medium">
-                      {formatVariableName(variable.name)}
-                    </Label>
-                    {getFieldType(variable) === 'signature' ? (
-                      <div className="space-y-2">
-                        {signatures[variable.name] ? (
-                          <div className="p-4 border rounded-lg bg-muted/50">
-                            <img 
-                              src={signatures[variable.name]} 
-                              alt="Signature" 
-                              className="max-h-16 border"
-                            />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSignatures(prev => {
-                                  const newSigs = { ...prev };
-                                  delete newSigs[variable.name];
-                                  return newSigs;
-                                });
-                                setFormData(prev => ({
-                                  ...prev,
-                                  [variable.name]: ''
-                                }));
-                              }}
-                              className="mt-2"
-                            >
-                              Clear Signature
-                            </Button>
-                          </div>
-                        ) : (
-                          <SignatureCanvas
-                            width={300}
-                            height={120}
-                            onSignatureComplete={(signature) => handleSignatureComplete(variable.name, signature)}
-                            onCancel={() => {}}
-                          />
-                        )}
-                      </div>
-                    ) : getFieldType(variable) === 'date' ? (
-                      <div className="relative">
-                        <Input
-                          id={variable.name}
-                          type="date"
-                          value={formData[variable.name] || ''}
-                          onChange={(e) => handleInputChange(variable.name, e.target.value)}
-                        />
-                      </div>
-                    ) : getFieldType(variable) === 'textarea' ? (
-                      <Textarea
-                        id={variable.name}
-                        placeholder={`Enter ${formatVariableName(variable.name).toLowerCase()}`}
-                        value={formData[variable.name] || ''}
-                        onChange={(e) => handleInputChange(variable.name, e.target.value)}
-                        className="min-h-[80px]"
-                      />
-                    ) : (
-                      <Input
-                        id={variable.name}
-                        placeholder={`Enter ${formatVariableName(variable.name).toLowerCase()}`}
-                        value={formData[variable.name] || ''}
-                        onChange={(e) => handleInputChange(variable.name, e.target.value)}
-                      />
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Preview */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileCheck className="h-5 w-5" />
-                  Document Preview
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div 
-                  className="bg-white p-6 rounded-lg border shadow-sm min-h-[600px] overflow-auto"
-                  style={{
-                    fontFamily: 'system-ui, sans-serif',
-                    lineHeight: '1.6',
-                    fontSize: '14px'
-                  }}
-                  dangerouslySetInnerHTML={{ __html: generatePreviewContent() }}
-                />
-              </CardContent>
-            </Card>
-          </div>
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-white rounded-lg shadow-lg p-8 min-h-[600px]">
+          <div 
+            className="interactive-document"
+            style={{
+              fontFamily: 'system-ui, sans-serif',
+              lineHeight: '1.6',
+              fontSize: '14px'
+            }}
+            dangerouslySetInnerHTML={{ __html: generateInteractiveContent() }}
+            onClick={(e) => {
+              const target = e.target as HTMLElement;
+              const variableName = target.getAttribute('data-variable');
+              if (variableName) {
+                const variable = variables.find(v => v.name === variableName);
+                if (variable) {
+                  handleVariableClick(variable);
+                }
+              }
+            }}
+          />
         </div>
       </div>
+
+      {/* Field Edit Modal */}
+      <Dialog open={showFieldModal} onOpenChange={setShowFieldModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingVariable && `Fill ${formatVariableName(editingVariable.name)}`}
+            </DialogTitle>
+          </DialogHeader>
+          {renderFieldInput()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
