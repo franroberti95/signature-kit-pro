@@ -19,10 +19,15 @@ interface SignatureData {
   [variable: string]: string;
 }
 
+interface VariableType {
+  name: string;
+  type: 'text' | 'textarea' | 'signature' | 'date';
+}
+
 const RichTextCompletionPage = () => {
   const navigate = useNavigate();
   const [content, setContent] = useState("");
-  const [variables, setVariables] = useState<string[]>([]);
+  const [variables, setVariables] = useState<VariableType[]>([]);
   const [formData, setFormData] = useState<FormData>({});
   const [signatures, setSignatures] = useState<SignatureData>({});
   const [selectedFormat, setSelectedFormat] = useState("A4");
@@ -36,13 +41,30 @@ const RichTextCompletionPage = () => {
         if (data.isRichTextDocument && data.pages[0]) {
           const page = data.pages[0];
           setContent(page.richTextContent || "");
-          setVariables(page.richTextVariables || []);
+          
+          // Handle both old string array format and new object format
+          const pageVariables = page.richTextVariables || [];
+          if (pageVariables.length > 0) {
+            // Check if it's the new format (array of objects) or old format (array of strings)
+            if (typeof pageVariables[0] === 'object') {
+              setVariables(pageVariables);
+            } else {
+              // Convert old format to new format
+              const convertedVariables = pageVariables.map((name: string) => ({
+                name,
+                type: getVariableTypeFromName(name)
+              }));
+              setVariables(convertedVariables);
+            }
+          }
+          
           setSelectedFormat(data.selectedFormat || "A4");
           
           // Initialize form data
           const initialFormData: FormData = {};
-          (page.richTextVariables || []).forEach((variable: string) => {
-            initialFormData[variable] = '';
+          pageVariables.forEach((variable: any) => {
+            const varName = typeof variable === 'object' ? variable.name : variable;
+            initialFormData[varName] = '';
           });
           setFormData(initialFormData);
         } else {
@@ -56,6 +78,15 @@ const RichTextCompletionPage = () => {
       navigate('/');
     }
   }, [navigate]);
+
+  // Helper function to guess type from old variable names
+  const getVariableTypeFromName = (name: string): 'text' | 'textarea' | 'signature' | 'date' => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('signature')) return 'signature';
+    if (lowerName.includes('date') || lowerName.includes('birth')) return 'date';
+    if (['medical_conditions', 'medications', 'allergies', 'treatment_description'].includes(name)) return 'textarea';
+    return 'text';
+  };
 
   const handleInputChange = (variable: string, value: string) => {
     setFormData(prev => ({
@@ -76,7 +107,7 @@ const RichTextCompletionPage = () => {
   };
 
   const getCompletedVariables = () => {
-    return variables.filter(variable => formData[variable]?.trim()).length;
+    return variables.filter(variable => formData[variable.name]?.trim()).length;
   };
 
   const getCompletionProgress = () => {
@@ -87,16 +118,16 @@ const RichTextCompletionPage = () => {
   const generatePreviewContent = () => {
     let previewContent = content;
     variables.forEach(variable => {
-      let value = formData[variable] || `[${variable}]`;
+      let value = formData[variable.name] || `[${variable.name}]`;
       
       // Special handling for signatures and dates
-      if (variable.toLowerCase().includes('signature') && signatures[variable]) {
-        value = '<img src="' + signatures[variable] + '" style="max-height: 50px; border: 1px solid #ccc;" alt="Signature" />';
-      } else if (variable.toLowerCase().includes('date') && formData[variable]) {
-        value = new Date(formData[variable]).toLocaleDateString();
+      if (variable.type === 'signature' && signatures[variable.name]) {
+        value = '<img src="' + signatures[variable.name] + '" style="max-height: 50px; border: 1px solid #ccc;" alt="Signature" />';
+      } else if (variable.type === 'date' && formData[variable.name]) {
+        value = new Date(formData[variable.name]).toLocaleDateString();
       }
       
-      const regex = new RegExp(`{{${variable}}}`, 'g');
+      const regex = new RegExp(`{{${variable.name}}}`, 'g');
       previewContent = previewContent.replace(regex, `<span style="background-color: #e3f2fd; padding: 2px 4px; border-radius: 3px; font-weight: bold;">${value}</span>`);
     });
     return previewContent;
@@ -105,9 +136,9 @@ const RichTextCompletionPage = () => {
   const downloadPDF = async () => {
     try {
       // Check if all required fields are filled
-      const emptyFields = variables.filter(variable => !formData[variable]?.trim());
+      const emptyFields = variables.filter(variable => !formData[variable.name]?.trim());
       if (emptyFields.length > 0) {
-        toast.error(`Please fill in: ${emptyFields.join(', ')}`);
+        toast.error(`Please fill in: ${emptyFields.map(v => v.name).join(', ')}`);
         return;
       }
 
@@ -137,15 +168,15 @@ const RichTextCompletionPage = () => {
       // Replace variables with actual values including signatures
       let finalContent = content;
       variables.forEach(variable => {
-        let value = formData[variable] || '';
+        let value = formData[variable.name] || '';
         
-        if (variable.toLowerCase().includes('signature') && signatures[variable]) {
-          value = `<img src="${signatures[variable]}" style="max-height: 50px; border: 1px solid #ccc;" alt="Signature" />`;
-        } else if (variable.toLowerCase().includes('date') && formData[variable]) {
-          value = new Date(formData[variable]).toLocaleDateString();
+        if (variable.type === 'signature' && signatures[variable.name]) {
+          value = `<img src="${signatures[variable.name]}" style="max-height: 50px; border: 1px solid #ccc;" alt="Signature" />`;
+        } else if (variable.type === 'date' && formData[variable.name]) {
+          value = new Date(formData[variable.name]).toLocaleDateString();
         }
         
-        const regex = new RegExp(`{{${variable}}}`, 'g');
+        const regex = new RegExp(`{{${variable.name}}}`, 'g');
         finalContent = finalContent.replace(regex, value);
       });
       
@@ -209,14 +240,8 @@ const RichTextCompletionPage = () => {
     }
   };
 
-  const getFieldType = (variable: string) => {
-    const lowerVar = variable.toLowerCase();
-    const textareaFields = ['medical_conditions', 'medications', 'allergies', 'treatment_description'];
-    
-    if (lowerVar.includes('signature')) return 'signature';
-    if (lowerVar.includes('date')) return 'date';
-    if (textareaFields.includes(variable)) return 'textarea';
-    return 'input';
+  const getFieldType = (variable: VariableType) => {
+    return variable.type;
   };
 
   const formatVariableName = (variable: string) => {
@@ -293,16 +318,16 @@ const RichTextCompletionPage = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {variables.map((variable) => (
-                  <div key={variable} className="space-y-2">
-                    <Label htmlFor={variable} className="text-sm font-medium">
-                      {formatVariableName(variable)}
+                  <div key={variable.name} className="space-y-2">
+                    <Label htmlFor={variable.name} className="text-sm font-medium">
+                      {formatVariableName(variable.name)}
                     </Label>
                     {getFieldType(variable) === 'signature' ? (
                       <div className="space-y-2">
-                        {signatures[variable] ? (
+                        {signatures[variable.name] ? (
                           <div className="p-4 border rounded-lg bg-muted/50">
                             <img 
-                              src={signatures[variable]} 
+                              src={signatures[variable.name]} 
                               alt="Signature" 
                               className="max-h-16 border"
                             />
@@ -312,12 +337,12 @@ const RichTextCompletionPage = () => {
                               onClick={() => {
                                 setSignatures(prev => {
                                   const newSigs = { ...prev };
-                                  delete newSigs[variable];
+                                  delete newSigs[variable.name];
                                   return newSigs;
                                 });
                                 setFormData(prev => ({
                                   ...prev,
-                                  [variable]: ''
+                                  [variable.name]: ''
                                 }));
                               }}
                               className="mt-2"
@@ -329,7 +354,7 @@ const RichTextCompletionPage = () => {
                           <SignatureCanvas
                             width={300}
                             height={120}
-                            onSignatureComplete={(signature) => handleSignatureComplete(variable, signature)}
+                            onSignatureComplete={(signature) => handleSignatureComplete(variable.name, signature)}
                             onCancel={() => {}}
                           />
                         )}
@@ -337,26 +362,26 @@ const RichTextCompletionPage = () => {
                     ) : getFieldType(variable) === 'date' ? (
                       <div className="relative">
                         <Input
-                          id={variable}
+                          id={variable.name}
                           type="date"
-                          value={formData[variable] || ''}
-                          onChange={(e) => handleInputChange(variable, e.target.value)}
+                          value={formData[variable.name] || ''}
+                          onChange={(e) => handleInputChange(variable.name, e.target.value)}
                         />
                       </div>
                     ) : getFieldType(variable) === 'textarea' ? (
                       <Textarea
-                        id={variable}
-                        placeholder={`Enter ${formatVariableName(variable).toLowerCase()}`}
-                        value={formData[variable] || ''}
-                        onChange={(e) => handleInputChange(variable, e.target.value)}
+                        id={variable.name}
+                        placeholder={`Enter ${formatVariableName(variable.name).toLowerCase()}`}
+                        value={formData[variable.name] || ''}
+                        onChange={(e) => handleInputChange(variable.name, e.target.value)}
                         className="min-h-[80px]"
                       />
                     ) : (
                       <Input
-                        id={variable}
-                        placeholder={`Enter ${formatVariableName(variable).toLowerCase()}`}
-                        value={formData[variable] || ''}
-                        onChange={(e) => handleInputChange(variable, e.target.value)}
+                        id={variable.name}
+                        placeholder={`Enter ${formatVariableName(variable.name).toLowerCase()}`}
+                        value={formData[variable.name] || ''}
+                        onChange={(e) => handleInputChange(variable.name, e.target.value)}
                       />
                     )}
                   </div>

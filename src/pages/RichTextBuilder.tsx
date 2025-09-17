@@ -1,96 +1,116 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import RichTextEditor from "@/components/pdf-builder/RichTextEditor";
-import { PDFFormat } from "@/components/pdf-builder/PDFBuilder";
 import { toast } from "sonner";
-import { Plus, X, Variable, FileText, Stethoscope, User, Calendar } from "lucide-react";
+import { FileText, Plus, Variable, X, Stethoscope, Heart, Calendar, Shield } from "lucide-react";
+import RichTextEditor from "@/components/pdf-builder/RichTextEditor";
 
-// Dental template definitions
+type PDFFormat = "A4" | "A5" | "Letter";
+
+interface VariableType {
+  name: string;
+  type: 'text' | 'textarea' | 'signature' | 'date';
+}
+
 const DENTAL_TEMPLATES = {
   consent: {
-    name: "Treatment Consent Form",
-    icon: Stethoscope,
-    variables: ["patient_name", "patient_id", "treatment_type", "dentist_name", "appointment_date", "patient_signature", "doctor_signature"],
-    content: `<div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #0066cc; padding-bottom: 15px;">
-  <h1 style="color: #0066cc; font-size: 24px; margin: 0; font-weight: bold;">DENTAL TREATMENT CONSENT FORM</h1>
+    name: "Dental Consent Form",
+    icon: Shield,
+    variables: [
+      { name: "patient_name", type: "text" as const },
+      { name: "patient_id", type: "text" as const },
+      { name: "dentist_name", type: "text" as const },
+      { name: "treatment_type", type: "textarea" as const },
+      { name: "appointment_date", type: "date" as const },
+      { name: "patient_signature", type: "signature" as const },
+      { name: "doctor_signature", type: "signature" as const }
+    ],
+    content: `<div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #dc3545; padding-bottom: 15px;">
+  <h1 style="color: #dc3545; font-size: 24px; margin: 0; font-weight: bold;">INFORMED CONSENT FOR DENTAL TREATMENT</h1>
 </div>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
-  <div><strong>Patient Name:</strong> <span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 150px; display: inline-block;">{{patient_name}}</span></div>
-  <div><strong>Patient ID:</strong> <span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 100px; display: inline-block;">{{patient_id}}</span></div>
-  <div><strong>Date:</strong> <span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 120px; display: inline-block;">{{appointment_date}}</span></div>
-  <div><strong>Doctor:</strong> <span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 150px; display: inline-block;">Dr. {{dentist_name}}</span></div>
+<div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 20px; margin-bottom: 25px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+  <div><strong>Patient:</strong><br><span style="color: #dc3545; font-weight: bold;">{{patient_name}}</span> (ID: {{patient_id}})</div>
+  <div><strong>Doctor:</strong><br><span style="color: #dc3545; font-weight: bold;">Dr. {{dentist_name}}</span></div>
+  <div><strong>Date:</strong><br><span style="border-bottom: 2px dotted #666; padding-bottom: 2px; display: inline-block;">{{appointment_date}}</span></div>
 </div>
 
 <div style="margin-bottom: 25px;">
-  <h3 style="color: #0066cc; border-bottom: 2px solid #0066cc; padding-bottom: 5px; margin-bottom: 15px;">Treatment Authorization</h3>
-  <p style="line-height: 1.6; margin-bottom: 15px;">I hereby authorize Dr. {{dentist_name}} and the dental team to perform the following treatment:</p>
-  <div style="padding: 15px; border: 2px solid #ddd; border-radius: 5px; background-color: #fff;">
-    <strong>Treatment:</strong> <span style="color: #0066cc; font-weight: bold;">{{treatment_type}}</span>
+  <h3 style="color: #dc3545; border-bottom: 2px solid #dc3545; padding-bottom: 5px; margin-bottom: 15px;">Treatment Information</h3>
+  
+  <div style="margin-bottom: 20px;">
+    <strong>Proposed Treatment:</strong>
+    <div style="border: 2px solid #dc3545; border-radius: 5px; padding: 15px; margin-top: 8px; min-height: 80px; background-color: #fff;">
+      {{treatment_type}}
+    </div>
+  </div>
+  
+  <div style="padding: 20px; border: 2px solid #ffc107; border-radius: 8px; background-color: #fff3cd; margin-bottom: 20px;">
+    <h4 style="color: #856404; margin: 0 0 10px 0;">I understand and acknowledge that:</h4>
+    <ul style="margin: 0; color: #856404; line-height: 1.5;">
+      <li>No guarantee has been made as to the outcome of treatment</li>
+      <li>I have been informed of alternative treatments, their benefits and risks</li>
+      <li>I have been informed of the risks of not receiving treatment</li>
+      <li>I have had the opportunity to ask questions regarding the treatment</li>
+    </ul>
   </div>
 </div>
 
-<div style="margin-bottom: 25px;">
-  <h3 style="color: #0066cc; border-bottom: 2px solid #0066cc; padding-bottom: 5px; margin-bottom: 15px;">Patient Acknowledgment</h3>
-  <p style="line-height: 1.6; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #0066cc; margin: 0;">
-    I acknowledge that I have been informed of the treatment plan, risks, benefits, and alternatives. I understand that no guarantee has been made regarding the outcome of treatment.
-  </p>
-</div>
-
-<div style="margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-  <div style="text-align: center; padding: 20px; border: 2px solid #ddd; border-radius: 8px;">
-    <div style="border-bottom: 2px solid #333; margin-bottom: 8px; height: 40px; display: flex; align-items: end; justify-content: center;">
-      <span style="color: #0066cc; font-weight: bold;">{{patient_signature}}</span>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 40px;">
+  <div style="text-align: center; padding: 20px; border: 2px solid #28a745; border-radius: 8px; background-color: #d4edda;">
+    <strong style="color: #155724;">Patient Signature</strong><br>
+    <div style="margin: 15px 0; min-height: 60px; border-bottom: 2px solid #155724;">
+      {{patient_signature}}
     </div>
-    <div><strong>Patient Signature</strong></div>
-    <div style="margin-top: 15px;">
-      <span>Date: </span><span style="border-bottom: 1px solid #666; padding-bottom: 2px; min-width: 100px; display: inline-block;">{{appointment_date}}</span>
-    </div>
+    <span style="color: #155724; font-size: 12px;">Date: {{appointment_date}}</span>
   </div>
-  <div style="text-align: center; padding: 20px; border: 2px solid #ddd; border-radius: 8px;">
-    <div style="border-bottom: 2px solid #333; margin-bottom: 8px; height: 40px; display: flex; align-items: end; justify-content: center;">
-      <span style="color: #0066cc; font-weight: bold;">{{doctor_signature}}</span>
+  
+  <div style="text-align: center; padding: 20px; border: 2px solid #17a2b8; border-radius: 8px; background-color: #d1ecf1;">
+    <strong style="color: #0c5460;">Doctor Signature</strong><br>
+    <div style="margin: 15px 0; min-height: 60px; border-bottom: 2px solid #0c5460;">
+      {{doctor_signature}}
     </div>
-    <div><strong>Doctor Signature</strong></div>
-    <div style="margin-top: 15px;">
-      <span>Date: </span><span style="border-bottom: 1px solid #666; padding-bottom: 2px; min-width: 100px; display: inline-block;">{{appointment_date}}</span>
-    </div>
+    <span style="color: #0c5460; font-size: 12px;">Dr. {{dentist_name}}</span>
   </div>
 </div>`
   },
   history: {
-    name: "Medical History Form",
-    icon: User,
-    variables: ["patient_name", "patient_id", "date_of_birth", "phone_number", "email_address", "emergency_contact", "medical_conditions", "medications", "allergies"],
+    name: "Medical History",
+    icon: Heart,
+    variables: [
+      { name: "patient_name", type: "text" as const },
+      { name: "patient_id", type: "text" as const },
+      { name: "date_of_birth", type: "date" as const },
+      { name: "phone_number", type: "text" as const },
+      { name: "email_address", type: "text" as const },
+      { name: "medical_conditions", type: "textarea" as const },
+      { name: "medications", type: "textarea" as const },
+      { name: "allergies", type: "textarea" as const },
+      { name: "patient_signature", type: "signature" as const }
+    ],
     content: `<div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #28a745; padding-bottom: 15px;">
-  <h1 style="color: #28a745; font-size: 24px; margin: 0; font-weight: bold;">DENTAL MEDICAL HISTORY</h1>
+  <h1 style="color: #28a745; font-size: 24px; margin: 0; font-weight: bold;">MEDICAL HISTORY FORM</h1>
 </div>
 
-<div style="margin-bottom: 25px;">
-  <h3 style="color: #28a745; border-bottom: 2px solid #28a745; padding-bottom: 5px; margin-bottom: 15px;">Patient Information</h3>
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
-    <div><strong>Patient Name:</strong><br><span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 200px; display: inline-block; margin-top: 5px;">{{patient_name}}</span></div>
-    <div><strong>Patient ID:</strong><br><span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 150px; display: inline-block; margin-top: 5px;">{{patient_id}}</span></div>
-    <div><strong>Date of Birth:</strong><br><span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 150px; display: inline-block; margin-top: 5px;">{{date_of_birth}}</span></div>
-    <div><strong>Phone:</strong><br><span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 150px; display: inline-block; margin-top: 5px;">{{phone_number}}</span></div>
-  </div>
-  <div style="margin-top: 15px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
-    <div><strong>Email Address:</strong><br><span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 300px; display: inline-block; margin-top: 5px;">{{email_address}}</span></div>
-  </div>
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 25px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+  <div><strong>Patient:</strong><br><span style="color: #28a745; font-weight: bold;">{{patient_name}}</span> (ID: {{patient_id}})</div>
+  <div><strong>Date of Birth:</strong><br><span style="color: #28a745; font-weight: bold;">{{date_of_birth}}</span></div>
 </div>
 
-<div style="margin-bottom: 25px;">
-  <h3 style="color: #28a745; border-bottom: 2px solid #28a745; padding-bottom: 5px; margin-bottom: 15px;">Emergency Contact</h3>
-  <div style="padding: 15px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 0 8px 8px 0;">
-    <strong>Emergency Contact Information:</strong><br>
-    <span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 400px; display: inline-block; margin-top: 8px;">{{emergency_contact}}</span>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+  <div style="padding: 15px; border: 2px solid #17a2b8; border-radius: 8px; background-color: #d1ecf1;">
+    <strong style="color: #0c5460;">Phone:</strong><br>
+    <span style="font-size: 16px; color: #0c5460;">{{phone_number}}</span>
+  </div>
+  <div style="padding: 15px; border: 2px solid #6f42c1; border-radius: 8px; background-color: #e2d9f3;">
+    <strong style="color: #3d1a78;">Email:</strong><br>
+    <span style="font-size: 16px; color: #3d1a78;">{{email_address}}</span>
   </div>
 </div>
 
@@ -129,7 +149,15 @@ const DENTAL_TEMPLATES = {
   plan: {
     name: "Treatment Plan",
     icon: Calendar,
-    variables: ["patient_name", "patient_id", "dentist_name", "treatment_description", "estimated_cost", "treatment_duration", "appointment_date"],
+    variables: [
+      { name: "patient_name", type: "text" as const },
+      { name: "patient_id", type: "text" as const },
+      { name: "dentist_name", type: "text" as const },
+      { name: "treatment_description", type: "textarea" as const },
+      { name: "estimated_cost", type: "text" as const },
+      { name: "treatment_duration", type: "text" as const },
+      { name: "appointment_date", type: "date" as const }
+    ],
     content: `<div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #6f42c1; padding-bottom: 15px;">
   <h1 style="color: #6f42c1; font-size: 24px; margin: 0; font-weight: bold;">DENTAL TREATMENT PLAN</h1>
 </div>
@@ -179,18 +207,19 @@ const RichTextBuilderPage = () => {
   const [content, setContent] = useState("");
   const [showVariableModal, setShowVariableModal] = useState(false);
   const [newVariable, setNewVariable] = useState("");
+  const [newVariableType, setNewVariableType] = useState<'text' | 'textarea' | 'signature' | 'date'>('text');
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
-  const [variables, setVariables] = useState<string[]>([
-    "patient_name",
-    "patient_id", 
-    "dentist_name",
-    "appointment_date",
-    "treatment_type",
-    "patient_signature",
-    "doctor_signature",
-    "phone_number",
-    "email_address",
-    "date_of_birth"
+  const [variables, setVariables] = useState<VariableType[]>([
+    { name: "patient_name", type: "text" },
+    { name: "patient_id", type: "text" }, 
+    { name: "dentist_name", type: "text" },
+    { name: "appointment_date", type: "date" },
+    { name: "treatment_type", type: "textarea" },
+    { name: "patient_signature", type: "signature" },
+    { name: "doctor_signature", type: "signature" },
+    { name: "phone_number", type: "text" },
+    { name: "email_address", type: "text" },
+    { name: "date_of_birth", type: "date" }
   ]);
 
   useEffect(() => {
@@ -202,16 +231,16 @@ const RichTextBuilderPage = () => {
         setSelectedFormat(data.selectedFormat || "A4");
         setContent(data.content || "");
         setVariables(data.variables || [
-          "patient_name",
-          "patient_id", 
-          "dentist_name",
-          "appointment_date",
-          "treatment_type",
-          "patient_signature",
-          "doctor_signature",
-          "phone_number",
-          "email_address",
-          "date_of_birth"
+          { name: "patient_name", type: "text" },
+          { name: "patient_id", type: "text" }, 
+          { name: "dentist_name", type: "text" },
+          { name: "appointment_date", type: "date" },
+          { name: "treatment_type", type: "textarea" },
+          { name: "patient_signature", type: "signature" },
+          { name: "doctor_signature", type: "signature" },
+          { name: "phone_number", type: "text" },
+          { name: "email_address", type: "text" },
+          { name: "date_of_birth", type: "date" }
         ]);
       } catch (error) {
         console.error('Error parsing stored rich text builder data:', error);
@@ -223,7 +252,7 @@ const RichTextBuilderPage = () => {
     }
   }, [navigate]);
 
-  const updateStoredData = (newContent: string, newVariables: string[]) => {
+  const updateStoredData = (newContent: string, newVariables: VariableType[]) => {
     sessionStorage.setItem('richTextBuilderData', JSON.stringify({
       selectedFormat,
       content: newContent,
@@ -236,7 +265,7 @@ const RichTextBuilderPage = () => {
     updateStoredData(newContent, variables);
   };
 
-  const handleVariablesChange = (newVariables: string[]) => {
+  const handleVariablesChange = (newVariables: VariableType[]) => {
     setVariables(newVariables);
     updateStoredData(content, newVariables);
   };
@@ -247,17 +276,18 @@ const RichTextBuilderPage = () => {
   };
 
   const addNewVariable = () => {
-    if (newVariable.trim() && !variables.includes(newVariable.trim())) {
-      const updated = [...variables, newVariable.trim()];
+    if (newVariable.trim() && !variables.some(v => v.name === newVariable.trim())) {
+      const updated = [...variables, { name: newVariable.trim(), type: newVariableType }];
       setVariables(updated);
       updateStoredData(content, updated);
       setNewVariable("");
+      setNewVariableType('text');
       setShowVariableModal(false);
     }
   };
 
-  const removeVariable = (variable: string) => {
-    const updated = variables.filter(v => v !== variable);
+  const removeVariable = (variableName: string) => {
+    const updated = variables.filter(v => v.name !== variableName);
     setVariables(updated);
     updateStoredData(content, updated);
   };
@@ -388,77 +418,72 @@ const RichTextBuilderPage = () => {
               <div className="space-y-1">
                 {variables.map((variable) => (
                   <div 
-                    key={variable}
+                    key={variable.name}
                     className="group flex items-center gap-2 p-2 rounded-md hover:bg-accent transition-colors"
                   >
                     <Badge
                       variant="secondary"
                       draggable
-                      onDragStart={(e) => handleDragStart(e, variable)}
+                      onDragStart={(e) => handleDragStart(e, variable.name)}
                       className="cursor-grab active:cursor-grabbing flex-1 justify-center font-mono text-xs"
                     >
-                      {variable}
+                      {variable.name}
+                    </Badge>
+                    <Badge 
+                      variant="outline" 
+                      className="text-xs px-1 py-0"
+                    >
+                      {variable.type}
                     </Badge>
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => removeVariable(variable)}
-                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                      onClick={() => removeVariable(variable.name)}
+                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3 w-3 text-destructive" />
                     </Button>
                   </div>
                 ))}
               </div>
-            
-              {variables.length === 0 && (
-                <p className="text-xs text-muted-foreground italic">
-                  No variables yet. Add one to get started.
-                </p>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-auto p-8 bg-surface">
-          <div className="flex flex-col items-center">
-            {/* Page Container */}
-            <div className="relative">
-              <div className="absolute -top-6 left-0 text-sm text-muted-foreground">
-                Page 1
+        {/* Main Content */}
+        <div className="flex-1 overflow-hidden">
+          <div className="h-full flex flex-col">
+            {/* Editor */}
+            <div className="flex-1 overflow-hidden">
+              <RichTextEditor
+                value={content}
+                onChange={handleContentChange}
+                className="h-full"
+              />
+            </div>
+            
+            {/* Preview */}
+            <div className="h-1/2 border-t border-border overflow-auto bg-muted/30 p-6">
+              <div className="text-center mb-4">
+                <h3 className="text-sm font-medium text-foreground">Document Preview</h3>
+                <p className="text-xs text-muted-foreground">{selectedFormat} format</p>
               </div>
               
-              {/* PDF Page with Rich Text Editor */}
-              <div 
-                className="relative bg-white shadow-lg rounded-lg overflow-hidden border border-pdf-border"
-                style={{
-                  width: `${displayWidth}px`,
-                  height: `${displayHeight}px`,
-                }}
-              >
-                <div className="absolute inset-4 z-10">
-                  <RichTextEditor
-                    value={content}
-                    onChange={handleContentChange}
-                    variables={variables}
-                    onVariablesChange={handleVariablesChange}
-                    placeholder="Start typing your document content... Use {{variable_name}} syntax to insert variables, or drag them from the sidebar."
-                    className="h-full"
-                  />
-                </div>
-                
-                {/* Grid pattern for alignment */}
-                <div 
-                  className="absolute inset-0 opacity-5 pointer-events-none"
+              <div className="flex justify-center">
+                <Card 
+                  className="shadow-lg bg-white"
                   style={{
-                    backgroundImage: `
-                      linear-gradient(hsl(var(--border)) 1px, transparent 1px),
-                      linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)
-                    `,
-                    backgroundSize: `${20 * scale}px ${20 * scale}px`,
+                    width: `${displayWidth}px`,
+                    height: `${displayHeight}px`,
+                    transform: `scale(${scale})`,
+                    transformOrigin: 'top center'
                   }}
-                />
+                >
+                  <div 
+                    className="p-8 text-sm overflow-auto h-full relative"
+                    dangerouslySetInnerHTML={{ __html: content }}
+                  />
+                </Card>
               </div>
             </div>
           </div>
@@ -478,18 +503,36 @@ const RichTextBuilderPage = () => {
               <p className="text-xs text-muted-foreground mb-2">
                 Use snake_case format (e.g., patient_name, appointment_date)
               </p>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="e.g., patient_name"
-                  value={newVariable}
-                  onChange={(e) => setNewVariable(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addNewVariable()}
-                />
-                <Button onClick={addNewVariable} disabled={!newVariable.trim()}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+              <Input
+                placeholder="e.g., patient_name"
+                value={newVariable}
+                onChange={(e) => setNewVariable(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && addNewVariable()}
+              />
             </div>
+            
+            <div>
+              <Label className="text-sm font-medium">Variable Type</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Choose the input type for this variable
+              </p>
+              <Select value={newVariableType} onValueChange={(value: any) => setNewVariableType(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Text Input</SelectItem>
+                  <SelectItem value="textarea">Textarea (Multi-line)</SelectItem>
+                  <SelectItem value="date">Date Picker</SelectItem>
+                  <SelectItem value="signature">Signature Canvas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <Button onClick={addNewVariable} disabled={!newVariable.trim()} className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Variable
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
