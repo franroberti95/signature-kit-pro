@@ -9,7 +9,18 @@ const RichTextBuilderPage = () => {
   const navigate = useNavigate();
   const [selectedFormat, setSelectedFormat] = useState<PDFFormat>("A4");
   const [content, setContent] = useState("");
-  const [variables, setVariables] = useState<string[]>([]);
+  const [variables, setVariables] = useState<string[]>([
+    "Full Name",
+    "Email Address", 
+    "Phone Number",
+    "Date",
+    "Signature",
+    "Company Name",
+    "Address",
+    "City",
+    "State",
+    "Zip Code"
+  ]);
 
   useEffect(() => {
     // Load data from sessionStorage
@@ -19,7 +30,18 @@ const RichTextBuilderPage = () => {
         const data = JSON.parse(storedData);
         setSelectedFormat(data.selectedFormat || "A4");
         setContent(data.content || "");
-        setVariables(data.variables || []);
+        setVariables(data.variables || [
+          "Full Name",
+          "Email Address", 
+          "Phone Number",
+          "Date",
+          "Signature",
+          "Company Name",
+          "Address",
+          "City",
+          "State",
+          "Zip Code"
+        ]);
       } catch (error) {
         console.error('Error parsing stored rich text builder data:', error);
         navigate('/');
@@ -41,6 +63,11 @@ const RichTextBuilderPage = () => {
   const handleContentChange = (newContent: string) => {
     setContent(newContent);
     updateStoredData(newContent, variables);
+  };
+
+  const handleVariablesChange = (newVariables: string[]) => {
+    setVariables(newVariables);
+    updateStoredData(content, newVariables);
   };
 
   const getPageDimensions = (format: PDFFormat) => {
@@ -123,6 +150,7 @@ const RichTextBuilderPage = () => {
                     value={content}
                     onChange={handleContentChange}
                     variables={variables}
+                    onVariablesChange={handleVariablesChange}
                     placeholder="Start typing your document content here... You can format text and insert variables."
                     className="h-full"
                   />

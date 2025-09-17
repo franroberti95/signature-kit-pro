@@ -14,6 +14,7 @@ interface RichTextEditorProps {
   placeholder?: string;
   className?: string;
   variables?: string[];
+  onVariablesChange?: (variables: string[]) => void;
 }
 
 const RichTextEditor = ({ 
@@ -21,12 +22,17 @@ const RichTextEditor = ({
   onChange, 
   placeholder = "Start typing...",
   className = "",
-  variables = []
+  variables = [],
+  onVariablesChange
 }: RichTextEditorProps) => {
   const [showVariableModal, setShowVariableModal] = useState(false);
   const [newVariable, setNewVariable] = useState("");
   const [currentVariables, setCurrentVariables] = useState<string[]>(variables);
   const quillRef = useRef<ReactQuill>(null);
+
+  useEffect(() => {
+    setCurrentVariables(variables);
+  }, [variables]);
 
   const modules = {
     toolbar: [
@@ -75,13 +81,16 @@ const RichTextEditor = ({
     if (newVariable.trim() && !currentVariables.includes(newVariable.trim())) {
       const updated = [...currentVariables, newVariable.trim()];
       setCurrentVariables(updated);
+      onVariablesChange?.(updated);
       insertVariable(newVariable.trim());
       setNewVariable("");
     }
   };
 
   const removeVariable = (variable: string) => {
-    setCurrentVariables(prev => prev.filter(v => v !== variable));
+    const updated = currentVariables.filter(v => v !== variable);
+    setCurrentVariables(updated);
+    onVariablesChange?.(updated);
   };
 
   return (
