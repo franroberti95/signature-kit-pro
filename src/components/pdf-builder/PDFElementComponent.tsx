@@ -75,7 +75,7 @@ export const PDFElementComponent = ({
   };
 
   const renderElementContent = () => {
-    const baseClasses = "w-full h-full border-2 border-dashed border-muted-foreground/40 bg-white/80 flex items-center justify-center text-xs text-muted-foreground font-medium rounded";
+    const baseClasses = "w-full h-full border-2 border-dashed border-muted-foreground/40 bg-white/80 flex items-center justify-start text-xs text-muted-foreground font-medium rounded px-2";
     
     switch (element.type) {
       case "text":
