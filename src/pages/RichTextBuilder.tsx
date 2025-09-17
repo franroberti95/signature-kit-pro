@@ -1,14 +1,21 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import RichTextEditor from "@/components/pdf-builder/RichTextEditor";
 import { PDFFormat } from "@/components/pdf-builder/PDFBuilder";
 import { toast } from "sonner";
+import { Plus, X, Variable } from "lucide-react";
 
 const RichTextBuilderPage = () => {
   const navigate = useNavigate();
   const [selectedFormat, setSelectedFormat] = useState<PDFFormat>("A4");
   const [content, setContent] = useState("");
+  const [showVariableModal, setShowVariableModal] = useState(false);
+  const [newVariable, setNewVariable] = useState("");
   const [variables, setVariables] = useState<string[]>([
     "Full Name",
     "Email Address", 
@@ -70,6 +77,27 @@ const RichTextBuilderPage = () => {
     updateStoredData(content, newVariables);
   };
 
+  const handleDragStart = (e: React.DragEvent, variable: string) => {
+    e.dataTransfer.setData('text/plain', variable);
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const addNewVariable = () => {
+    if (newVariable.trim() && !variables.includes(newVariable.trim())) {
+      const updated = [...variables, newVariable.trim()];
+      setVariables(updated);
+      updateStoredData(content, updated);
+      setNewVariable("");
+      setShowVariableModal(false);
+    }
+  };
+
+  const removeVariable = (variable: string) => {
+    const updated = variables.filter(v => v !== variable);
+    setVariables(updated);
+    updateStoredData(content, updated);
+  };
+
   const getPageDimensions = (format: PDFFormat) => {
     switch (format) {
       case "A4":
@@ -128,6 +156,57 @@ const RichTextBuilderPage = () => {
       </header>
 
       <div className="flex h-[calc(100vh-80px)]">
+        {/* Variables Sidebar */}
+        <div className="w-64 border-r border-border bg-card p-4 overflow-y-auto">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-foreground">Variables</h2>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowVariableModal(true)}
+                className="h-6 w-6 p-0"
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+            
+            <p className="text-xs text-muted-foreground">
+              Drag variables into your document
+            </p>
+            
+            <div className="space-y-2">
+              {variables.map((variable) => (
+                <div
+                  key={variable}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, variable)}
+                  className="group flex items-center justify-between p-2 bg-background border border-border rounded-md cursor-grab hover:bg-accent hover:border-accent-foreground/20 active:cursor-grabbing"
+                >
+                  <div className="flex items-center gap-2">
+                    <Variable className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs font-medium">{variable}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => removeVariable(variable)}
+                    className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            
+            {variables.length === 0 && (
+              <p className="text-xs text-muted-foreground italic">
+                No variables yet. Add one to get started.
+              </p>
+            )}
+          </div>
+        </div>
+
         {/* Main Content Area */}
         <div className="flex-1 overflow-auto p-8 bg-surface">
           <div className="flex flex-col items-center">
@@ -172,6 +251,32 @@ const RichTextBuilderPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Add Variable Modal */}
+      <Dialog open={showVariableModal} onOpenChange={setShowVariableModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Variable</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium">Variable Name</Label>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  placeholder="Enter variable name..."
+                  value={newVariable}
+                  onChange={(e) => setNewVariable(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addNewVariable()}
+                />
+                <Button onClick={addNewVariable} disabled={!newVariable.trim()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

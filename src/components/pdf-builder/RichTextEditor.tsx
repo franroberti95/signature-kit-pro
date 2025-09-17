@@ -42,8 +42,7 @@ const RichTextEditor = ({
       [{ 'list': 'ordered'}, { 'list': 'bullet' }],
       [{ 'align': [] }],
       ['link'],
-      ['clean'],
-      ['variable'] // Custom button for variables
+      ['clean']
     ]
   };
 
@@ -52,18 +51,17 @@ const RichTextEditor = ({
     'color', 'background', 'list', 'bullet', 'align', 'link'
   ];
 
-  useEffect(() => {
-    // Add custom variable button to toolbar
-    const toolbar = quillRef.current?.getEditor().getModule('toolbar');
-    if (toolbar) {
-      const variableButton = toolbar.container.querySelector('.ql-variable');
-      if (variableButton) {
-        variableButton.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>';
-        variableButton.setAttribute('title', 'Insert Variable');
-        variableButton.onclick = () => setShowVariableModal(true);
-      }
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const variableName = e.dataTransfer.getData('text/plain');
+    if (variableName && currentVariables.includes(variableName)) {
+      insertVariable(variableName);
     }
-  }, []);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
 
   const insertVariable = (variable: string) => {
     const editor = quillRef.current?.getEditor();
@@ -96,87 +94,25 @@ const RichTextEditor = ({
   return (
     <>
       <div className={`relative ${className}`}>
-        <ReactQuill
-          ref={quillRef}
-          theme="snow"
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          modules={modules}
-          formats={formats}
-          className="bg-background"
-        />
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          className="h-full"
+        >
+          <ReactQuill
+            ref={quillRef}
+            theme="snow"
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            modules={modules}
+            formats={formats}
+            className="bg-background h-full"
+          />
+        </div>
         
-        {/* Variable Tags */}
-        {currentVariables.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            <Label className="text-xs text-muted-foreground mr-2">Variables:</Label>
-            {currentVariables.map((variable) => (
-              <Badge 
-                key={variable} 
-                variant="secondary" 
-                className="text-xs cursor-pointer hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => insertVariable(variable)}
-              >
-                {variable}
-                <X 
-                  className="ml-1 h-3 w-3" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeVariable(variable);
-                  }}
-                />
-              </Badge>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Variable Modal */}
-      <Dialog open={showVariableModal} onOpenChange={setShowVariableModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Insert Variable</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Existing Variables */}
-            {currentVariables.length > 0 && (
-              <div>
-                <Label className="text-sm font-medium">Existing Variables</Label>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {currentVariables.map((variable) => (
-                    <Badge 
-                      key={variable}
-                      variant="outline"
-                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
-                      onClick={() => insertVariable(variable)}
-                    >
-                      {variable}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Add New Variable */}
-            <div>
-              <Label className="text-sm font-medium">Create New Variable</Label>
-              <div className="flex gap-2 mt-2">
-                <Input
-                  placeholder="Enter variable name..."
-                  value={newVariable}
-                  onChange={(e) => setNewVariable(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addNewVariable()}
-                />
-                <Button onClick={addNewVariable} disabled={!newVariable.trim()}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };
