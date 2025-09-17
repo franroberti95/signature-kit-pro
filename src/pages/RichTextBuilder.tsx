@@ -18,59 +18,158 @@ const DENTAL_TEMPLATES = {
     name: "Treatment Consent Form",
     icon: Stethoscope,
     variables: ["patient_name", "patient_id", "treatment_type", "dentist_name", "appointment_date", "patient_signature", "doctor_signature"],
-    content: `<h2>DENTAL TREATMENT CONSENT FORM</h2>
-<p><strong>Patient Name:</strong> {{patient_name}}</p>
-<p><strong>Patient ID:</strong> {{patient_id}}</p>
-<p><strong>Date:</strong> {{appointment_date}}</p>
+    content: `<div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #0066cc; padding-bottom: 15px;">
+  <h1 style="color: #0066cc; font-size: 24px; margin: 0; font-weight: bold;">DENTAL TREATMENT CONSENT FORM</h1>
+</div>
 
-<h3>Treatment Authorization</h3>
-<p>I hereby authorize Dr. {{dentist_name}} and the dental team to perform the following treatment:</p>
-<p><strong>Treatment:</strong> {{treatment_type}}</p>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+  <div><strong>Patient Name:</strong> <span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 150px; display: inline-block;">{{patient_name}}</span></div>
+  <div><strong>Patient ID:</strong> <span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 100px; display: inline-block;">{{patient_id}}</span></div>
+  <div><strong>Date:</strong> <span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 120px; display: inline-block;">{{appointment_date}}</span></div>
+  <div><strong>Doctor:</strong> <span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 150px; display: inline-block;">Dr. {{dentist_name}}</span></div>
+</div>
 
-<h3>Patient Acknowledgment</h3>
-<p>I acknowledge that I have been informed of the treatment plan, risks, benefits, and alternatives. I understand that no guarantee has been made regarding the outcome of treatment.</p>
+<div style="margin-bottom: 25px;">
+  <h3 style="color: #0066cc; border-bottom: 2px solid #0066cc; padding-bottom: 5px; margin-bottom: 15px;">Treatment Authorization</h3>
+  <p style="line-height: 1.6; margin-bottom: 15px;">I hereby authorize Dr. {{dentist_name}} and the dental team to perform the following treatment:</p>
+  <div style="padding: 15px; border: 2px solid #ddd; border-radius: 5px; background-color: #fff;">
+    <strong>Treatment:</strong> <span style="color: #0066cc; font-weight: bold;">{{treatment_type}}</span>
+  </div>
+</div>
 
-<p><strong>Patient Signature:</strong> {{patient_signature}} <strong>Date:</strong> {{appointment_date}}</p>
-<p><strong>Doctor Signature:</strong> {{doctor_signature}} <strong>Date:</strong> {{appointment_date}}</p>`
+<div style="margin-bottom: 25px;">
+  <h3 style="color: #0066cc; border-bottom: 2px solid #0066cc; padding-bottom: 5px; margin-bottom: 15px;">Patient Acknowledgment</h3>
+  <p style="line-height: 1.6; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #0066cc; margin: 0;">
+    I acknowledge that I have been informed of the treatment plan, risks, benefits, and alternatives. I understand that no guarantee has been made regarding the outcome of treatment.
+  </p>
+</div>
+
+<div style="margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+  <div style="text-align: center; padding: 20px; border: 2px solid #ddd; border-radius: 8px;">
+    <div style="border-bottom: 2px solid #333; margin-bottom: 8px; height: 40px; display: flex; align-items: end; justify-content: center;">
+      <span style="color: #0066cc; font-weight: bold;">{{patient_signature}}</span>
+    </div>
+    <div><strong>Patient Signature</strong></div>
+    <div style="margin-top: 15px;">
+      <span>Date: </span><span style="border-bottom: 1px solid #666; padding-bottom: 2px; min-width: 100px; display: inline-block;">{{appointment_date}}</span>
+    </div>
+  </div>
+  <div style="text-align: center; padding: 20px; border: 2px solid #ddd; border-radius: 8px;">
+    <div style="border-bottom: 2px solid #333; margin-bottom: 8px; height: 40px; display: flex; align-items: end; justify-content: center;">
+      <span style="color: #0066cc; font-weight: bold;">{{doctor_signature}}</span>
+    </div>
+    <div><strong>Doctor Signature</strong></div>
+    <div style="margin-top: 15px;">
+      <span>Date: </span><span style="border-bottom: 1px solid #666; padding-bottom: 2px; min-width: 100px; display: inline-block;">{{appointment_date}}</span>
+    </div>
+  </div>
+</div>`
   },
   history: {
     name: "Medical History Form",
     icon: User,
     variables: ["patient_name", "patient_id", "date_of_birth", "phone_number", "email_address", "emergency_contact", "medical_conditions", "medications", "allergies"],
-    content: `<h2>DENTAL MEDICAL HISTORY</h2>
-<p><strong>Patient Name:</strong> {{patient_name}}</p>
-<p><strong>Patient ID:</strong> {{patient_id}}</p>
-<p><strong>Date of Birth:</strong> {{date_of_birth}}</p>
-<p><strong>Phone:</strong> {{phone_number}}</p>
-<p><strong>Email:</strong> {{email_address}}</p>
+    content: `<div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #28a745; padding-bottom: 15px;">
+  <h1 style="color: #28a745; font-size: 24px; margin: 0; font-weight: bold;">DENTAL MEDICAL HISTORY</h1>
+</div>
 
-<h3>Emergency Contact</h3>
-<p><strong>Emergency Contact:</strong> {{emergency_contact}}</p>
+<div style="margin-bottom: 25px;">
+  <h3 style="color: #28a745; border-bottom: 2px solid #28a745; padding-bottom: 5px; margin-bottom: 15px;">Patient Information</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+    <div><strong>Patient Name:</strong><br><span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 200px; display: inline-block; margin-top: 5px;">{{patient_name}}</span></div>
+    <div><strong>Patient ID:</strong><br><span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 150px; display: inline-block; margin-top: 5px;">{{patient_id}}</span></div>
+    <div><strong>Date of Birth:</strong><br><span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 150px; display: inline-block; margin-top: 5px;">{{date_of_birth}}</span></div>
+    <div><strong>Phone:</strong><br><span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 150px; display: inline-block; margin-top: 5px;">{{phone_number}}</span></div>
+  </div>
+  <div style="margin-top: 15px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+    <div><strong>Email Address:</strong><br><span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 300px; display: inline-block; margin-top: 5px;">{{email_address}}</span></div>
+  </div>
+</div>
 
-<h3>Medical Information</h3>
-<p><strong>Current Medical Conditions:</strong> {{medical_conditions}}</p>
-<p><strong>Current Medications:</strong> {{medications}}</p>
-<p><strong>Known Allergies:</strong> {{allergies}}</p>
+<div style="margin-bottom: 25px;">
+  <h3 style="color: #28a745; border-bottom: 2px solid #28a745; padding-bottom: 5px; margin-bottom: 15px;">Emergency Contact</h3>
+  <div style="padding: 15px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 0 8px 8px 0;">
+    <strong>Emergency Contact Information:</strong><br>
+    <span style="border-bottom: 2px dotted #666; padding-bottom: 2px; min-width: 400px; display: inline-block; margin-top: 8px;">{{emergency_contact}}</span>
+  </div>
+</div>
 
-<h3>Patient Acknowledgment</h3>
-<p>I certify that the above information is complete and accurate to the best of my knowledge.</p>`
+<div style="margin-bottom: 25px;">
+  <h3 style="color: #28a745; border-bottom: 2px solid #28a745; padding-bottom: 5px; margin-bottom: 15px;">Medical Information</h3>
+  
+  <div style="margin-bottom: 20px;">
+    <strong>Current Medical Conditions:</strong>
+    <div style="border: 2px solid #ddd; border-radius: 5px; padding: 15px; margin-top: 8px; min-height: 60px; background-color: #fff;">
+      {{medical_conditions}}
+    </div>
+  </div>
+  
+  <div style="margin-bottom: 20px;">
+    <strong>Current Medications:</strong>
+    <div style="border: 2px solid #ddd; border-radius: 5px; padding: 15px; margin-top: 8px; min-height: 60px; background-color: #fff;">
+      {{medications}}
+    </div>
+  </div>
+  
+  <div style="margin-bottom: 20px;">
+    <strong>Known Allergies:</strong>
+    <div style="border: 2px solid #dc3545; border-radius: 5px; padding: 15px; margin-top: 8px; min-height: 60px; background-color: #f8d7da;">
+      {{allergies}}
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 40px; padding: 20px; border: 2px solid #28a745; border-radius: 8px; background-color: #d4edda;">
+  <h3 style="color: #155724; margin-bottom: 15px;">Patient Acknowledgment</h3>
+  <p style="line-height: 1.6; margin: 0; color: #155724;">
+    I certify that the above information is complete and accurate to the best of my knowledge. I understand that providing false information may be dangerous to my health.
+  </p>
+</div>`
   },
   plan: {
     name: "Treatment Plan",
     icon: Calendar,
     variables: ["patient_name", "patient_id", "dentist_name", "treatment_description", "estimated_cost", "treatment_duration", "appointment_date"],
-    content: `<h2>DENTAL TREATMENT PLAN</h2>
-<p><strong>Patient:</strong> {{patient_name}} (ID: {{patient_id}})</p>
-<p><strong>Doctor:</strong> Dr. {{dentist_name}}</p>
-<p><strong>Date:</strong> {{appointment_date}}</p>
+    content: `<div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #6f42c1; padding-bottom: 15px;">
+  <h1 style="color: #6f42c1; font-size: 24px; margin: 0; font-weight: bold;">DENTAL TREATMENT PLAN</h1>
+</div>
 
-<h3>Proposed Treatment</h3>
-<p><strong>Treatment Description:</strong> {{treatment_description}}</p>
-<p><strong>Estimated Cost:</strong> {{estimated_cost}}</p>
-<p><strong>Expected Duration:</strong> {{treatment_duration}}</p>
+<div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 20px; margin-bottom: 25px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+  <div><strong>Patient:</strong><br><span style="color: #6f42c1; font-weight: bold;">{{patient_name}}</span> (ID: {{patient_id}})</div>
+  <div><strong>Doctor:</strong><br><span style="color: #6f42c1; font-weight: bold;">Dr. {{dentist_name}}</span></div>
+  <div><strong>Date:</strong><br><span style="border-bottom: 2px dotted #666; padding-bottom: 2px; display: inline-block;">{{appointment_date}}</span></div>
+</div>
 
-<h3>Treatment Schedule</h3>
-<p>Treatment will begin on {{appointment_date}} and may require multiple visits as outlined above.</p>`
+<div style="margin-bottom: 25px;">
+  <h3 style="color: #6f42c1; border-bottom: 2px solid #6f42c1; padding-bottom: 5px; margin-bottom: 15px;">Proposed Treatment</h3>
+  
+  <div style="margin-bottom: 20px;">
+    <strong>Treatment Description:</strong>
+    <div style="border: 2px solid #6f42c1; border-radius: 5px; padding: 15px; margin-top: 8px; min-height: 80px; background-color: #fff;">
+      {{treatment_description}}
+    </div>
+  </div>
+  
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <div style="padding: 15px; border: 2px solid #28a745; border-radius: 8px; background-color: #d4edda;">
+      <strong style="color: #155724;">Estimated Cost:</strong><br>
+      <span style="font-size: 18px; font-weight: bold; color: #155724;">{{estimated_cost}}</span>
+    </div>
+    <div style="padding: 15px; border: 2px solid #17a2b8; border-radius: 8px; background-color: #d1ecf1;">
+      <strong style="color: #0c5460;">Expected Duration:</strong><br>
+      <span style="font-size: 18px; font-weight: bold; color: #0c5460;">{{treatment_duration}}</span>
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom: 25px;">
+  <h3 style="color: #6f42c1; border-bottom: 2px solid #6f42c1; padding-bottom: 5px; margin-bottom: 15px;">Treatment Schedule</h3>
+  <div style="padding: 20px; border: 2px solid #6f42c1; border-radius: 8px; background-color: #f8f5ff;">
+    <p style="line-height: 1.6; margin: 0; color: #6f42c1; font-weight: 500;">
+      Treatment will begin on <strong>{{appointment_date}}</strong> and may require multiple visits as outlined above. Our team will work with you to schedule follow-up appointments as needed.
+    </p>
+  </div>
+</div>`
   }
 };
 
@@ -203,7 +302,7 @@ const RichTextBuilderPage = () => {
     }));
     
     toast("Document ready for form completion!");
-    navigate('/pdf-completion');
+    navigate('/rich-text-completion');
   };
 
   const scale = 0.75;
