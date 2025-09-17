@@ -325,7 +325,7 @@ const PDFCompletionPage = () => {
         </div>
       </header>
 
-      <div className={`mx-auto p-6 ${isMobile ? 'pb-32' : 'max-w-7xl'}`}>
+      <div className={`mx-auto p-6 pb-[50vh] ${isMobile ? 'pb-32' : 'max-w-7xl'}`}>
 
         <div className={isMobile ? "space-y-4" : "grid grid-cols-1 lg:grid-cols-3 gap-6"}>
           {/* PDF with Interactive Elements */}
