@@ -2,15 +2,8 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
-  Type, 
-  PenTool, 
-  Calendar, 
-  CheckSquare, 
-  ChevronDown, 
-  Image,
   X,
-  Settings,
-  FileText
+  Settings
 } from "lucide-react";
 import { PDFElement, ElementType } from "./PDFBuilder";
 
@@ -24,14 +17,6 @@ interface PDFElementComponentProps {
   onUpdate: (updates: Partial<PDFElement>) => void;
   onDelete: () => void;
 }
-
-const elementIcons: Record<ElementType, any> = {
-  text: Type,
-  signature: PenTool,
-  date: Calendar,
-  checkbox: CheckSquare,
-  image: Image,
-};
 
 export const PDFElementComponent = ({
   element,
@@ -49,8 +34,6 @@ export const PDFElementComponent = ({
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const resizeStart = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
   const elementRef = useRef<HTMLDivElement>(null);
-
-  const IconComponent = elementIcons[element.type];
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -140,46 +123,48 @@ export const PDFElementComponent = ({
   };
 
   const renderElementContent = () => {
-    const baseClasses = "w-full h-full border-2 border-dashed border-muted-foreground/40 bg-white/80 flex items-center justify-start text-xs text-muted-foreground font-medium rounded px-2";
+    // Calculate font size based on container height (like DocuSeal)
+    const minFontSize = 8;
+    const maxFontSize = 24;
+    const calculatedFontSize = Math.max(minFontSize, Math.min(maxFontSize, (element.height * scale) * 0.4));
+    
+    const baseClasses = "w-full h-full border-2 border-dashed border-muted-foreground/40 bg-white/80 flex items-center justify-start text-muted-foreground font-medium px-2";
+    const fontSize = `${calculatedFontSize}px`;
     
     switch (element.type) {
       case "text":
         return (
-          <div className={baseClasses}>
-            <Type className="w-3 h-3 mr-1" />
-            Text Field
+          <div className={baseClasses} style={{ fontSize }}>
+            {element.placeholder || "Text Field"}
           </div>
         );
       case "signature":
         return (
-          <div className={`${baseClasses} bg-primary/10 border-primary/40`}>
-            <PenTool className="w-3 h-3 mr-1" />
+          <div className={`${baseClasses} bg-primary/10 border-primary/40`} style={{ fontSize }}>
             Signature
           </div>
         );
       case "date":
         return (
-          <div className={baseClasses}>
-            <Calendar className="w-3 h-3 mr-1" />
+          <div className={baseClasses} style={{ fontSize }}>
             Date
           </div>
         );
       case "checkbox":
         return (
-          <div className={`${baseClasses} w-5 h-5 min-w-5 min-h-5`}>
-            <CheckSquare className="w-3 h-3" />
+          <div className={`${baseClasses} w-5 h-5 min-w-5 min-h-5 justify-center`}>
+            <div className="w-3 h-3 border border-muted-foreground"></div>
           </div>
         );
       case "image":
         return (
-          <div className={baseClasses}>
-            <Image className="w-3 h-3 mr-1" />
+          <div className={baseClasses} style={{ fontSize }}>
             Image Upload
           </div>
         );
       default:
         return (
-          <div className={baseClasses}>
+          <div className={baseClasses} style={{ fontSize }}>
             Unknown
           </div>
         );
@@ -209,7 +194,7 @@ export const PDFElementComponent = ({
 
       {/* Selection Indicator */}
       {isSelected && (
-        <div className="absolute inset-0 border-2 border-primary rounded pointer-events-none">
+        <div className="absolute inset-0 border-2 border-primary pointer-events-none">
           {/* Resize handles */}
           <div 
             className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-nw-resize pointer-events-auto hover:bg-primary/80"
