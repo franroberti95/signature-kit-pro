@@ -50,8 +50,8 @@ const PDFBuilderPage = () => {
       type,
       x: 100 + Math.random() * 200,
       y: 100 + Math.random() * 200,
-      width: type === "checkbox" ? 20 : type === "richtext" ? 400 : 150,
-      height: type === "text" ? 40 : type === "checkbox" ? 20 : type === "richtext" ? 200 : 60,
+      width: type === "checkbox" ? 20 : 150,
+      height: type === "text" ? 40 : type === "checkbox" ? 20 : 60,
       required: false,
       placeholder: `Enter ${type}...`,
     };

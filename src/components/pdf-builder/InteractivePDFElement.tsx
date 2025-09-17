@@ -37,7 +37,6 @@ const elementIcons: Record<string, any> = {
   checkbox: CheckSquare,
   select: ChevronDown,
   image: Image,
-  richtext: FileText,
 };
 
 export const InteractivePDFElement = ({
@@ -262,23 +261,6 @@ export const InteractivePDFElement = ({
               onChange={handleFileUpload}
               className="hidden"
             />
-          </div>
-        );
-        
-      case "richtext":
-        return (
-          <div className={`${baseClasses} bg-accent/10 border-accent/40`} onClick={handleClick}>
-            {hasValue ? (
-              <div 
-                className="w-full h-full p-1 text-xs overflow-hidden"
-                dangerouslySetInnerHTML={{ __html: String(value) }}
-              />
-            ) : (
-              <div>
-                <FileText className="w-3 h-3 mr-1" />
-                Rich Text Editor
-              </div>
-            )}
           </div>
         );
 

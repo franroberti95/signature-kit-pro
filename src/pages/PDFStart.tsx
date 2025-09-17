@@ -10,21 +10,15 @@ const PDFStart = () => {
   const [isConverting, setIsConverting] = useState(false);
 
   const handleFormatSelect = (format: PDFFormat) => {
-    // Store the selected format and navigate to builder
-    const newPage = {
-      id: `page-${Date.now()}`,
-      format,
-      elements: [],
-    };
-    
-    // Store in sessionStorage for the builder page
-    sessionStorage.setItem('pdfBuilderData', JSON.stringify({
-      pages: [newPage],
-      selectedFormat: format
+    // Store the selected format and navigate to rich text builder
+    sessionStorage.setItem('richTextBuilderData', JSON.stringify({
+      selectedFormat: format,
+      content: "",
+      variables: []
     }));
     
     toast(`New ${format} document created!`);
-    navigate('/pdf-builder');
+    navigate('/rich-text-builder');
   };
 
   const handleFileUpload = async (file: File) => {

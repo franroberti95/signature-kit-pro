@@ -18,12 +18,6 @@ interface ToolbarPanelProps {
 
 const toolbarElements = [
   {
-    type: "richtext" as ElementType,
-    icon: FileText,
-    label: "Rich Text",
-    description: "Word-like rich text editor with variables",
-  },
-  {
     type: "text" as ElementType,
     icon: Type,
     label: "Text Field",

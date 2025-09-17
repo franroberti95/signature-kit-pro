@@ -93,18 +93,6 @@ export const FieldEditModal = ({
           </div>
         );
 
-      case 'richtext':
-        return (
-          <div className="py-4 min-h-[400px]">
-            <RichTextEditor
-              value={typeof localValue === 'string' ? localValue : ''}
-              onChange={(value) => setLocalValue(value)}
-              placeholder={element.placeholder || 'Start typing your rich text...'}
-              className="min-h-[300px]"
-            />
-          </div>
-        );
-
       default:
         return (
           <div className="py-4">
