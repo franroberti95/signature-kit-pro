@@ -177,21 +177,32 @@ const RichTextBuilderPage = () => {
             
             <div className="space-y-2">
               {variables.map((variable) => (
-                <div
+                <div 
                   key={variable}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, variable)}
-                  className="group flex items-center justify-between p-2 bg-background border border-border rounded-md cursor-grab hover:bg-accent hover:border-accent-foreground/20 active:cursor-grabbing"
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-toolbar-hover transition-colors cursor-pointer"
                 >
-                  <div className="flex items-center gap-2">
-                    <Variable className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-xs font-medium">{variable}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, variable)}
+                    className="flex-shrink-0 cursor-grab active:cursor-grabbing border-dashed"
+                  >
+                    <Variable className="w-4 h-4" />
+                  </Button>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-foreground">
+                      {variable}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Drag to insert variable
+                    </div>
                   </div>
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={() => removeVariable(variable)}
-                    className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
                   >
                     <X className="h-3 w-3" />
                   </Button>
