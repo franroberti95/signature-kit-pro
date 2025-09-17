@@ -51,7 +51,7 @@ export const PDFCanvas = ({
     }
   };
 
-  const scale = 0.75; // Scale factor for display
+  const scale = 1.0; // Scale factor for display
 
   const handleDragOver = useCallback((e: React.DragEvent, pageIndex: number) => {
     e.preventDefault();
