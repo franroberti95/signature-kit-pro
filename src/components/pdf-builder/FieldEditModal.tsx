@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SignatureCanvas } from "./SignatureCanvas";
 import { DatePicker } from "./DatePicker";
 import { PDFElement } from "./PDFBuilder";
+import RichTextEditor from "./RichTextEditor";
 import { X, Check } from "lucide-react";
 
 interface FieldEditModalProps {
@@ -88,6 +89,18 @@ export const FieldEditModal = ({
               placeholder={element.placeholder || 'Enter text...'}
               className="min-h-[100px]"
               autoFocus
+            />
+          </div>
+        );
+
+      case 'richtext':
+        return (
+          <div className="py-4 min-h-[400px]">
+            <RichTextEditor
+              value={typeof localValue === 'string' ? localValue : ''}
+              onChange={(value) => setLocalValue(value)}
+              placeholder={element.placeholder || 'Start typing your rich text...'}
+              className="min-h-[300px]"
             />
           </div>
         );

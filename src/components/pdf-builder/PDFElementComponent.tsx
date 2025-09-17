@@ -9,7 +9,8 @@ import {
   ChevronDown, 
   Image,
   X,
-  Settings
+  Settings,
+  FileText
 } from "lucide-react";
 import { PDFElement, ElementType } from "./PDFBuilder";
 
@@ -30,6 +31,7 @@ const elementIcons: Record<ElementType, any> = {
   checkbox: CheckSquare,
   select: ChevronDown,
   image: Image,
+  richtext: FileText,
 };
 
 export const PDFElementComponent = ({
@@ -117,6 +119,13 @@ export const PDFElementComponent = ({
           <div className={baseClasses}>
             <Image className="w-3 h-3 mr-1" />
             Image Upload
+          </div>
+        );
+      case "richtext":
+        return (
+          <div className={`${baseClasses} bg-accent/20 border-accent/40`}>
+            <FileText className="w-3 h-3 mr-1" />
+            Rich Text
           </div>
         );
       default:

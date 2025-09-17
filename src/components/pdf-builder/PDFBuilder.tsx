@@ -1,7 +1,7 @@
 // Type definitions for PDF Builder components
 
 export type PDFFormat = "A4" | "A5" | "Letter";
-export type ElementType = "text" | "signature" | "date" | "checkbox" | "select" | "image";
+export type ElementType = "text" | "signature" | "date" | "checkbox" | "select" | "image" | "richtext";
 
 export interface PDFElement {
   id: string;

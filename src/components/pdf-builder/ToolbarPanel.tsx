@@ -7,7 +7,8 @@ import {
   CheckSquare, 
   ChevronDown, 
   Image,
-  Grip
+  Grip,
+  FileText
 } from "lucide-react";
 import { ElementType } from "./PDFBuilder";
 
@@ -16,6 +17,12 @@ interface ToolbarPanelProps {
 }
 
 const toolbarElements = [
+  {
+    type: "richtext" as ElementType,
+    icon: FileText,
+    label: "Rich Text",
+    description: "Word-like rich text editor with variables",
+  },
   {
     type: "text" as ElementType,
     icon: Type,
