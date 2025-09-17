@@ -539,3 +539,5 @@ export const CompletionComponent = ({
     </div>
   );
 };
+
+export default CompletionComponent;
