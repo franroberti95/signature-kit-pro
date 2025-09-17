@@ -200,10 +200,11 @@ const PDFCompletionPage = () => {
         for (const element of page.elements) {
           const value = formData[element.id];
           if (value && String(value) !== 'false') {
-            // Calculate position - convert from canvas pixels to PDF points
-            // The canvas shows A4 as 595x842 points, so we use direct proportion
-            const x = (element.x / 595) * width;
-            const y = height - ((element.y + 12) / 842) * height; // Adjust for text baseline, PDF coordinates are bottom-up
+            // Calculate position using consistent scaling - match the interactive view exactly
+            const scaleX = width / 595;  // A4 width in points
+            const scaleY = height / 842; // A4 height in points
+            const x = element.x * scaleX;
+            const y = height - (element.y * scaleY) - (element.height * scaleY); // PDF coordinates are bottom-up
             
             if (element.type === 'signature' && typeof value === 'string' && value.startsWith('data:image/')) {
               try {
@@ -433,7 +434,7 @@ const PDFCompletionPage = () => {
                       <div key={page.id} className="relative" data-page-index={pageIndex}>
                          <div 
                            className="relative bg-white shadow-lg rounded overflow-hidden" 
-                           style={{ minHeight: '600px' }}
+                           style={{ minHeight: '495px' }}
                          >
                            {page.backgroundImage ? (
                               typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
@@ -445,37 +446,37 @@ const PDFCompletionPage = () => {
                                />
                              ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('blob:') ? (
                                // Blob URL for PDF
-                               <PDFRenderer
-                                 key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
-                                 fileUrl={page.backgroundImage}
-                                 width={350}
-                                 height={500}
-                                 pageNumber={pageIndex + 1}
-                                 className="w-full"
-                               />
+                                <PDFRenderer
+                                  key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
+                                  fileUrl={page.backgroundImage}
+                                  width={350}
+                                  height={495}
+                                  pageNumber={pageIndex + 1}
+                                  className="w-full"
+                                />
                              ) : page.backgroundImage instanceof File ? (
                                 // File object (PDF or other file)
-                                <PDFRenderer
-                                  key={`pdf-page-${pageIndex}-${page.backgroundImage.name}`}
-                                  fileUrl={page.backgroundImage}
-                                  width={350}
-                                  height={500}
-                                  pageNumber={pageIndex + 1}
-                                  className="w-full"
-                                />
+                                 <PDFRenderer
+                                   key={`pdf-page-${pageIndex}-${page.backgroundImage.name}`}
+                                   fileUrl={page.backgroundImage}
+                                   width={350}
+                                   height={495}
+                                   pageNumber={pageIndex + 1}
+                                   className="w-full"
+                                 />
                               ) : (
                                 // Other string format
-                                <PDFRenderer
-                                  key={`pdf-page-${pageIndex}`}
-                                  fileUrl={page.backgroundImage}
-                                  width={350}
-                                  height={500}
-                                  pageNumber={pageIndex + 1}
-                                  className="w-full"
-                                />
+                                 <PDFRenderer
+                                   key={`pdf-page-${pageIndex}`}
+                                   fileUrl={page.backgroundImage}
+                                   width={350}
+                                   height={495}
+                                   pageNumber={pageIndex + 1}
+                                   className="w-full"
+                                 />
                               )
                             ) : (
-                              <div className="w-full h-[500px] bg-white border border-gray-200 rounded flex items-center justify-center">
+                              <div className="w-full h-[495px] bg-white border border-gray-200 rounded flex items-center justify-center">
                                 <div className="text-center text-muted-foreground">
                                   <p>Page {pageIndex + 1}</p>
                                   <p className="text-sm">No background image</p>
@@ -505,7 +506,7 @@ const PDFCompletionPage = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-[500px] text-muted-foreground">
+                  <div className="flex items-center justify-center h-[495px] text-muted-foreground">
                     <div className="text-center">
                       <p className="text-lg mb-2">No PDF uploaded</p>
                       <p className="text-sm">Please go back and upload a PDF file first.</p>
