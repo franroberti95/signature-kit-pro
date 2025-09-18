@@ -8,6 +8,28 @@ import {
 } from "lucide-react";
 import { PDFElement, ElementType, PreDefinedFieldsConfig } from "./PDFBuilder";
 
+const getExampleValue = (type: ElementType, label: string): string => {
+  // Provide realistic examples based on the field type and label
+  if (type === 'text') {
+    if (label.toLowerCase().includes('name')) return 'John Doe';
+    if (label.toLowerCase().includes('medical') || label.toLowerCase().includes('record')) return 'MRN-123456';
+    if (label.toLowerCase().includes('birth') || label.toLowerCase().includes('dob')) return '01/15/1990';
+    if (label.toLowerCase().includes('insurance')) return 'INS-789012';
+    return 'Example text';
+  }
+  
+  if (type === 'signature') {
+    return '[Digital Signature]';
+  }
+  
+  if (type === 'date') {
+    const today = new Date().toLocaleDateString();
+    return today;
+  }
+  
+  return 'Example value';
+};
+
 interface PDFElementComponentProps {
   element: PDFElement;
   scale: number;
@@ -137,20 +159,27 @@ export const PDFElementComponent = ({
     switch (element.type) {
       case "text":
         return (
-          <div className={baseClasses} style={{ fontSize }}>
-            {element.placeholder || "Text Field"}
+          <div className={`${baseClasses} bg-white border-muted-foreground/20`} style={{ fontSize }}>
+            <span className="text-muted-foreground px-1">
+              {element.preDefinedLabel ? `Will auto-fill: ${element.preDefinedLabel}` : 
+               element.placeholder || "Text Field"}
+            </span>
           </div>
         );
       case "signature":
         return (
           <div className={`${baseClasses} bg-primary/10 border-primary/40`} style={{ fontSize }}>
-            Signature
+            <span className="text-primary px-1">
+              {element.preDefinedLabel ? `Will auto-fill: ${element.preDefinedLabel}` : "Signature"}
+            </span>
           </div>
         );
       case "date":
         return (
-          <div className={baseClasses} style={{ fontSize }}>
-            Date
+          <div className={`${baseClasses} bg-white border-muted-foreground/20`} style={{ fontSize }}>
+            <span className="text-muted-foreground px-1">
+              {element.preDefinedLabel ? `Will auto-fill: ${element.preDefinedLabel}` : "Date"}
+            </span>
           </div>
         );
       case "checkbox":
@@ -317,7 +346,7 @@ export const PDFElementComponent = ({
                 </Select>
                 {element.preDefinedLabel && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    Will auto-fill: {element.preDefinedLabel}
+                    Example: {getExampleValue(element.type, element.preDefinedLabel)}
                   </p>
                 )}
               </div>
