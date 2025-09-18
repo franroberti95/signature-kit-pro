@@ -74,7 +74,7 @@ export const FieldEditModal = ({
                 onCheckedChange={(checked) => setLocalValue(checked as boolean)}
               />
               <label htmlFor="checkbox-field" className="text-sm font-medium">
-                {element.placeholder || 'Check this box'}
+                {element.preDefinedLabel || element.placeholder || 'Check this box'}
               </label>
             </div>
           </div>
@@ -86,7 +86,7 @@ export const FieldEditModal = ({
             <Textarea
               value={typeof localValue === 'string' ? localValue : ''}
               onChange={(e) => setLocalValue(e.target.value)}
-              placeholder={element.placeholder || 'Enter text...'}
+              placeholder={element.preDefinedLabel || element.placeholder || 'Enter text...'}
               className="min-h-[100px]"
               autoFocus
             />
@@ -100,7 +100,7 @@ export const FieldEditModal = ({
               type="text"
               value={typeof localValue === 'string' ? localValue : ''}
               onChange={(e) => setLocalValue(e.target.value)}
-              placeholder={element.placeholder || 'Enter text...'}
+              placeholder={element.preDefinedLabel || element.placeholder || 'Enter text...'}
               autoFocus
             />
           </div>

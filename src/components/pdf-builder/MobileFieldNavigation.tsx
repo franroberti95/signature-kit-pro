@@ -111,7 +111,7 @@ export const MobileFieldNavigation = ({
                   }}
                 />
                 <label htmlFor="mobile-checkbox" className="text-sm font-medium">
-                  {currentElement.placeholder || 'Check this box'}
+                  {currentElement.preDefinedLabel || currentElement.placeholder || 'Check this box'}
                 </label>
               </div>
             </div>
@@ -127,7 +127,7 @@ export const MobileFieldNavigation = ({
                 setLocalValue(e.target.value);
                 onFieldUpdate(currentElement.id, e.target.value);
               }}
-              placeholder=""
+              placeholder={currentElement.preDefinedLabel || currentElement.placeholder || 'Enter text...'}
               className="min-h-[80px] bg-card text-foreground border-input"
             />
           </div>
@@ -143,7 +143,7 @@ export const MobileFieldNavigation = ({
                 setLocalValue(e.target.value);
                 onFieldUpdate(currentElement.id, e.target.value);
               }}
-              placeholder=""
+              placeholder={currentElement.preDefinedLabel || currentElement.placeholder || 'Enter text...'}
               className="bg-card text-foreground border-input"
             />
           </div>
