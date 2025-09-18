@@ -161,8 +161,9 @@ export const PDFElementComponent = ({
         return (
           <div className={`${baseClasses} bg-white border-muted-foreground/20`} style={{ fontSize }}>
             <span className="text-muted-foreground px-1">
-              {element.preDefinedLabel ? `Will auto-fill: ${element.preDefinedLabel}` : 
-               element.placeholder || "Text Field"}
+              {element.preDefinedLabel ? 
+                getExampleValue(element.type, element.preDefinedLabel) : 
+                element.placeholder || "Text Field"}
             </span>
           </div>
         );
@@ -178,7 +179,9 @@ export const PDFElementComponent = ({
         return (
           <div className={`${baseClasses} bg-white border-muted-foreground/20`} style={{ fontSize }}>
             <span className="text-muted-foreground px-1">
-              {element.preDefinedLabel ? `Will auto-fill: ${element.preDefinedLabel}` : "Date"}
+              {element.preDefinedLabel ? 
+                getExampleValue(element.type, element.preDefinedLabel) : 
+                "Date"}
             </span>
           </div>
         );
