@@ -15,6 +15,7 @@ interface MobileFieldNavigationProps {
   onNavigate: (index: number) => void;
   formData: { [key: string]: string | boolean };
   onFieldUpdate: (elementId: string, value: string | boolean) => void;
+  onDownload?: () => void;
 }
 
 export const MobileFieldNavigation = ({
@@ -22,7 +23,8 @@ export const MobileFieldNavigation = ({
   currentIndex,
   onNavigate,
   formData,
-  onFieldUpdate
+  onFieldUpdate,
+  onDownload
 }: MobileFieldNavigationProps) => {
   const [localValue, setLocalValue] = useState<string | boolean>('');
   const currentElement = elements[currentIndex];
@@ -35,6 +37,7 @@ export const MobileFieldNavigation = ({
   
   const canGoPrevious = currentIndex > 0;
   const canGoNext = currentIndex < elements.length - 1;
+  const isLastField = currentIndex === elements.length - 1;
 
   // Update local value when current element changes
   useEffect(() => {
@@ -179,16 +182,28 @@ export const MobileFieldNavigation = ({
               Previous
             </Button>
             
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => onNavigate(currentIndex + 1)}
-              disabled={!canGoNext}
-              className="flex-1"
-            >
-              Next
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
+            {isLastField ? (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={onDownload}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              >
+                Done
+                <Check className="w-4 h-4 ml-1" />
+              </Button>
+            ) : (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => onNavigate(currentIndex + 1)}
+                disabled={!canGoNext}
+                className="flex-1"
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            )}
           </div>
         </div>
       </div>

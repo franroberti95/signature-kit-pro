@@ -228,50 +228,9 @@ export const CompletionComponent = ({
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-white border-b p-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate(backRoute)}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {isMobile ? 'Back' : backButtonText}
-            </Button>
-            <div>
-              <h1 className={`font-semibold ${isMobile ? 'text-lg' : 'text-xl'}`}>
-                {title}
-              </h1>
-              {!isMobile && subtitle && (
-                <p className="text-sm text-muted-foreground">
-                  {subtitle}
-                </p>
-              )}
-            </div>
-          </div>
-          {!isMobile && (
-            <div className="flex items-center gap-2">
-              <Button onClick={downloadPDF} variant="default">
-                <Download className="w-4 h-4 mr-2" />
-                Download PDF
-              </Button>
-            </div>
-          )}
-          {isMobile && (
-            <Button onClick={downloadPDF} size="sm" variant="outline">
-              <Download className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
-      </header>
-
-      <div className={`mx-auto p-6 pb-[50vh] ${isMobile ? 'pb-32' : 'max-w-7xl'}`}>
-
-        <div className={isMobile ? "space-y-4" : "grid grid-cols-1 lg:grid-cols-3 gap-6"}>
-          {/* PDF with Interactive Elements */}
-          <div className={isMobile ? "" : "lg:col-span-2"}>
+      <div className="mx-auto p-6 pb-[50vh] max-w-4xl">
+        {/* PDF with Interactive Elements */}
+        <div>
             {!isMobile ? (
               <Card>
                 <CardHeader>
@@ -454,86 +413,17 @@ export const CompletionComponent = ({
                 )}
               </div>
             )}
-          </div>
-
-          {/* Fields Overview - Desktop Only */}
-          {!isMobile && (
-            <div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Form Fields</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Track your progress
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {allElements.map((element, index) => {
-                      const hasValue = formData[element.id] && formData[element.id] !== false;
-                      return (
-                        <div
-                          key={element.id}
-                          className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer ${
-                            activeElement === element.id 
-                              ? 'bg-primary/10 border-primary' 
-                              : hasValue
-                                ? 'bg-green-50 border-green-200' 
-                                : 'bg-muted/30 border-border hover:bg-muted/50'
-                          }`}
-                          onClick={() => handleElementClick(element.id)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                              hasValue 
-                                ? 'bg-green-500 text-white' 
-                                : 'bg-muted text-muted-foreground'
-                            }`}>
-                              {hasValue ? '✓' : index + 1}
-                            </span>
-                            <div>
-                              <p className="text-sm font-medium capitalize">
-                                {element.type}
-                              </p>
-                              {element.placeholder && (
-                                <p className="text-xs text-muted-foreground">
-                                  {element.placeholder}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <span className="text-xs">
-                            {hasValue ? '✅' : '⏳'
-                          }
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  {getCompletionProgress() === 100 && (
-                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-800 font-medium">
-                        🎉 All fields completed!
-                      </p>
-                      <p className="text-xs text-green-600 mt-1">
-                        You can now download or submit your PDF.
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
         </div>
 
         {/* Field Navigation Stepper */}
-        {isMobile && <div className="h-64" />} {/* Spacer for mobile navigation only */}
+        <div className="h-64" /> {/* Spacer for mobile navigation */}
         <MobileFieldNavigation
           elements={allElements}
           currentIndex={currentFieldIndex}
           onNavigate={handleNavigateToField}
           formData={formData}
           onFieldUpdate={handleInputChange}
+          onDownload={downloadPDF}
         />
       </div>
     </div>
