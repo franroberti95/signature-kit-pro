@@ -266,8 +266,8 @@ export const PDFElementComponent = ({
             
             {/* Pre-defined Values Section */}
             {((element.type === 'text' && preDefinedFields?.text_field_options) ||
-              (element.type === 'signature' && preDefinedFields?.signature_field_options) ||
-              (element.type === 'date' && preDefinedFields?.date_field_options)) && (
+               (element.type === 'signature' && preDefinedFields?.signature_field_options) ||
+               (element.type === 'date' && preDefinedFields?.date_field_options)) && (
               <div>
                 <label className="text-xs font-medium text-foreground">Pre-defined Value</label>
                 <Select
