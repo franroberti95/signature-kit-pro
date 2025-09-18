@@ -271,9 +271,9 @@ export const PDFElementComponent = ({
               <div>
                 <label className="text-xs font-medium text-foreground">Pre-defined Value</label>
                 <Select
-                  value={element.preDefinedValueId?.toString() || ""}
+                  value={element.preDefinedValueId?.toString() || "none"}
                   onValueChange={(value) => {
-                    if (value === "") {
+                    if (value === "none") {
                       onUpdate({ preDefinedValueId: undefined, preDefinedLabel: undefined });
                     } else {
                       let options;
@@ -297,7 +297,7 @@ export const PDFElementComponent = ({
                     <SelectValue placeholder="Select pre-defined value..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None (manual input)</SelectItem>
+                    <SelectItem value="none">None (manual input)</SelectItem>
                     {element.type === 'text' && preDefinedFields?.text_field_options?.map((option) => (
                       <SelectItem key={option.value} value={option.value.toString()}>
                         {option.label}
