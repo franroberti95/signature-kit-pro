@@ -28,6 +28,7 @@ interface InteractivePDFElementProps {
   hideOverlay?: boolean; // Hide visual boxes for export
   isMobile?: boolean; // Prevent modals on mobile
   showHighlight?: boolean; // Show highlight border for active element
+  readOnly?: boolean; // Make field read-only (for pre-filled values)
 }
 
 const elementIcons: Record<string, any> = {
@@ -48,7 +49,8 @@ export const InteractivePDFElement = ({
   onActivate,
   hideOverlay = false,
   isMobile = false,
-  showHighlight = false
+  showHighlight = false,
+  readOnly = false
 }: InteractivePDFElementProps) => {
   const [showSignatureCanvas, setShowSignatureCanvas] = useState(false);
   const [showInput, setShowInput] = useState(false);
@@ -57,6 +59,12 @@ export const InteractivePDFElement = ({
   const IconComponent = elementIcons[element.type];
 
   const handleClick = () => {
+    // Don't allow interaction if read-only
+    if (readOnly) {
+      onActivate?.(); // Still allow activation for highlighting
+      return;
+    }
+    
     onActivate?.();
     
     // On mobile, don't show modals - let mobile navigation handle editing
@@ -149,12 +157,16 @@ export const InteractivePDFElement = ({
     }
     
     // Interactive mode with visual boxes
-    const baseClasses = `w-full h-full flex items-center justify-center text-xs font-medium rounded cursor-pointer transition-all duration-200 ${
-      hasValue 
-        ? 'bg-green-50 border-2 border-green-200 text-green-800' 
-        : isActive
-          ? 'bg-primary/10 border-2 border-primary border-dashed'
-          : 'bg-white/90 border-2 border-dashed border-muted-foreground/40 hover:border-primary/60 hover:bg-primary/5'
+    const baseClasses = `w-full h-full flex items-center justify-center text-xs font-medium rounded ${
+      readOnly ? 'cursor-default' : 'cursor-pointer'
+    } transition-all duration-200 ${
+      readOnly 
+        ? 'bg-blue-50 border-2 border-blue-200 text-blue-800' // Pre-filled styling
+        : hasValue 
+          ? 'bg-green-50 border-2 border-green-200 text-green-800' 
+          : isActive
+            ? 'bg-primary/10 border-2 border-primary border-dashed'
+            : 'bg-white/90 border-2 border-dashed border-muted-foreground/40 hover:border-primary/60 hover:bg-primary/5'
     }`;
     
     switch (element.type) {
@@ -214,7 +226,7 @@ export const InteractivePDFElement = ({
         return (
           <div 
             className={`${baseClasses} w-5 h-5 min-w-5 min-h-5`}
-            onClick={() => onUpdate(!value)}
+            onClick={readOnly ? undefined : () => onUpdate(!value)}
           >
             <Checkbox
               checked={Boolean(value)}

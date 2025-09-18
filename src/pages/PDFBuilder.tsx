@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ToolbarPanel } from "@/components/pdf-builder/ToolbarPanel";
 import { PDFCanvas } from "@/components/pdf-builder/PDFCanvas";
-import { PDFFormat, ElementType, PDFElement, PDFPage } from "@/components/pdf-builder/PDFBuilder";
+import { PDFFormat, ElementType, PDFElement, PDFPage, PreDefinedFieldsConfig } from "@/components/pdf-builder/PDFBuilder";
 import { toast } from "sonner";
 
 const PDFBuilderPage = () => {
@@ -11,6 +11,27 @@ const PDFBuilderPage = () => {
   const location = useLocation();
   const [pages, setPages] = useState<PDFPage[]>([]);
   const [selectedFormat, setSelectedFormat] = useState<PDFFormat>("A4");
+
+  // Example pre-defined fields configuration - this could come from props or API
+  const preDefinedFields: PreDefinedFieldsConfig = {
+    text_field_options: [
+      { value: 1, label: "Patient Name" },
+      { value: 2, label: "Doctor Name" },
+      { value: 3, label: "Medical Record Number" },
+      { value: 4, label: "Date of Birth" },
+      { value: 5, label: "Insurance ID" }
+    ],
+    signature_field_options: [
+      { value: 1, label: "Patient Signature" },
+      { value: 2, label: "Doctor Signature" },
+      { value: 3, label: "Guardian Signature" }
+    ],
+    date_field_options: [
+      { value: 1, label: "Appointment Date" },
+      { value: 2, label: "Treatment Date" },
+      { value: 3, label: "Follow-up Date" }
+    ]
+  };
 
   useEffect(() => {
     // Load data from sessionStorage
@@ -151,6 +172,7 @@ const PDFBuilderPage = () => {
             updateStoredData(updatedPages);
           }}
           onAddPage={addPage}
+          preDefinedFields={preDefinedFields}
         />
       </div>
     </div>

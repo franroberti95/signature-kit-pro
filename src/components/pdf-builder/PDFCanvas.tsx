@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, ZoomIn, ZoomOut } from "lucide-react";
-import { PDFPage, PDFElement, ElementType } from "./PDFBuilder";
+import { PDFPage, PDFElement, ElementType, PreDefinedFieldsConfig } from "./PDFBuilder";
 import { PDFElementComponent } from "./PDFElementComponent";
 import { PDFRenderer } from "./PDFRenderer";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ interface PDFCanvasProps {
   onDeleteElement: (pageIndex: number, elementId: string) => void;
   onAddElement: (pageIndex: number, element: PDFElement) => void;
   onAddPage: () => void;
+  preDefinedFields?: PreDefinedFieldsConfig;
 }
 
 const getPageDimensions = (format: string) => {
@@ -32,7 +33,8 @@ export const PDFCanvas = ({
   onUpdateElement,
   onDeleteElement,
   onAddElement,
-  onAddPage
+  onAddPage,
+  preDefinedFields
 }: PDFCanvasProps) => {
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [selectedPage, setSelectedPage] = useState<number>(0);
@@ -229,6 +231,7 @@ export const PDFCanvas = ({
                         onResize={(deltaX, deltaY, deltaWidth, deltaHeight) => handleElementResize(pageIndex, element.id, deltaX, deltaY, deltaWidth, deltaHeight)}
                         onUpdate={(updates) => onUpdateElement(pageIndex, element.id, updates)}
                         onDelete={() => onDeleteElement(pageIndex, element.id)}
+                        preDefinedFields={preDefinedFields}
                       />
                     ))}
 

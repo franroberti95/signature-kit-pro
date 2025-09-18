@@ -1,11 +1,12 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   X,
   Settings
 } from "lucide-react";
-import { PDFElement, ElementType } from "./PDFBuilder";
+import { PDFElement, ElementType, PreDefinedFieldsConfig } from "./PDFBuilder";
 
 interface PDFElementComponentProps {
   element: PDFElement;
@@ -16,6 +17,7 @@ interface PDFElementComponentProps {
   onResize: (deltaX: number, deltaY: number, deltaWidth: number, deltaHeight: number) => void;
   onUpdate: (updates: Partial<PDFElement>) => void;
   onDelete: () => void;
+  preDefinedFields?: PreDefinedFieldsConfig;
 }
 
 export const PDFElementComponent = ({
@@ -26,7 +28,8 @@ export const PDFElementComponent = ({
   onDrag,
   onResize,
   onUpdate,
-  onDelete
+  onDelete,
+  preDefinedFields
 }: PDFElementComponentProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -260,6 +263,66 @@ export const PDFElementComponent = ({
                 autoFocus
               />
             </div>
+            
+            {/* Pre-defined Values Section */}
+            {((element.type === 'text' && preDefinedFields?.text_field_options) ||
+              (element.type === 'signature' && preDefinedFields?.signature_field_options) ||
+              (element.type === 'date' && preDefinedFields?.date_field_options)) && (
+              <div>
+                <label className="text-xs font-medium text-foreground">Pre-defined Value</label>
+                <Select
+                  value={element.preDefinedValueId?.toString() || ""}
+                  onValueChange={(value) => {
+                    if (value === "") {
+                      onUpdate({ preDefinedValueId: undefined, preDefinedLabel: undefined });
+                    } else {
+                      let options;
+                      if (element.type === 'text') options = preDefinedFields?.text_field_options;
+                      else if (element.type === 'signature') options = preDefinedFields?.signature_field_options;
+                      else if (element.type === 'date') options = preDefinedFields?.date_field_options;
+                      
+                      const selectedOption = options?.find(opt => opt.value.toString() === value);
+                      onUpdate({ 
+                        preDefinedValueId: selectedOption?.value, 
+                        preDefinedLabel: selectedOption?.label 
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger 
+                    className="text-xs h-7"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <SelectValue placeholder="Select pre-defined value..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None (manual input)</SelectItem>
+                    {element.type === 'text' && preDefinedFields?.text_field_options?.map((option) => (
+                      <SelectItem key={option.value} value={option.value.toString()}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                    {element.type === 'signature' && preDefinedFields?.signature_field_options?.map((option) => (
+                      <SelectItem key={option.value} value={option.value.toString()}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                    {element.type === 'date' && preDefinedFields?.date_field_options?.map((option) => (
+                      <SelectItem key={option.value} value={option.value.toString()}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {element.preDefinedLabel && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Will auto-fill: {element.preDefinedLabel}
+                  </p>
+                )}
+              </div>
+            )}
+            
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"

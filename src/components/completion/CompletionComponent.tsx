@@ -84,25 +84,49 @@ export const CompletionComponent = ({
         
         setPages(pagesData);
         
-        // Filter out date elements from interactive elements (they're auto-filled)
-        const interactiveElements = elements.filter(element => element.type !== 'date');
+        // Filter elements and separate pre-filled from interactive
+        const allElementsWithPage = elements.map(element => ({
+          ...element,
+          pageIndex: pagesData.findIndex(page => page.elements.some(el => el.id === element.id))
+        }));
+        
+        const preFilledElements = allElementsWithPage.filter(element => element.preDefinedValueId);
+        const interactiveElements = allElementsWithPage.filter(element => 
+          !element.preDefinedValueId && element.type !== 'date'
+        );
+        
         setAllElements(interactiveElements);
         
         // Initialize form data
         const initialFormData: FormData = {};
-        elements.forEach(element => {
+        
+        // Set pre-defined values
+        preFilledElements.forEach(element => {
           if (element.type === 'checkbox') {
-            initialFormData[element.id] = false;
-          } else if (element.type === 'date') {
-            // Auto-fill with current date
-            initialFormData[element.id] = new Date().toLocaleDateString();
+            initialFormData[element.id] = true; // Default for pre-filled checkboxes
           } else {
-            initialFormData[element.id] = '';
+            // Simulate getting value from API based on preDefinedValueId
+            initialFormData[element.id] = `Auto-filled: ${element.preDefinedLabel || element.placeholder}`;
           }
         });
+        
+        // Set defaults for interactive elements
+        elements.forEach(element => {
+          if (!element.preDefinedValueId) {
+            if (element.type === 'checkbox') {
+              initialFormData[element.id] = false;
+            } else if (element.type === 'date') {
+              // Auto-fill with current date
+              initialFormData[element.id] = new Date().toLocaleDateString();
+            } else {
+              initialFormData[element.id] = '';
+            }
+          }
+        });
+        
         setFormData(initialFormData);
         
-        // Focus first interactive element if mobile
+        // Focus first interactive element if mobile and exists
         if (interactiveElements.length > 0) {
           setActiveElement(interactiveElements[0].id);
           if (window.innerWidth < 768) {
@@ -204,11 +228,25 @@ export const CompletionComponent = ({
   };
 
   const getCompletionProgress = () => {
-    const completedFields = allElements.filter(element => {
-      const value = formData[element.id];
-      return value !== "" && value !== false && value !== null && value !== undefined;
-    }).length;
-    return Math.round((completedFields / allElements.length) * 100);
+    // Get all elements including pre-filled ones
+    const storedData = sessionStorage.getItem(sessionStorageKey);
+    if (!storedData) return 0;
+    
+    try {
+      const data = JSON.parse(storedData);
+      const { elements } = dataExtractor(data);
+      
+      const completedFields = elements.filter(element => {
+        const value = formData[element.id];
+        // Pre-filled elements are automatically considered complete
+        if (element.preDefinedValueId) return true;
+        return value !== "" && value !== false && value !== null && value !== undefined;
+      }).length;
+      
+      return Math.round((completedFields / elements.length) * 100);
+    } catch {
+      return 0;
+    }
   };
 
   if (pages.length === 0 || allElements.length === 0) {
@@ -287,8 +325,9 @@ export const CompletionComponent = ({
                                        isActive={activeElement === element.id}
                                        onActivate={() => handleElementClick(element.id)}
                                        hideOverlay={!showOverlay}
-                                       isMobile={element.type !== 'date'} // Dates are not interactive
-                                       showHighlight={activeElement === element.id}
+                                        isMobile={element.type !== 'date'} // Dates are not interactive
+                                        showHighlight={activeElement === element.id}
+                                        readOnly={!!element.preDefinedValueId} // Make pre-filled fields read-only
                                      />
                                 </div>
                               ))}
@@ -379,16 +418,17 @@ export const CompletionComponent = ({
                               key={element.id}
                               id={`pdf-element-${element.id}`}
                             >
-                              <InteractivePDFElement
-                                element={element}
-                                scale={350 / 595} // A4 width scale factor for mobile
-                                value={formData[element.id] || ''}
-                                onUpdate={(value) => handleInputChange(element.id, value)}
-                                isActive={activeElement === element.id}
-                                onActivate={() => handleElementClick(element.id)}
-                                hideOverlay={!showOverlay}
-                                isMobile={true}
-                              />
+                               <InteractivePDFElement
+                                 element={element}
+                                 scale={350 / 595} // A4 width scale factor for mobile
+                                 value={formData[element.id] || ''}
+                                 onUpdate={(value) => handleInputChange(element.id, value)}
+                                 isActive={activeElement === element.id}
+                                 onActivate={() => handleElementClick(element.id)}
+                                 hideOverlay={!showOverlay}
+                                 isMobile={true}
+                                 readOnly={!!element.preDefinedValueId} // Make pre-filled fields read-only
+                               />
                             </div>
                           ))}
                         </div>
