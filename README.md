@@ -17,20 +17,34 @@ A comprehensive React library for building interactive PDF forms with signature 
 ### From GitHub (Recommended)
 
 ```bash
+# Replace 'yourusername' with the actual GitHub username/org
 npm install github:yourusername/signature-kit-pro
 # or
 yarn add github:yourusername/signature-kit-pro
 # or  
 pnpm add github:yourusername/signature-kit-pro
+
+# Install from a specific branch (optional)
+yarn add github:yourusername/signature-kit-pro#main
+# or from a specific tag/release
+yarn add github:yourusername/signature-kit-pro#v1.0.0
 ```
 
 ### Peer Dependencies
 
-Make sure you have React installed:
+Make sure you have React installed in your project:
 
 ```bash
 npm install react@>=18.0.0 react-dom@>=18.0.0
+# or
+yarn add react@>=18.0.0 react-dom@>=18.0.0
 ```
+
+### ⚠️ Important Notes
+
+- The built files are committed to the repository, so installation from GitHub will work immediately
+- No build step required after installation
+- TypeScript declarations are included
 
 ## Quick Start
 
