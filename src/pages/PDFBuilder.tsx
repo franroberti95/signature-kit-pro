@@ -94,7 +94,6 @@ const PDFBuilderPage = () => {
     // Add to the first page by default
     updatedPages[0].elements.push(newElement);
     setPages(updatedPages);
-    updateStoredData(updatedPages);
     toast(`${type.charAt(0).toUpperCase() + type.slice(1)} field added`);
   };
 
@@ -107,7 +106,6 @@ const PDFBuilderPage = () => {
         ...updates,
       };
       setPages(updatedPages);
-      updateStoredData(updatedPages);
     }
   };
 
@@ -117,7 +115,6 @@ const PDFBuilderPage = () => {
       el => el.id !== elementId
     );
     setPages(updatedPages);
-    updateStoredData(updatedPages);
     toast("Element removed");
   };
 
@@ -129,7 +126,6 @@ const PDFBuilderPage = () => {
     };
     const updatedPages = [...pages, newPage];
     setPages(updatedPages);
-    updateStoredData(updatedPages);
     toast("New page added");
   };
 
@@ -189,7 +185,6 @@ const PDFBuilderPage = () => {
             const updatedPages = [...pages];
             updatedPages[pageIndex].elements.push(element);
             setPages(updatedPages);
-            updateStoredData(updatedPages);
           }}
           onAddPage={addPage}
           preDefinedFields={preDefinedFields}
