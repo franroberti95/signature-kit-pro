@@ -7,6 +7,8 @@ import { PDFRenderer } from "@/components/pdf-builder/PDFRenderer";
 import { InteractivePDFElement } from "@/components/pdf-builder/InteractivePDFElement";
 import { MobileFieldNavigation } from "@/components/pdf-builder/MobileFieldNavigation";
 import { PDFFormat, ElementType, PDFElement, PDFPage } from "@/components/pdf-builder/PDFBuilder";
+import { useFormCompletion } from "@/hooks/useFormCompletion";
+import { ApiService } from "@/services/apiService";
 import { toast } from "sonner";
 import { ArrowLeft, FileCheck, Download, Eye, EyeOff, Edit } from "lucide-react";
 
@@ -53,9 +55,11 @@ export const CompletionComponent = ({
   const [allElements, setAllElements] = useState<PDFElement[]>([]);
   const [activeElement, setActiveElement] = useState<string | null>(null);
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0);
-  
   const [showOverlay, setShowOverlay] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  
+  // Use the form completion hook to get pre-filled data
+  const { formData: preFilledData, loading: formDataLoading } = useFormCompletion();
 
   useEffect(() => {
     // Check if mobile
@@ -68,14 +72,12 @@ export const CompletionComponent = ({
   }, []);
 
   useEffect(() => {
-    // Load data from sessionStorage
-    const storedData = sessionStorage.getItem(sessionStorageKey);
-    
-    if (storedData) {
+    const loadData = async () => {
       try {
-        const data = JSON.parse(storedData);
+        // Load data from API service instead of sessionStorage
+        const data = await ApiService.getPDFBuilderData();
         
-        if (!dataValidator(data)) {
+        if (!data || !dataValidator(data)) {
           navigate('/');
           return;
         }
@@ -100,13 +102,15 @@ export const CompletionComponent = ({
         // Initialize form data
         const initialFormData: FormData = {};
         
-        // Set pre-defined values
+        // Set pre-defined values using the actual backend data
         preFilledElements.forEach(element => {
           if (element.type === 'checkbox') {
             initialFormData[element.id] = true; // Default for pre-filled checkboxes
           } else {
-            // Simulate getting value from API based on preDefinedValueId
-            initialFormData[element.id] = `Auto-filled: ${element.preDefinedLabel || element.placeholder}`;
+            // Get the actual value from the pre-filled data based on the preDefinedValueId
+            const preDefinedKey = element.preDefinedValueId as string;
+            const actualValue = preFilledData[preDefinedKey];
+            initialFormData[element.id] = actualValue || `Auto-filled: ${element.preDefinedLabel || element.placeholder}`;
           }
         });
         
@@ -135,13 +139,16 @@ export const CompletionComponent = ({
         }
         
       } catch (error) {
-        console.error('Error parsing stored data:', error);
+        console.error('Error loading data:', error);
         navigate('/');
       }
-    } else {
-      navigate('/');
+    };
+
+    // Only load data after the form completion data is ready
+    if (!formDataLoading) {
+      loadData();
     }
-  }, [navigate, location.state, sessionStorageKey, dataValidator, dataExtractor]);
+  }, [navigate, location.state, dataValidator, dataExtractor, preFilledData, formDataLoading]);
 
   const scrollToElement = (elementId: string) => {
     const element = document.getElementById(`pdf-element-${elementId}`);
@@ -228,13 +235,12 @@ export const CompletionComponent = ({
   };
 
   const getCompletionProgress = () => {
-    // Get all elements including pre-filled ones
-    const storedData = sessionStorage.getItem(sessionStorageKey);
-    if (!storedData) return 0;
-    
     try {
-      const data = JSON.parse(storedData);
-      const { elements } = dataExtractor(data);
+      // Since we now have pages and elements in state, use them directly
+      const elements: PDFElement[] = [];
+      pages.forEach(page => {
+        elements.push(...page.elements);
+      });
       
       const completedFields = elements.filter(element => {
         const value = formData[element.id];

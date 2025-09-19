@@ -3,7 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ToolbarPanel } from "@/components/pdf-builder/ToolbarPanel";
 import { PDFCanvas } from "@/components/pdf-builder/PDFCanvas";
-import { PDFFormat, ElementType, PDFElement, PDFPage, PreDefinedFieldsConfig } from "@/components/pdf-builder/PDFBuilder";
+import { PDFFormat, ElementType, PDFElement, PDFPage } from "@/components/pdf-builder/PDFBuilder";
+import { usePreDefinedFields } from "@/hooks/usePreDefinedFields";
+import { ApiService } from "@/services/apiService";
 import { toast } from "sonner";
 
 const PDFBuilderPage = () => {
@@ -11,57 +13,61 @@ const PDFBuilderPage = () => {
   const location = useLocation();
   const [pages, setPages] = useState<PDFPage[]>([]);
   const [selectedFormat, setSelectedFormat] = useState<PDFFormat>("A4");
-
-  // Example pre-defined fields configuration - this could come from props or API
-  const preDefinedFields: PreDefinedFieldsConfig = {
-    text_field_options: [
-      { value: 1, label: "Patient Name" },
-      { value: 2, label: "Doctor Name" },
-      { value: 3, label: "Medical Record Number" },
-      { value: 4, label: "Date of Birth" },
-      { value: 5, label: "Insurance ID" }
-    ],
-    signature_field_options: [
-      { value: 1, label: "Patient Signature" },
-      { value: 2, label: "Doctor Signature" },
-      { value: 3, label: "Guardian Signature" }
-    ],
-    date_field_options: [
-      { value: 1, label: "Appointment Date" },
-      { value: 2, label: "Treatment Date" },
-      { value: 3, label: "Follow-up Date" }
-    ]
-  };
+  const [loading, setLoading] = useState(true);
+  const { preDefinedFields, loading: fieldsLoading } = usePreDefinedFields();
 
   useEffect(() => {
-    // Load data from sessionStorage
-    const storedData = sessionStorage.getItem('pdfBuilderData');
-    if (storedData) {
+    const loadPDFBuilderData = async () => {
       try {
-        const data = JSON.parse(storedData);
-        let pagesData = data.pages || [];
+        setLoading(true);
         
-        // Handle uploaded files
-        if (location.state?.uploadedFile && data.hasUploadedFile) {
-            // Handle PDF files normally
+        // Try to load existing data from API service (sessionStorage)
+        const storedData = await ApiService.getPDFBuilderData();
+        if (storedData) {
+          let pagesData = storedData.pages;
+          
+          // Handle uploaded files
+          if (location.state?.uploadedFile) {
             pagesData = pagesData.map((page: PDFPage) => ({
               ...page,
               backgroundImage: location.state.uploadedFile
             }));
+          }
+          
+          setPages(pagesData);
+          setSelectedFormat(storedData.selectedFormat as PDFFormat);
+          setLoading(false);
+          return;
         }
-        
-        setPages(pagesData);
-        setSelectedFormat(data.selectedFormat || "A4");
+
+        // If no stored data but we have uploaded file, create initial structure
+        if (location.state?.uploadedFile) {
+          const initialPage: PDFPage = {
+            id: `page-${Date.now()}`,
+            format: "A4",
+            elements: [],
+            backgroundImage: location.state.uploadedFile
+          };
+          const initialPages = [initialPage];
+          setPages(initialPages);
+          // Save the initial data using API service
+          await ApiService.savePDFBuilderData(initialPages, "A4");
+          setLoading(false);
+          return;
+        }
+
+        // If no data exists and no uploaded file, redirect to start page
+        navigate('/pdf-start');
       } catch (error) {
-        console.error('Error parsing stored PDF builder data:', error);
-        // Redirect back to start if data is corrupted
-        navigate('/');
+        console.error('Error loading PDF builder data:', error);
+        navigate('/pdf-start');
+      } finally {
+        setLoading(false);
       }
-    } else {
-      // No data found, redirect to start
-      navigate('/');
-    }
-  }, [navigate, location.state]);
+    };
+
+    loadPDFBuilderData();
+  }, [location, navigate]);
 
   const addElement = (type: ElementType) => {
     if (pages.length === 0) return;
@@ -120,23 +126,30 @@ const PDFBuilderPage = () => {
     toast("New page added");
   };
 
-  const updateStoredData = (updatedPages: PDFPage[]) => {
-    console.log('Updating stored data:', { pages: updatedPages });
-    sessionStorage.setItem('pdfBuilderData', JSON.stringify({
-      pages: updatedPages,
-      selectedFormat
-    }));
+  const updateStoredData = async (updatedPages: PDFPage[]) => {
+    try {
+      console.log('Updating stored data:', { pages: updatedPages });
+      await ApiService.savePDFBuilderData(updatedPages, selectedFormat);
+    } catch (error) {
+      console.error('Error storing PDF builder data:', error);
+    }
   };
 
-  if (pages.length === 0) {
+  // Show loading state
+  if (loading || fieldsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-foreground mb-2">Loading PDF Builder...</h2>
-          <p className="text-muted-foreground">If this takes too long, please go back and start again.</p>
+          <p className="text-muted-foreground">Please wait while we prepare your workspace.</p>
         </div>
       </div>
     );
+  }
+
+  // If no initial data found, will redirect in useEffect
+  if (pages.length === 0) {
+    return null;
   }
 
   return (
@@ -149,9 +162,9 @@ const PDFBuilderPage = () => {
               {pages.length} {pages.length === 1 ? 'page' : 'pages'} • {selectedFormat}
             </p>
           </div>
-            <Button onClick={() => {
+            <Button onClick={async () => {
               console.log('Navigating to completion with current pages:', pages);
-              updateStoredData(pages);
+              await updateStoredData(pages);
               navigate('/pdf-completion');
             }} className="bg-green-600 hover:bg-green-700">
               Continue to Form Completion
