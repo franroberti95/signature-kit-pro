@@ -1,73 +1,264 @@
-# Welcome to your Lovable project
+# Signature Kit Pro
 
-## Project info
+A comprehensive React library for building interactive PDF forms with signature capabilities, built with TypeScript and modern React patterns.
 
-**URL**: https://lovable.dev/projects/b6b17bc8-0026-4954-93d4-9a4327cae8c3
+## Features
 
-## How can I edit this code?
+- 🖋️ **Interactive PDF Forms** - Click-to-edit form fields directly on PDF documents
+- ✍️ **Digital Signatures** - Built-in signature pad with canvas drawing
+- 📱 **Mobile Responsive** - Optimized for both desktop and mobile experiences  
+- 🎨 **Customizable UI** - Built with shadcn/ui components, fully customizable
+- 📄 **Multi-page Support** - Handle complex multi-page PDF documents
+- 🔧 **TypeScript** - Full type safety and excellent DX
+- 📦 **Easy Integration** - Simple components that work with your existing React app
 
-There are several ways of editing your application.
+## Installation
 
-**Use Lovable**
+### From GitHub (Recommended)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/b6b17bc8-0026-4954-93d4-9a4327cae8c3) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+npm install github:yourusername/signature-kit-pro
+# or
+yarn add github:yourusername/signature-kit-pro
+# or  
+pnpm add github:yourusername/signature-kit-pro
 ```
 
-**Edit a file directly in GitHub**
+### Peer Dependencies
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Make sure you have React installed:
 
-**Use GitHub Codespaces**
+```bash
+npm install react@>=18.0.0 react-dom@>=18.0.0
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Quick Start
 
-## What technologies are used for this project?
+### 1. Basic PDF Builder
 
-This project is built with:
+```tsx
+import React, { useState } from 'react';
+import { ToolbarPanel, PDFCanvas, PDFPage } from 'signature-kit-pro';
+import 'signature-kit-pro/dist/style.css';
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+function PDFBuilder() {
+  const [pages, setPages] = useState<PDFPage[]>([]);
 
-## How can I deploy this project?
+  const addElement = (type: ElementType) => {
+    // Add element to current page
+  };
 
-Simply open [Lovable](https://lovable.dev/projects/b6b17bc8-0026-4954-93d4-9a4327cae8c3) and click on Share -> Publish.
+  const updateElement = (pageIndex: number, elementId: string, updates: any) => {
+    // Update element logic
+  };
 
-## Can I connect a custom domain to my Lovable project?
+  return (
+    <div className="flex h-screen">
+      <ToolbarPanel onAddElement={addElement} />
+      <PDFCanvas
+        pages={pages}
+        onUpdateElement={updateElement}
+        onDeleteElement={() => {}}
+        onAddElement={() => {}}
+        onAddPage={() => {}}
+      />
+    </div>
+  );
+}
+```
 
-Yes, you can!
+### 2. PDF Completion Form
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```tsx
+import React from 'react';
+import { CompletionComponent, PDFPage } from 'signature-kit-pro';
+import 'signature-kit-pro/dist/style.css';
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+function PDFCompletion({ pages }: { pages: PDFPage[] }) {
+  const handleDownload = async (formData: Record<string, string | boolean>) => {
+    // Handle PDF download with form data
+    console.log('Form data:', formData);
+  };
+
+  const handleComplete = (formData: Record<string, string | boolean>) => {
+    // Handle form completion
+    console.log('Form completed:', formData);
+  };
+
+  return (
+    <CompletionComponent
+      pages={pages}
+      onDownload={handleDownload}
+      onComplete={handleComplete}
+      title="Complete Your Form"
+      subtitle="Fill out all required fields"
+    />
+  );
+}
+```
+
+## Components
+
+### ToolbarPanel
+
+A sidebar component with tools for adding different types of form elements.
+
+```tsx
+<ToolbarPanel
+  onAddElement={(type) => {
+    // Handle adding new element of specified type
+  }}
+/>
+```
+
+### PDFCanvas
+
+The main canvas component for building and editing PDF forms.
+
+```tsx
+<PDFCanvas
+  pages={pages}
+  onUpdateElement={(pageIndex, elementId, updates) => {}}
+  onDeleteElement={(pageIndex, elementId) => {}}
+  onAddElement={(pageIndex, element) => {}}
+  onAddPage={() => {}}
+/>
+```
+
+### CompletionComponent
+
+Complete form component for filling out PDF forms.
+
+```tsx
+<CompletionComponent
+  pages={pages}
+  onDownload={async (formData) => {
+    // Download logic
+  }}
+  onComplete={(formData) => {
+    // Completion logic
+  }}
+  title="Custom Title"
+  showBackButton={true}
+/>
+```
+
+## Types
+
+### PDFElement
+
+```tsx
+interface PDFElement {
+  id: string;
+  type: ElementType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  content?: string;
+  required?: boolean;
+  placeholder?: string;
+  options?: string[]; // for select elements
+}
+```
+
+### PDFPage
+
+```tsx
+interface PDFPage {
+  id: string;
+  format: PDFFormat;
+  elements: PDFElement[];
+  backgroundImage?: string | File;
+}
+```
+
+### ElementType
+
+```tsx
+type ElementType = "text" | "signature" | "date" | "checkbox" | "select" | "image";
+```
+
+## Advanced Usage
+
+### Custom Styling
+
+The components use Tailwind CSS classes. You can customize the appearance by:
+
+1. **Override CSS classes** - Components accept `className` props
+2. **Use CSS variables** - Customize the built-in theme variables
+3. **Custom theme** - Integrate with your existing design system
+
+```tsx
+<CompletionComponent
+  pages={pages}
+  className="my-custom-theme"
+  // ... other props
+/>
+```
+
+### Form Validation
+
+```tsx
+const validateForm = (formData: Record<string, string | boolean>) => {
+  const requiredFields = pages
+    .flatMap(page => page.elements)
+    .filter(element => element.required);
+
+  const missingFields = requiredFields.filter(
+    field => !formData[field.id] || formData[field.id] === ''
+  );
+
+  return missingFields.length === 0;
+};
+```
+
+### PDF Generation
+
+```tsx
+import { PDFDocument } from 'pdf-lib';
+
+const generatePDF = async (pages: PDFPage[], formData: Record<string, any>) => {
+  const pdfDoc = await PDFDocument.create();
+  
+  // Add your PDF generation logic here
+  for (const page of pages) {
+    const pdfPage = pdfDoc.addPage();
+    
+    for (const element of page.elements) {
+      const value = formData[element.id];
+      if (value) {
+        // Add element to PDF based on type
+      }
+    }
+  }
+
+  const pdfBytes = await pdfDoc.save();
+  return pdfBytes;
+};
+```
+
+## Browser Support
+
+- Chrome (last 2 versions)
+- Firefox (last 2 versions)  
+- Safari (last 2 versions)
+- Edge (last 2 versions)
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+- 🐛 [Report bugs](https://github.com/yourusername/signature-kit-pro/issues)
+- 💡 [Request features](https://github.com/yourusername/signature-kit-pro/issues)
+- 📖 [Documentation](https://github.com/yourusername/signature-kit-pro/wiki)
