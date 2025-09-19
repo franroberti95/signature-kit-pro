@@ -3,6 +3,7 @@ import { useState } from "react";
 import { FormatSelector } from "@/components/pdf-builder/FormatSelector";
 import { FileUploader } from "@/components/pdf-builder/FileUploader";
 import { PDFFormat } from "@/components/pdf-builder/PDFBuilder";
+import { ApiService } from "@/services/apiService";
 import { toast } from "sonner";
 
 const PDFStart = () => {
@@ -48,14 +49,8 @@ const PDFStart = () => {
           pageNumber: index + 1 // PDFRenderer will use this to show the correct page
         }));
         
-        // Store in sessionStorage for the builder page
-        sessionStorage.setItem('pdfBuilderData', JSON.stringify({
-          pages: newPages,
-          selectedFormat: "A4",
-          hasUploadedFile: true,
-          pdfBlobUrl: blobUrl,
-          totalPages: pageCount
-        }));
+        // Store using ApiService for consistency
+        await ApiService.savePDFBuilderData(newPages, "A4");
         
         toast(`PDF "${file.name}" loaded successfully! ${pageCount} pages detected.`);
         navigate('/pdf-builder');
@@ -112,15 +107,8 @@ const PDFStart = () => {
         pageNumber: index + 1
       }));
       
-      sessionStorage.setItem('pdfBuilderData', JSON.stringify({
-        pages: newPages,
-        activePage: 0,
-        selectedFormat: "A4",
-        hasUploadedFile: true,
-        pdfBlobUrl: blobUrl,
-        convertedFromFile: true,
-        totalPages: pageCount
-      }));
+      // Store using ApiService for consistency
+      await ApiService.savePDFBuilderData(newPages, "A4");
       
       toast(`Document converted to PDF successfully! "${file.name}" loaded with ${pageCount} pages.`, { 
         duration: 3000 

@@ -20,14 +20,18 @@ const PDFBuilderPage = () => {
     const loadPDFBuilderData = async () => {
       try {
         setLoading(true);
+        console.log('PDFBuilder: Loading data...');
         
         // Try to load existing data from API service (sessionStorage)
         const storedData = await ApiService.getPDFBuilderData();
+        console.log('PDFBuilder: Stored data found:', storedData);
+        
         if (storedData) {
           let pagesData = storedData.pages;
           
           // Handle uploaded files
           if (location.state?.uploadedFile) {
+            console.log('PDFBuilder: Adding uploaded file to pages');
             pagesData = pagesData.map((page: PDFPage) => ({
               ...page,
               backgroundImage: location.state.uploadedFile
@@ -36,12 +40,14 @@ const PDFBuilderPage = () => {
           
           setPages(pagesData);
           setSelectedFormat(storedData.selectedFormat as PDFFormat);
+          console.log('PDFBuilder: Data loaded successfully, pages count:', pagesData.length);
           setLoading(false);
           return;
         }
 
         // If no stored data but we have uploaded file, create initial structure
         if (location.state?.uploadedFile) {
+          console.log('PDFBuilder: Creating initial page from uploaded file');
           const initialPage: PDFPage = {
             id: `page-${Date.now()}`,
             format: "A4",
@@ -57,9 +63,10 @@ const PDFBuilderPage = () => {
         }
 
         // If no data exists and no uploaded file, redirect to start page
+        console.log('PDFBuilder: No data found, redirecting to start page');
         navigate('/');
       } catch (error) {
-        console.error('Error loading PDF builder data:', error);
+        console.error('PDFBuilder: Error loading PDF builder data:', error);
         navigate('/');
       } finally {
         setLoading(false);

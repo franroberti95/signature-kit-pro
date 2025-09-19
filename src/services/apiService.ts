@@ -116,9 +116,14 @@ export class ApiService {
     await simulateDelay(200);
     
     try {
+      console.log('ApiService: Checking for pdf-builder-data in localStorage');
       const data = localStorage.getItem('pdf-builder-data');
-      return data ? JSON.parse(data) : null;
-    } catch {
+      console.log('ApiService: Found data:', data ? 'YES' : 'NO');
+      const result = data ? JSON.parse(data) : null;
+      console.log('ApiService: Parsed result pages count:', result?.pages?.length || 0);
+      return result;
+    } catch (error) {
+      console.error('ApiService: Error getting PDF builder data:', error);
       return null;
     }
   }
@@ -128,7 +133,9 @@ export class ApiService {
     await simulateDelay(100);
     
     const data = { pages, selectedFormat };
+    console.log('ApiService: Saving PDF builder data:', data);
     localStorage.setItem('pdf-builder-data', JSON.stringify(data));
+    console.log('ApiService: Data saved successfully');
     
     return { success: true };
   }
