@@ -315,7 +315,7 @@ const RichTextBuilderPage = () => {
     }
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     // Create PDF builder data with rich text as background
     const newPage = {
       id: `page-${Date.now()}`,
@@ -325,9 +325,15 @@ const RichTextBuilderPage = () => {
       richTextVariables: variables
     };
     
-    sessionStorage.setItem('pdfBuilderData', JSON.stringify({
-      pages: [newPage],
+    // Store using ApiService for consistency with completion component
+    const { ApiService } = await import('@/services/apiService');
+    await ApiService.savePDFBuilderData([newPage], selectedFormat);
+    
+    // Also store rich text specific data
+    sessionStorage.setItem('richTextBuilderData', JSON.stringify({
       selectedFormat,
+      content,
+      variables,
       isRichTextDocument: true
     }));
     

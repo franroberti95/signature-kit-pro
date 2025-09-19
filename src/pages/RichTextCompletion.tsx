@@ -26,7 +26,7 @@ interface RichTextPDFPage extends PDFPage {
 const RichTextCompletionPage = () => {
   // Convert rich text data to PDF-like format for the completion component
   const validateRichTextData = (data: any) => {
-    return data && data.isRichTextDocument && data.pages && data.pages[0];
+    return data && data.pages && data.pages.length > 0 && data.pages[0].richTextContent;
   };
 
   const extractRichTextData = (data: any) => {
