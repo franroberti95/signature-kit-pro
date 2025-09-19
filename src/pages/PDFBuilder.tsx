@@ -57,10 +57,10 @@ const PDFBuilderPage = () => {
         }
 
         // If no data exists and no uploaded file, redirect to start page
-        navigate('/pdf-start');
+        navigate('/');
       } catch (error) {
         console.error('Error loading PDF builder data:', error);
-        navigate('/pdf-start');
+        navigate('/');
       } finally {
         setLoading(false);
       }
