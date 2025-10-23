@@ -1,204 +1,172 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// Removed dropdown imports - using simple buttons instead
 import { toast } from "sonner";
-import { FileText, Plus, Variable, X, Stethoscope, Heart, Calendar, Shield } from "lucide-react";
-import RichTextEditor from "@/components/pdf-builder/RichTextEditor";
+import { 
+  FileText, 
+  Plus, 
+  Variable, 
+  X, 
+  Stethoscope, 
+  Heart, 
+  Calendar, 
+  Shield,
+  PenTool,
+  User,
+  Mail,
+  Phone,
+  ChevronDown,
+  Type,
+  Save,
+  ArrowLeft
+} from "lucide-react";
+import RichTextEditor, { RichTextEditorRef } from "@/components/pdf-builder/RichTextEditor";
 
 type PDFFormat = "A4" | "A5" | "Letter";
 
 interface VariableType {
   name: string;
   type: 'text' | 'textarea' | 'signature' | 'date';
+  label?: string;
+  icon?: React.ComponentType<{ className?: string }>;
 }
 
-const DENTAL_TEMPLATES = {
-  consent: {
-    name: "Dental Consent Form",
-    icon: Shield,
-    variables: [
-      { name: "patient_name", type: "text" as const },
-      { name: "patient_id", type: "text" as const },
-      { name: "dentist_name", type: "text" as const },
-      { name: "treatment_type", type: "textarea" as const },
-      { name: "appointment_date", type: "date" as const },
-      { name: "patient_signature", type: "signature" as const },
-      { name: "doctor_signature", type: "signature" as const }
-    ],
-    content: `<div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #dc3545; padding-bottom: 15px;">
-  <h1 style="color: #dc3545; font-size: 24px; margin: 0; font-weight: bold;">INFORMED CONSENT FOR DENTAL TREATMENT</h1>
-</div>
+interface InteractiveElement {
+  id: string;
+  type: 'signature';
+  name: string;
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
-<div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 20px; margin-bottom: 25px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
-  <div><strong>Patient:</strong><br><span style="color: #dc3545; font-weight: bold;">{{patient_name}}</span> (ID: {{patient_id}})</div>
-  <div><strong>Doctor:</strong><br><span style="color: #dc3545; font-weight: bold;">Dr. {{dentist_name}}</span></div>
-  <div><strong>Date:</strong><br><span style="border-bottom: 2px dotted #666; padding-bottom: 2px; display: inline-block;">{{appointment_date}}</span></div>
-</div>
+// Common variables for medical/dental documents
+const COMMON_VARIABLES: VariableType[] = [
+  { name: "patient_name", type: "text", label: "Patient Name", icon: User },
+  { name: "patient_surname", type: "text", label: "Patient Surname", icon: User },
+  { name: "patient_id", type: "text", label: "Patient ID", icon: User },
+  { name: "date_of_birth", type: "date", label: "Date of Birth", icon: Calendar },
+  { name: "phone_number", type: "text", label: "Phone Number", icon: Phone },
+  { name: "email_address", type: "text", label: "Email Address", icon: Mail },
+  { name: "appointment_date", type: "date", label: "Appointment Date", icon: Calendar },
+  { name: "doctor_name", type: "text", label: "Doctor Name", icon: Stethoscope },
+  { name: "patient_signature", type: "signature", label: "Patient Signature", icon: PenTool },
+  { name: "doctor_signature", type: "signature", label: "Doctor Signature", icon: PenTool },
+  { name: "today_date", type: "date", label: "Today's Date", icon: Calendar },
+];
 
-<div style="margin-bottom: 25px;">
-  <h3 style="color: #dc3545; border-bottom: 2px solid #dc3545; padding-bottom: 5px; margin-bottom: 15px;">Treatment Information</h3>
-  
-  <div style="margin-bottom: 20px;">
-    <strong>Proposed Treatment:</strong>
-    <div style="border: 2px solid #dc3545; border-radius: 5px; padding: 15px; margin-top: 8px; min-height: 80px; background-color: #fff;">
-      {{treatment_type}}
+// Interactive Signature Box Component
+const InteractiveSignatureBox = ({ element, onUpdate, onDelete }: {
+  element: InteractiveElement;
+  onUpdate: (element: InteractiveElement) => void;
+  onDelete: (id: string) => void;
+}) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging) {
+        onUpdate({
+          ...element,
+          x: e.clientX - dragStart.x,
+          y: e.clientY - dragStart.y,
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragStart, element, onUpdate]);
+
+  return (
+    <div
+      className="absolute border-2 border-dashed border-purple-400 bg-purple-50 bg-opacity-90 pointer-events-auto cursor-move group hover:border-purple-500 transition-colors"
+      style={{
+        left: element.x,
+        top: element.y,
+        width: element.width,
+        height: element.height,
+        minWidth: '120px',
+        minHeight: '40px',
+      }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.signature-content')) {
+          setIsDragging(true);
+          setDragStart({
+            x: e.clientX - element.x,
+            y: e.clientY - element.y,
+          });
+          e.preventDefault();
+        }
+      }}
+    >
+      <div className="signature-content p-2 text-center text-purple-700 text-sm font-medium flex items-center justify-center h-full">
+        <PenTool className="h-4 w-4 mr-2" />
+        {element.label}
+      </div>
+      
+      {/* Resize handle */}
+      <div
+        className="absolute bottom-0 right-0 w-3 h-3 bg-purple-500 cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity"
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const startWidth = element.width;
+          const startHeight = element.height;
+
+          const handleResize = (e: MouseEvent) => {
+            const newWidth = Math.max(120, startWidth + (e.clientX - startX));
+            const newHeight = Math.max(40, startHeight + (e.clientY - startY));
+            
+            onUpdate({
+              ...element,
+              width: newWidth,
+              height: newHeight,
+            });
+          };
+
+          const handleResizeEnd = () => {
+            document.removeEventListener('mousemove', handleResize);
+            document.removeEventListener('mouseup', handleResizeEnd);
+          };
+
+          document.addEventListener('mousemove', handleResize);
+          document.addEventListener('mouseup', handleResizeEnd);
+        }}
+      />
+      
+      {/* Delete button */}
+      <button
+        className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+        onClick={() => onDelete(element.id)}
+      >
+        <X className="w-3 h-3" />
+      </button>
     </div>
-  </div>
-  
-  <div style="padding: 20px; border: 2px solid #ffc107; border-radius: 8px; background-color: #fff3cd; margin-bottom: 20px;">
-    <h4 style="color: #856404; margin: 0 0 10px 0;">I understand and acknowledge that:</h4>
-    <ul style="margin: 0; color: #856404; line-height: 1.5;">
-      <li>No guarantee has been made as to the outcome of treatment</li>
-      <li>I have been informed of alternative treatments, their benefits and risks</li>
-      <li>I have been informed of the risks of not receiving treatment</li>
-      <li>I have had the opportunity to ask questions regarding the treatment</li>
-    </ul>
-  </div>
-</div>
-
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 40px;">
-  <div style="text-align: center; padding: 20px; border: 2px solid #28a745; border-radius: 8px; background-color: #d4edda;">
-    <strong style="color: #155724;">Patient Signature</strong><br>
-    <div style="margin: 15px 0; min-height: 60px; border-bottom: 2px solid #155724;">
-      {{patient_signature}}
-    </div>
-    <span style="color: #155724; font-size: 12px;">Date: {{appointment_date}}</span>
-  </div>
-  
-  <div style="text-align: center; padding: 20px; border: 2px solid #17a2b8; border-radius: 8px; background-color: #d1ecf1;">
-    <strong style="color: #0c5460;">Doctor Signature</strong><br>
-    <div style="margin: 15px 0; min-height: 60px; border-bottom: 2px solid #0c5460;">
-      {{doctor_signature}}
-    </div>
-    <span style="color: #0c5460; font-size: 12px;">Dr. {{dentist_name}}</span>
-  </div>
-</div>`
-  },
-  history: {
-    name: "Medical History",
-    icon: Heart,
-    variables: [
-      { name: "patient_name", type: "text" as const },
-      { name: "patient_id", type: "text" as const },
-      { name: "date_of_birth", type: "date" as const },
-      { name: "phone_number", type: "text" as const },
-      { name: "email_address", type: "text" as const },
-      { name: "medical_conditions", type: "textarea" as const },
-      { name: "medications", type: "textarea" as const },
-      { name: "allergies", type: "textarea" as const },
-      { name: "patient_signature", type: "signature" as const }
-    ],
-    content: `<div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #28a745; padding-bottom: 15px;">
-  <h1 style="color: #28a745; font-size: 24px; margin: 0; font-weight: bold;">MEDICAL HISTORY FORM</h1>
-</div>
-
-<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 25px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
-  <div><strong>Patient:</strong><br><span style="color: #28a745; font-weight: bold;">{{patient_name}}</span> (ID: {{patient_id}})</div>
-  <div><strong>Date of Birth:</strong><br><span style="color: #28a745; font-weight: bold;">{{date_of_birth}}</span></div>
-</div>
-
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
-  <div style="padding: 15px; border: 2px solid #17a2b8; border-radius: 8px; background-color: #d1ecf1;">
-    <strong style="color: #0c5460;">Phone:</strong><br>
-    <span style="font-size: 16px; color: #0c5460;">{{phone_number}}</span>
-  </div>
-  <div style="padding: 15px; border: 2px solid #6f42c1; border-radius: 8px; background-color: #e2d9f3;">
-    <strong style="color: #3d1a78;">Email:</strong><br>
-    <span style="font-size: 16px; color: #3d1a78;">{{email_address}}</span>
-  </div>
-</div>
-
-<div style="margin-bottom: 25px;">
-  <h3 style="color: #28a745; border-bottom: 2px solid #28a745; padding-bottom: 5px; margin-bottom: 15px;">Medical Information</h3>
-  
-  <div style="margin-bottom: 20px;">
-    <strong>Current Medical Conditions:</strong>
-    <div style="border: 2px solid #ddd; border-radius: 5px; padding: 15px; margin-top: 8px; min-height: 60px; background-color: #fff;">
-      {{medical_conditions}}
-    </div>
-  </div>
-  
-  <div style="margin-bottom: 20px;">
-    <strong>Current Medications:</strong>
-    <div style="border: 2px solid #ddd; border-radius: 5px; padding: 15px; margin-top: 8px; min-height: 60px; background-color: #fff;">
-      {{medications}}
-    </div>
-  </div>
-  
-  <div style="margin-bottom: 20px;">
-    <strong>Known Allergies:</strong>
-    <div style="border: 2px solid #dc3545; border-radius: 5px; padding: 15px; margin-top: 8px; min-height: 60px; background-color: #f8d7da;">
-      {{allergies}}
-    </div>
-  </div>
-</div>
-
-<div style="margin-top: 40px; padding: 20px; border: 2px solid #28a745; border-radius: 8px; background-color: #d4edda;">
-  <h3 style="color: #155724; margin-bottom: 15px;">Patient Acknowledgment</h3>
-  <p style="line-height: 1.6; margin: 0; color: #155724;">
-    I certify that the above information is complete and accurate to the best of my knowledge. I understand that providing false information may be dangerous to my health.
-  </p>
-</div>`
-  },
-  plan: {
-    name: "Treatment Plan",
-    icon: Calendar,
-    variables: [
-      { name: "patient_name", type: "text" as const },
-      { name: "patient_id", type: "text" as const },
-      { name: "dentist_name", type: "text" as const },
-      { name: "treatment_description", type: "textarea" as const },
-      { name: "estimated_cost", type: "text" as const },
-      { name: "treatment_duration", type: "text" as const },
-      { name: "appointment_date", type: "date" as const }
-    ],
-    content: `<div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #6f42c1; padding-bottom: 15px;">
-  <h1 style="color: #6f42c1; font-size: 24px; margin: 0; font-weight: bold;">DENTAL TREATMENT PLAN</h1>
-</div>
-
-<div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 20px; margin-bottom: 25px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
-  <div><strong>Patient:</strong><br><span style="color: #6f42c1; font-weight: bold;">{{patient_name}}</span> (ID: {{patient_id}})</div>
-  <div><strong>Doctor:</strong><br><span style="color: #6f42c1; font-weight: bold;">Dr. {{dentist_name}}</span></div>
-  <div><strong>Date:</strong><br><span style="border-bottom: 2px dotted #666; padding-bottom: 2px; display: inline-block;">{{appointment_date}}</span></div>
-</div>
-
-<div style="margin-bottom: 25px;">
-  <h3 style="color: #6f42c1; border-bottom: 2px solid #6f42c1; padding-bottom: 5px; margin-bottom: 15px;">Proposed Treatment</h3>
-  
-  <div style="margin-bottom: 20px;">
-    <strong>Treatment Description:</strong>
-    <div style="border: 2px solid #6f42c1; border-radius: 5px; padding: 15px; margin-top: 8px; min-height: 80px; background-color: #fff;">
-      {{treatment_description}}
-    </div>
-  </div>
-  
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-    <div style="padding: 15px; border: 2px solid #28a745; border-radius: 8px; background-color: #d4edda;">
-      <strong style="color: #155724;">Estimated Cost:</strong><br>
-      <span style="font-size: 18px; font-weight: bold; color: #155724;">{{estimated_cost}}</span>
-    </div>
-    <div style="padding: 15px; border: 2px solid #17a2b8; border-radius: 8px; background-color: #d1ecf1;">
-      <strong style="color: #0c5460;">Expected Duration:</strong><br>
-      <span style="font-size: 18px; font-weight: bold; color: #0c5460;">{{treatment_duration}}</span>
-    </div>
-  </div>
-</div>
-
-<div style="margin-bottom: 25px;">
-  <h3 style="color: #6f42c1; border-bottom: 2px solid #6f42c1; padding-bottom: 5px; margin-bottom: 15px;">Treatment Schedule</h3>
-  <div style="padding: 20px; border: 2px solid #6f42c1; border-radius: 8px; background-color: #f8f5ff;">
-    <p style="line-height: 1.6; margin: 0; color: #6f42c1; font-weight: 500;">
-      Treatment will begin on <strong>{{appointment_date}}</strong> and may require multiple visits as outlined above. Our team will work with you to schedule follow-up appointments as needed.
-    </p>
-  </div>
-</div>`
-  }
+  );
 };
 
 const RichTextBuilderPage = () => {
@@ -208,19 +176,9 @@ const RichTextBuilderPage = () => {
   const [showVariableModal, setShowVariableModal] = useState(false);
   const [newVariable, setNewVariable] = useState("");
   const [newVariableType, setNewVariableType] = useState<'text' | 'textarea' | 'signature' | 'date'>('text');
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
-  const [variables, setVariables] = useState<VariableType[]>([
-    { name: "patient_name", type: "text" },
-    { name: "patient_id", type: "text" }, 
-    { name: "dentist_name", type: "text" },
-    { name: "appointment_date", type: "date" },
-    { name: "treatment_type", type: "textarea" },
-    { name: "patient_signature", type: "signature" },
-    { name: "doctor_signature", type: "signature" },
-    { name: "phone_number", type: "text" },
-    { name: "email_address", type: "text" },
-    { name: "date_of_birth", type: "date" }
-  ]);
+  const [variables, setVariables] = useState<VariableType[]>(COMMON_VARIABLES);
+  const [interactiveElements, setInteractiveElements] = useState<InteractiveElement[]>([]);
+  const editorRef = useRef<RichTextEditorRef>(null);
 
   useEffect(() => {
     // Load data from sessionStorage
@@ -230,18 +188,7 @@ const RichTextBuilderPage = () => {
         const data = JSON.parse(storedData);
         setSelectedFormat(data.selectedFormat || "A4");
         setContent(data.content || "");
-        setVariables(data.variables || [
-          { name: "patient_name", type: "text" },
-          { name: "patient_id", type: "text" }, 
-          { name: "dentist_name", type: "text" },
-          { name: "appointment_date", type: "date" },
-          { name: "treatment_type", type: "textarea" },
-          { name: "patient_signature", type: "signature" },
-          { name: "doctor_signature", type: "signature" },
-          { name: "phone_number", type: "text" },
-          { name: "email_address", type: "text" },
-          { name: "date_of_birth", type: "date" }
-        ]);
+        setVariables(data.variables || COMMON_VARIABLES);
       } catch (error) {
         console.error('Error parsing stored rich text builder data:', error);
         navigate('/');
@@ -252,11 +199,11 @@ const RichTextBuilderPage = () => {
     }
   }, [navigate]);
 
-  const updateStoredData = (newContent: string, newVariables: VariableType[]) => {
+  const updateStoredData = (newContent?: string, newVariables?: VariableType[]) => {
     sessionStorage.setItem('richTextBuilderData', JSON.stringify({
       selectedFormat,
-      content: newContent,
-      variables: newVariables
+      content: newContent || content,
+      variables: newVariables || variables
     }));
   };
 
@@ -265,24 +212,29 @@ const RichTextBuilderPage = () => {
     updateStoredData(newContent, variables);
   };
 
-  const handleVariablesChange = (newVariables: VariableType[]) => {
-    setVariables(newVariables);
-    updateStoredData(content, newVariables);
-  };
-
-  const handleDragStart = (e: React.DragEvent, variable: string) => {
-    e.dataTransfer.setData('text/plain', variable);
-    e.dataTransfer.effectAllowed = 'copy';
+  const insertVariable = (variable: VariableType) => {
+    const variableText = `{{${variable.name}}}`;
+    
+    // Simple insertion at the end of content
+    const newContent = content + (content ? ' ' : '') + variableText;
+    setContent(newContent);
+    updateStoredData(newContent, variables);
+    toast(`Inserted ${variable.label || variable.name}`);
   };
 
   const addNewVariable = () => {
     if (newVariable.trim() && !variables.some(v => v.name === newVariable.trim())) {
-      const updated = [...variables, { name: newVariable.trim(), type: newVariableType }];
+      const updated = [...variables, { 
+        name: newVariable.trim(), 
+        type: newVariableType,
+        label: newVariable.trim().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+      }];
       setVariables(updated);
       updateStoredData(content, updated);
       setNewVariable("");
       setNewVariableType('text');
       setShowVariableModal(false);
+      toast("Variable added successfully!");
     }
   };
 
@@ -290,32 +242,15 @@ const RichTextBuilderPage = () => {
     const updated = variables.filter(v => v.name !== variableName);
     setVariables(updated);
     updateStoredData(content, updated);
-  };
-
-  const loadTemplate = (templateKey: string) => {
-    const template = DENTAL_TEMPLATES[templateKey as keyof typeof DENTAL_TEMPLATES];
-    if (template) {
-      setContent(template.content);
-      setVariables(template.variables);
-      updateStoredData(template.content, template.variables);
-      toast(`${template.name} template loaded!`);
-    }
-  };
-
-  const getPageDimensions = (format: PDFFormat) => {
-    switch (format) {
-      case "A4":
-        return { width: 595, height: 842 }; // A4 in points
-      case "A5":
-        return { width: 420, height: 595 }; // A5 in points
-      case "Letter":
-        return { width: 612, height: 792 }; // Letter in points
-      default:
-        return { width: 595, height: 842 };
-    }
+    toast("Variable removed");
   };
 
   const handleContinue = async () => {
+    if (!content.trim()) {
+      toast("Please add some content to your document first.");
+      return;
+    }
+
     // Create PDF builder data with rich text as background
     const newPage = {
       id: `page-${Date.now()}`,
@@ -341,166 +276,270 @@ const RichTextBuilderPage = () => {
     navigate('/rich-text-completion');
   };
 
-  const scale = 0.75;
-  const pageDimensions = getPageDimensions(selectedFormat);
-  const displayWidth = pageDimensions.width * scale;
-  const displayHeight = pageDimensions.height * scale;
+  const handleSave = () => {
+    updateStoredData();
+    toast("Document saved!");
+  };
+
+  const addInteractiveElement = (signatureData: { type: string; name: string; label?: string }, x: number, y: number) => {
+    const newElement: InteractiveElement = {
+      id: `signature-${Date.now()}`,
+      type: 'signature',
+      name: signatureData.name,
+      label: signatureData.label || signatureData.name,
+      x: x - 100, // Center the element
+      y: y - 25,
+      width: 200,
+      height: 50,
+    };
+    
+    setInteractiveElements(prev => [...prev, newElement]);
+    toast(`Added ${newElement.label} signature box`);
+  };
+
+  const updateInteractiveElement = (updatedElement: InteractiveElement) => {
+    setInteractiveElements(prev => 
+      prev.map(el => el.id === updatedElement.id ? updatedElement : el)
+    );
+  };
+
+  const deleteInteractiveElement = (elementId: string) => {
+    setInteractiveElements(prev => prev.filter(el => el.id !== elementId));
+    toast("Signature box deleted");
+  };
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-surface flex flex-col">
+      {/* Header */}
       <header className="border-b border-border bg-card px-6 py-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
-              <Stethoscope className="h-5 w-5" />
-              Dental Document Builder
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Create patient documents and forms • {selectedFormat} format
-            </p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/')}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Document Editor
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Create professional documents with variables • {selectedFormat} format
+              </p>
+            </div>
           </div>
-          <Button 
-            onClick={handleContinue}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            Continue to Form Completion
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={handleSave}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Save className="h-4 w-4" />
+              Save
+            </Button>
+            <Button 
+              onClick={handleContinue}
+              className="bg-green-600 hover:bg-green-700 gap-2"
+            >
+              Continue to Completion
+            </Button>
+          </div>
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* Sidebar */}
-        <div className="w-80 border-r border-border bg-card overflow-y-auto">
-          <div className="p-4 space-y-6">
-            {/* Template Section */}
-            <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Quick Templates
-              </h2>
-              <div className="grid gap-2">
-                {Object.entries(DENTAL_TEMPLATES).map(([key, template]) => {
-                  const Icon = template.icon;
-                  return (
-                    <Button
-                      key={key}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => loadTemplate(key)}
-                      className="justify-start h-auto p-3"
-                    >
-                      <Icon className="h-4 w-4 mr-2" />
-                      <div className="text-left">
-                        <div className="text-sm font-medium">{template.name}</div>
-                        <div className="text-xs text-muted-foreground">{template.variables.length} variables</div>
-                      </div>
-                    </Button>
-                  );
-                })}
-              </div>
+      {/* Toolbar */}
+      <div className="border-b border-border bg-card px-6 py-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-medium text-muted-foreground">Quick Insert:</span>
+            
+            {/* Patient Name */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => {
+                const patientName = variables.find(v => v.name === 'patient_name');
+                if (patientName) {
+                  insertVariable(patientName);
+                } else {
+                  toast("Patient name variable not found");
+                }
+              }}
+            >
+              <User className="h-4 w-4" />
+              Name
+            </Button>
+
+            {/* Today's Date */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => {
+                const todayDate = variables.find(v => v.name === 'today_date');
+                if (todayDate) {
+                  insertVariable(todayDate);
+                } else {
+                  toast("Today's date variable not found");
+                }
+              }}
+            >
+              <Calendar className="h-4 w-4" />
+              Date
+            </Button>
+
+            {/* Add Custom Variable */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => setShowVariableModal(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Add Variable
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar with draggable elements */}
+        <div className="w-64 border-r border-border bg-card overflow-y-auto">
+          <div className="p-4 space-y-4">
+            <h3 className="font-semibold text-sm text-foreground">Drag & Drop Elements</h3>
+            
+            {/* Signature Boxes */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Signatures</h4>
+              {variables.filter(v => v.type === 'signature').map((variable) => (
+                <div
+                  key={variable.name}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', JSON.stringify({
+                      type: 'signature',
+                      name: variable.name,
+                      label: variable.label
+                    }));
+                  }}
+                  className="p-3 border-2 border-dashed border-purple-300 bg-purple-50 rounded-lg cursor-grab active:cursor-grabbing hover:bg-purple-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2 text-purple-700">
+                    <PenTool className="h-4 w-4" />
+                    <span className="text-sm font-medium">{variable.label || variable.name}</span>
+                  </div>
+                  <p className="text-xs text-purple-600 mt-1">Drag into document</p>
+                </div>
+              ))}
             </div>
 
-            {/* Variables Section */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Variable className="h-4 w-4" />
-                  Variables
-                </h2>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowVariableModal(true)}
-                  className="h-6 w-6 p-0"
+            {/* Text Fields */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Text Fields</h4>
+              {variables.filter(v => v.type === 'text').map((variable) => (
+                <div
+                  key={variable.name}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', variable.name);
+                  }}
+                  className="p-2 border border-blue-300 bg-blue-50 rounded cursor-grab active:cursor-grabbing hover:bg-blue-100 transition-colors"
                 >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
-              
-              <p className="text-xs text-muted-foreground">
-                Drag variables into your document or type {'{'}{'{'} variable_name {'}}'}
-              </p>
-            
-              <div className="space-y-1">
-                {variables.map((variable) => (
-                  <div 
-                    key={variable.name}
-                    className="group flex items-center gap-2 p-2 rounded-md hover:bg-accent transition-colors"
-                  >
-                    <Badge
-                      variant="secondary"
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, variable.name)}
-                      className="cursor-grab active:cursor-grabbing flex-1 justify-center font-mono text-xs"
-                    >
-                      {variable.name}
-                    </Badge>
-                    <Badge 
-                      variant="outline" 
-                      className="text-xs px-1 py-0"
-                    >
-                      {variable.type}
-                    </Badge>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => removeVariable(variable.name)}
-                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="h-3 w-3 text-destructive" />
-                    </Button>
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <Type className="h-3 w-3" />
+                    <span className="text-xs font-medium">{variable.label || variable.name}</span>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Date Fields */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dates</h4>
+              {variables.filter(v => v.type === 'date').map((variable) => (
+                <div
+                  key={variable.name}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', variable.name);
+                  }}
+                  className="p-2 border border-orange-300 bg-orange-50 rounded cursor-grab active:cursor-grabbing hover:bg-orange-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2 text-orange-700">
+                    <Calendar className="h-3 w-3" />
+                    <span className="text-xs font-medium">{variable.label || variable.name}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-hidden">
-          <div className="h-full flex flex-col">
-            {/* Editor */}
-            <div className="flex-1 overflow-hidden">
-              <RichTextEditor
-                value={content}
-                onChange={handleContentChange}
-                className="h-full"
+        {/* Editor with Interactive Overlay */}
+        <div 
+          className="flex-1 overflow-hidden relative"
+          onDrop={(e) => {
+            console.log('Container drop event:', e);
+            const data = e.dataTransfer.getData('text/plain');
+            console.log('Drop data:', data);
+            try {
+              const signatureData = JSON.parse(data);
+              console.log('Parsed signature data:', signatureData);
+              if (signatureData.type === 'signature') {
+                e.preventDefault();
+                e.stopPropagation();
+                const rect = e.currentTarget.getBoundingClientRect();
+                addInteractiveElement(signatureData, e.clientX - rect.left, e.clientY - rect.top);
+                console.log('Added signature element');
+              }
+            } catch (error) {
+              console.log('Not signature data or parse error:', error);
+              // Not signature data, let editor handle it normally
+            }
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+          }}
+        >
+          {/* Rich Text Editor Layer */}
+          <div className="absolute inset-0 z-10">
+            <RichTextEditor
+              ref={editorRef}
+              value={content}
+              onChange={handleContentChange}
+              className="h-full w-full"
+              style={{ height: 'calc(100vh - 160px)', minHeight: '500px' }}
+            />
+          </div>
+
+          {/* Interactive Elements Overlay - only for signature boxes */}
+          <div className="absolute inset-0 z-20 pointer-events-none">
+            {interactiveElements.map((element) => (
+              <InteractiveSignatureBox
+                key={element.id}
+                element={element}
+                onUpdate={(updatedElement) => updateInteractiveElement(updatedElement)}
+                onDelete={(elementId) => deleteInteractiveElement(elementId)}
               />
-            </div>
-            
-            {/* Preview */}
-            <div className="h-1/2 border-t border-border overflow-auto bg-muted/30 p-6">
-              <div className="text-center mb-4">
-                <h3 className="text-sm font-medium text-foreground">Document Preview</h3>
-                <p className="text-xs text-muted-foreground">{selectedFormat} format</p>
-              </div>
-              
-              <div className="flex justify-center">
-                <Card 
-                  className="shadow-lg bg-white"
-                  style={{
-                    width: `${displayWidth}px`,
-                    height: `${displayHeight}px`,
-                    transform: `scale(${scale})`,
-                    transformOrigin: 'top center'
-                  }}
-                >
-                  <div 
-                    className="p-8 text-sm overflow-auto h-full relative"
-                    dangerouslySetInnerHTML={{ __html: content }}
-                  />
-                </Card>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Add Variable Modal */}
       <Dialog open={showVariableModal} onOpenChange={setShowVariableModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900">
           <DialogHeader>
-            <DialogTitle>Add New Variable</DialogTitle>
+            <DialogTitle className="text-foreground">Add Custom Variable</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
@@ -522,11 +561,11 @@ const RichTextBuilderPage = () => {
               <p className="text-xs text-muted-foreground mb-2">
                 Choose the input type for this variable
               </p>
-              <Select value={newVariableType} onValueChange={(value: any) => setNewVariableType(value)}>
+              <Select value={newVariableType} onValueChange={(value: 'text' | 'textarea' | 'signature' | 'date') => setNewVariableType(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white">
                   <SelectItem value="text">Text Input</SelectItem>
                   <SelectItem value="textarea">Textarea (Multi-line)</SelectItem>
                   <SelectItem value="date">Date Picker</SelectItem>

@@ -44,7 +44,7 @@ const PDFStart = () => {
           id: `page-${Date.now()}-${index}`,
           format: "A4" as PDFFormat,
           elements: [],
-          backgroundImage: blobUrl, // Same blob URL for all pages
+          backgroundImage: blobUrl,
           originalFileName: file.name,
           pageNumber: index + 1 // PDFRenderer will use this to show the correct page
         }));
