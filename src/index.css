@@ -11,22 +11,255 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
 }
 
-.ql-container {
-  border: 1px solid #E5E7EB !important;
-  border-top: none !important;
-  background: white !important;
+        .ql-container {
+          border: 1px solid #E5E7EB !important;
+          border-top: none !important;
+          background: white !important;
+          color: #1F2937 !important;
+          font-family: Arial, sans-serif !important;
+          font-size: 12pt !important;
+          line-height: 1.6 !important;
+          height: 1123px !important;
+          max-height: 1123px !important;
+          overflow: hidden !important;
+        }
+
+        .ql-editor {
+          color: #1F2937 !important;
+          padding: 64px !important;
+          height: 1123px !important;
+          max-height: 1123px !important;
+          overflow: hidden !important;
+          box-shadow: 0 0 20px rgba(0, 0, 0, 0.1) inset !important;
+          background: white !important;
+        }
+
+/* Fix placeholder positioning to match editor padding */
+.ql-editor.ql-blank::before {
+  left: 64px !important; /* Match the editor's padding */
+  right: 64px !important;
+  top: 64px !important; /* Match the editor's padding */
+  color: #9CA3AF !important;
+  font-style: italic !important;
+  pointer-events: none !important;
+  font-size: inherit !important;
+  font-family: inherit !important;
+}
+
+/* Responsive placeholder positioning for smaller screens */
+@media (max-width: 768px) {
+  .ql-editor.ql-blank::before {
+    left: 64px !important;
+    right: 64px !important;
+    top: 64px !important;
+  }
+}
+
+/* Variable Block Elements in Rich Text Editor */
+.ql-editor .variable-block,
+.variable-block {
+  display: inline-block;
+  padding: 4px 8px;
+  margin: 0 2px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: default;
+}
+
+/* ReactQuill Content Preview Styles - Match editor formatting exactly */
+.ql-editor-preview {
   color: #1F2937 !important;
-  font-family: 'Times New Roman', Times, serif !important;
+  font-family: Arial, sans-serif !important;
   font-size: 12pt !important;
   line-height: 1.6 !important;
 }
 
-.ql-editor {
-  color: #1F2937 !important;
-  padding: 40px 60px !important;
-  min-height: calc(100vh - 200px) !important;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1) inset !important;
+/* Quill HTML content formatting - Enhanced for pasted content */
+.ql-editor-preview p {
+  margin: 0 0 12px 0;
+  line-height: 1.6;
+}
+
+/* Handle empty paragraphs (line breaks in pasted text) */
+.ql-editor-preview p:empty {
+  margin: 0 0 12px 0;
+  height: 1.2em; /* Ensure empty paragraphs take up space */
+}
+
+/* Handle line breaks within paragraphs */
+.ql-editor-preview p br {
+  line-height: 1.6;
+}
+
+/* Ensure proper spacing for consecutive elements */
+.ql-editor-preview p + p {
+  margin-top: 0;
+}
+
+.ql-editor-preview h1, 
+.ql-editor-preview h2, 
+.ql-editor-preview h3, 
+.ql-editor-preview h4, 
+.ql-editor-preview h5, 
+.ql-editor-preview h6 {
+  margin: 0 0 12px 0;
+  font-weight: bold;
+  line-height: 1.6;
+}
+
+/* Handle text nodes and mixed content properly */
+.ql-editor-preview {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.ql-editor-preview h1 { font-size: 2em; }
+.ql-editor-preview h2 { font-size: 1.5em; }
+.ql-editor-preview h3 { font-size: 1.25em; }
+.ql-editor-preview h4 { font-size: 1.1em; }
+.ql-editor-preview h5 { font-size: 1em; }
+.ql-editor-preview h6 { font-size: 0.9em; }
+
+/* Lists */
+.ql-editor-preview ol,
+.ql-editor-preview ul {
+  margin: 0 0 12px 0;
+  padding-left: 24px;
+  line-height: 1.6;
+}
+
+.ql-editor-preview li {
+  margin: 0 0 4px 0;
+  line-height: 1.6;
+}
+
+/* Text alignment */
+.ql-editor-preview .ql-align-center,
+.ql-editor-preview [style*="text-align: center"] {
+  text-align: center;
+}
+
+.ql-editor-preview .ql-align-right,
+.ql-editor-preview [style*="text-align: right"] {
+  text-align: right;
+}
+
+.ql-editor-preview .ql-align-justify,
+.ql-editor-preview [style*="text-align: justify"] {
+  text-align: justify;
+}
+
+/* Text formatting */
+.ql-editor-preview strong,
+.ql-editor-preview b {
+  font-weight: bold;
+}
+
+.ql-editor-preview em,
+.ql-editor-preview i {
+  font-style: italic;
+}
+
+.ql-editor-preview u {
+  text-decoration: underline;
+}
+
+.ql-editor-preview s {
+  text-decoration: line-through;
+}
+
+/* Blockquotes */
+.ql-editor-preview blockquote {
+  border-left: 4px solid #ccc;
+  margin: 0 0 12px 0;
+  padding: 8px 0 8px 16px;
+  font-style: italic;
+  color: #666;
+}
+
+/* Line breaks */
+.ql-editor-preview br {
+  line-height: 1.6;
+}
+
+/* Indentation */
+.ql-editor-preview .ql-indent-1 { margin-left: 24px; }
+.ql-editor-preview .ql-indent-2 { margin-left: 48px; }
+.ql-editor-preview .ql-indent-3 { margin-left: 72px; }
+.ql-editor-preview .ql-indent-4 { margin-left: 96px; }
+.ql-editor-preview .ql-indent-5 { margin-left: 120px; }
+
+/* Variable embeds in preview */
+.ql-editor-preview .variable-embed {
+  display: inline-block;
+  padding: 4px 8px;
+  margin: 0 2px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: default;
+  vertical-align: baseline;
+}
+
+/* ReactQuill Preview - Hide toolbar when disabled (only in preview, not builder) */
+.rich-text-preview .ql-toolbar.ql-snow,
+.rich-text-preview-quill .ql-toolbar.ql-snow {
+  display: none !important;
+}
+
+/* ReactQuill Preview - Match builder editor styling exactly */
+.rich-text-preview .ql-container.ql-snow,
+.rich-text-preview-quill .ql-container.ql-snow {
+  border: 1px solid #E5E7EB !important;
+  border-top: 1px solid #E5E7EB !important; /* Override builder's border-top: none */
   background: white !important;
+  height: 1123px !important;
+  max-height: 1123px !important;
+  overflow: hidden !important;
+}
+
+.rich-text-preview .ql-editor,
+.rich-text-preview-quill .ql-editor {
+  padding: 64px !important;
+  height: 1123px !important;
+  max-height: 1123px !important;
+  overflow: hidden !important;
+  color: #1F2937 !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 12pt !important;
+  line-height: 1.6 !important;
+  box-shadow: none !important; /* Remove builder's inset shadow */
+}
+
+/* Ensure ReactQuill preview renders content exactly like builder */
+.rich-text-preview-quill .ql-editor p {
+  margin: 0 0 12px 0;
+  line-height: 1.6;
+}
+
+.rich-text-preview-quill .ql-editor p:empty {
+  margin: 0 0 12px 0;
+  height: 1.2em;
+}
+
+/* Make variables behave as atomic blocks - select all or nothing */
+.ql-editor .variable-block::selection {
+  background: rgba(59, 130, 246, 0.3) !important;
+}
+
+.ql-editor .variable-block::-moz-selection {
+  background: rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Hover effect for better visual feedback */
+.ql-editor .variable-block:hover {
+  opacity: 0.8 !important;
+  transform: scale(1.02) !important;
+  transition: all 0.1s ease !important;
 }
 
 .ql-editor:focus {
@@ -209,3 +442,19 @@
 }
 
 /* Let Radix handle z-index naturally - no overrides */
+
+/* Pulse animation for focused elements */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

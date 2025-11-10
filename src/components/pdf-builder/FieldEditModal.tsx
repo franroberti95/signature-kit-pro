@@ -46,8 +46,8 @@ export const FieldEditModal = ({
         return (
           <div className="py-4">
             <SignatureCanvas
-              width={280}
-              height={120}
+              width={240}
+              height={80}
               onSignatureComplete={handleSignatureComplete}
               onCancel={onClose}
             />

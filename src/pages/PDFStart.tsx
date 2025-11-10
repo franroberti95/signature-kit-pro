@@ -1,24 +1,28 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { FormatSelector } from "@/components/pdf-builder/FormatSelector";
 import { FileUploader } from "@/components/pdf-builder/FileUploader";
 import { PDFFormat } from "@/components/pdf-builder/PDFBuilder";
 import { ApiService } from "@/services/apiService";
 import { toast } from "sonner";
+import { PDFDocument } from 'pdf-lib';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileText, Upload } from "lucide-react";
 
 const PDFStart = () => {
   const navigate = useNavigate();
   const [isConverting, setIsConverting] = useState(false);
 
-  const handleFormatSelect = (format: PDFFormat) => {
-    // Store the selected format and navigate to rich text builder
+  const handleCreateNew = () => {
+    // Always use A4 format and navigate to rich text builder
     sessionStorage.setItem('richTextBuilderData', JSON.stringify({
-      selectedFormat: format,
+      selectedFormat: "A4",
       content: "",
-      variables: []
+      interactiveElements: [],
+      isRichTextDocument: true
     }));
     
-    toast(`New ${format} document created!`);
+    toast("New A4 document created!");
     navigate('/rich-text-builder');
   };
 
@@ -32,7 +36,6 @@ const PDFStart = () => {
         const blobUrl = URL.createObjectURL(file);
         
         // Load the PDF to get page count
-        const { PDFDocument } = await import('pdf-lib');
         const pdfBytes = await file.arrayBuffer();
         const pdfDoc = await PDFDocument.load(pdfBytes);
         const pageCount = pdfDoc.getPageCount();
@@ -87,7 +90,6 @@ const PDFStart = () => {
       const pdfBlob = await response.blob();
       
       // Load the PDF to get page count
-      const { PDFDocument } = await import('pdf-lib');
       const pdfBytes = await pdfBlob.arrayBuffer();
       const pdfDoc = await PDFDocument.load(pdfBytes);
       const pageCount = pdfDoc.getPageCount();
@@ -138,17 +140,38 @@ const PDFStart = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-foreground">Start from Blank</h3>
-              <p className="text-muted-foreground mb-6">Create a new document from scratch with your preferred format</p>
-              <FormatSelector onFormatSelect={handleFormatSelect} />
-            </div>
+            <Card className="p-6">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Create New Document
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-muted-foreground">Start with a blank A4 document and build your form from scratch</p>
+                <Button 
+                  onClick={handleCreateNew} 
+                  className="w-full"
+                  size="lg"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Create New A4 Document
+                </Button>
+              </CardContent>
+            </Card>
             
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-foreground">Upload Existing Document</h3>
-              <p className="text-muted-foreground mb-6">Add form fields to an existing PDF or Word document</p>
-              <FileUploader onFileUpload={handleFileUpload} isConverting={isConverting} />
-            </div>
+            <Card className="p-6">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
+                  Upload Existing PDF
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-muted-foreground">Add form fields to an existing PDF or Word document</p>
+                <FileUploader onFileUpload={handleFileUpload} isConverting={isConverting} />
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

@@ -1,41 +1,25 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// Removed dropdown imports - using simple buttons instead
 import { toast } from "sonner";
 import { 
   FileText, 
-  Plus, 
-  Variable, 
   X, 
-  Stethoscope, 
-  Heart, 
-  Calendar, 
-  Shield,
   PenTool,
-  User,
-  Mail,
-  Phone,
-  ChevronDown,
   Type,
-  Save,
-  ArrowLeft
+  Calendar,
+  ArrowLeft,
+  Plus
 } from "lucide-react";
 import RichTextEditor, { RichTextEditorRef } from "@/components/pdf-builder/RichTextEditor";
+import { ApiService } from "@/services/apiService";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type PDFFormat = "A4" | "A5" | "Letter";
 
-interface VariableType {
-  name: string;
-  type: 'text' | 'textarea' | 'signature' | 'date';
-  label?: string;
-  icon?: React.ComponentType<{ className?: string }>;
-}
+import { VariableType, COMMON_VARIABLES } from '@/constants/variables';
+import { TRUE_A4_DIMENSIONS, PAGE_LIMITS } from '@/constants/dimensions';
 
 interface InteractiveElement {
   id: string;
@@ -46,22 +30,17 @@ interface InteractiveElement {
   y: number;
   width: number;
   height: number;
+  pageIndex: number; // Track which page this element belongs to
 }
 
-// Common variables for medical/dental documents
-const COMMON_VARIABLES: VariableType[] = [
-  { name: "patient_name", type: "text", label: "Patient Name", icon: User },
-  { name: "patient_surname", type: "text", label: "Patient Surname", icon: User },
-  { name: "patient_id", type: "text", label: "Patient ID", icon: User },
-  { name: "date_of_birth", type: "date", label: "Date of Birth", icon: Calendar },
-  { name: "phone_number", type: "text", label: "Phone Number", icon: Phone },
-  { name: "email_address", type: "text", label: "Email Address", icon: Mail },
-  { name: "appointment_date", type: "date", label: "Appointment Date", icon: Calendar },
-  { name: "doctor_name", type: "text", label: "Doctor Name", icon: Stethoscope },
-  { name: "patient_signature", type: "signature", label: "Patient Signature", icon: PenTool },
-  { name: "doctor_signature", type: "signature", label: "Doctor Signature", icon: PenTool },
-  { name: "today_date", type: "date", label: "Today's Date", icon: Calendar },
-];
+interface PageData {
+  id: string;
+  content: string;
+  elements: InteractiveElement[];
+}
+
+// PAGE_LIMITS now imported from centralized constants
+
 
 // Interactive Signature Box Component
 const InteractiveSignatureBox = ({ element, onUpdate, onDelete }: {
@@ -75,11 +54,19 @@ const InteractiveSignatureBox = ({ element, onUpdate, onDelete }: {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging) {
-        onUpdate({
-          ...element,
-          x: e.clientX - dragStart.x,
-          y: e.clientY - dragStart.y,
-        });
+        // Get container bounds to convert to container-relative coordinates  
+        const container = (e.target as HTMLElement).closest(`[style*="width: ${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px"]`) as HTMLElement;
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          const newX = e.clientX - rect.left - dragStart.x;
+          const newY = e.clientY - rect.top - dragStart.y;
+          
+          onUpdate({
+            ...element,
+            x: newX,
+            y: newY,
+          });
+        }
       }
     };
 
@@ -112,52 +99,33 @@ const InteractiveSignatureBox = ({ element, onUpdate, onDelete }: {
       onMouseDown={(e) => {
         if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.signature-content')) {
           setIsDragging(true);
-          setDragStart({
-            x: e.clientX - element.x,
-            y: e.clientY - element.y,
-          });
+          
+          // Calculate drag start relative to container, not viewport
+          const container = (e.target as HTMLElement).closest(`[style*="width: ${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px"]`) as HTMLElement;
+          if (container) {
+            const rect = container.getBoundingClientRect();
+            setDragStart({
+              x: (e.clientX - rect.left) - element.x,
+              y: (e.clientY - rect.top) - element.y,
+            });
+          }
+          
           e.preventDefault();
         }
       }}
     >
-      <div className="signature-content p-2 text-center text-purple-700 text-sm font-medium flex items-center justify-center h-full">
-        <PenTool className="h-4 w-4 mr-2" />
-        {element.label}
-      </div>
-      
-      {/* Resize handle */}
-      <div
-        className="absolute bottom-0 right-0 w-3 h-3 bg-purple-500 cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity"
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          
-          const startX = e.clientX;
-          const startY = e.clientY;
-          const startWidth = element.width;
-          const startHeight = element.height;
-
-          const handleResize = (e: MouseEvent) => {
-            const newWidth = Math.max(120, startWidth + (e.clientX - startX));
-            const newHeight = Math.max(40, startHeight + (e.clientY - startY));
-            
-            onUpdate({
-              ...element,
-              width: newWidth,
-              height: newHeight,
-            });
-          };
-
-          const handleResizeEnd = () => {
-            document.removeEventListener('mousemove', handleResize);
-            document.removeEventListener('mouseup', handleResizeEnd);
-          };
-
-          document.addEventListener('mousemove', handleResize);
-          document.addEventListener('mouseup', handleResizeEnd);
-        }}
-      />
-      
+      <div className="signature-content p-2 text-center text-purple-700 text-sm font-medium flex flex-col items-center justify-center h-full">
+        <PenTool className="h-4 w-4 mb-1" />
+        <span>{element.label}</span>
+        {/* Debug info */}
+        <span className="text-xs text-purple-500 font-mono mt-1">
+          240×80px (fixed)
+        </span>
+        <span className="text-xs text-purple-500 font-mono">
+          @{element.x},{element.y}
+        </span>
+  </div>
+  
       {/* Delete button */}
       <button
         className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
@@ -171,14 +139,50 @@ const InteractiveSignatureBox = ({ element, onUpdate, onDelete }: {
 
 const RichTextBuilderPage = () => {
   const navigate = useNavigate();
-  const [selectedFormat, setSelectedFormat] = useState<PDFFormat>("A4");
-  const [content, setContent] = useState("");
-  const [showVariableModal, setShowVariableModal] = useState(false);
-  const [newVariable, setNewVariable] = useState("");
-  const [newVariableType, setNewVariableType] = useState<'text' | 'textarea' | 'signature' | 'date'>('text');
-  const [variables, setVariables] = useState<VariableType[]>(COMMON_VARIABLES);
-  const [interactiveElements, setInteractiveElements] = useState<InteractiveElement[]>([]);
-  const editorRef = useRef<RichTextEditorRef>(null);
+  const isMobile = useIsMobile();
+  
+  // Multi-page state management
+  const [pages, setPages] = useState<PageData[]>([
+    { id: `page-${Date.now()}`, content: "", elements: [] }
+  ]);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const editorRefs = useRef<(RichTextEditorRef | null)[]>([]);
+  
+  // SIMPLIFIED: Use centralized TRUE A4 dimensions
+  const containerWidth = `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`;
+  const containerHeight = `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px`;
+
+  // Function to estimate content size for pagination
+  const estimateContentSize = (htmlContent: string) => {
+    // Strip HTML tags and get text content
+    const textContent = htmlContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    
+    // SIMPLIFIED: Use centralized page limits
+    const avgCharsPerLine = PAGE_LIMITS.avgCharsPerLine;
+    const estimatedLines = Math.ceil(textContent.length / avgCharsPerLine);
+    
+    // Account for rich text formatting (headers, spacing, etc.)
+    const formattingMultiplier = htmlContent.includes('<h') ? 1.5 : 
+                               htmlContent.includes('<p>') ? 1.2 : 1.0;
+    
+    const adjustedLines = Math.ceil(estimatedLines * formattingMultiplier);
+    
+    return {
+      characters: textContent.length,
+      estimatedLines: adjustedLines,
+      percentageFull: Math.min((adjustedLines / PAGE_LIMITS.maxLines) * 100, 100),
+      isNearLimit: adjustedLines >= (PAGE_LIMITS.maxLines * PAGE_LIMITS.warningThreshold),
+      isOverLimit: adjustedLines >= PAGE_LIMITS.maxLines
+    };
+  };
+
+  // Get content stats for current page
+  const getCurrentPageStats = () => {
+    const currentPage = pages[currentPageIndex];
+    return currentPage ? estimateContentSize(currentPage.content || '') : { 
+      characters: 0, estimatedLines: 0, percentageFull: 0, isNearLimit: false, isOverLimit: false 
+    };
+  };
 
   useEffect(() => {
     // Load data from sessionStorage
@@ -186,125 +190,260 @@ const RichTextBuilderPage = () => {
     if (storedData) {
       try {
         const data = JSON.parse(storedData);
-        setSelectedFormat(data.selectedFormat || "A4");
-        setContent(data.content || "");
-        setVariables(data.variables || COMMON_VARIABLES);
+        if (data.pages && Array.isArray(data.pages)) {
+          // Multi-page format
+          setPages(data.pages);
+        } else {
+          // Legacy single-page format - convert to multi-page
+          const legacyPage: PageData = {
+            id: `page-${Date.now()}`,
+            content: data.content || "",
+            elements: (data.interactiveElements || []).map((el: InteractiveElement) => ({ ...el, pageIndex: 0 }))
+          };
+          setPages([legacyPage]);
+        }
       } catch (error) {
         console.error('Error parsing stored rich text builder data:', error);
-        navigate('/');
+        // Initialize with defaults on error
+        setPages([{ id: `page-${Date.now()}`, content: "", elements: [] }]);
       }
     } else {
-      // No data found, redirect to start
-      navigate('/');
+      // No data found, initialize with defaults  
+      setPages([{ id: `page-${Date.now()}`, content: "", elements: [] }]);
     }
+
+    // DEBUG: Comprehensive coordinate system analysis
+    setTimeout(() => {
+      const container = document.querySelector(`[style*="width: ${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px"]`);
+      const toolbar = document.querySelector('.ql-toolbar');
+      const editor = document.querySelector('.ql-editor');
+      
+      if (container && toolbar && editor) {
+        const containerRect = container.getBoundingClientRect();
+        const toolbarRect = toolbar.getBoundingClientRect();
+        const editorRect = editor.getBoundingClientRect();
+        
+        console.log(`📏 COORDINATE SYSTEM ANALYSIS:`);
+        console.log(`   📦 Container: ${containerRect.height}px tall, starts at ${containerRect.top}`);
+        console.log(`   🔧 Toolbar: ${toolbarRect.height}px tall, starts at ${toolbarRect.top}`);
+        console.log(`   📝 Editor: ${editorRect.height}px tall, starts at ${editorRect.top}`);
+        console.log(`   📐 CSS constant: ${TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT}px`);
+        
+        // Calculate the actual offset from container top to editor content start
+        const actualOffset = editorRect.top - containerRect.top;
+        console.log(`   ✨ ACTUAL TOTAL OFFSET: ${actualOffset}px (container top → editor content)`);
+        console.log(`   ${actualOffset === TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT ? '✅' : '❌'} Match with constant: ${actualOffset === TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT}`);
+        
+        if (actualOffset !== TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT) {
+          console.log(`   🔄 SUGGESTED FIX: Update TOOLBAR_HEIGHT to ${actualOffset}px`);
+        }
+      }
+    }, 1000); // Wait for ReactQuill to fully render
   }, [navigate]);
 
-  const updateStoredData = (newContent?: string, newVariables?: VariableType[]) => {
+  // Function to clear editor state and reset formatting for current page
+  const clearEditorState = (pageIndex: number) => {
+    const editorRef = editorRefs.current[pageIndex];
+    if (editorRef) {
+      const editor = editorRef.getEditor();
+      if (editor) {
+        // Clear all formatting
+        editor.removeFormat(0, editor.getLength());
+        // Reset selection
+        editor.setSelection(editor.getLength(), 0);
+      }
+    }
+  };
+
+  // Add new page
+  const addNewPage = () => {
+    const newPage: PageData = {
+      id: `page-${Date.now()}`,
+      content: "",
+      elements: []
+    };
+    setPages(prev => [...prev, newPage]);
+    setCurrentPageIndex(pages.length); // Switch to new page
+    updateStoredData([...pages, newPage]);
+  };
+
+  // Delete page
+  const deletePage = (pageIndex: number) => {
+    if (pages.length <= 1) return; // Don't delete if only one page
+    
+    const updatedPages = pages.filter((_, index) => index !== pageIndex);
+    setPages(updatedPages);
+    
+    // Adjust current page index if needed
+    if (currentPageIndex >= updatedPages.length) {
+      setCurrentPageIndex(updatedPages.length - 1);
+    }
+    
+    updateStoredData(updatedPages);
+  };
+
+  const updateStoredData = (updatedPages?: PageData[]) => {
+    const pagesToStore = updatedPages || pages;
     sessionStorage.setItem('richTextBuilderData', JSON.stringify({
-      selectedFormat,
-      content: newContent || content,
-      variables: newVariables || variables
+      selectedFormat: "A4", // Always use A4 format
+      pages: pagesToStore,
+      variables: COMMON_VARIABLES,
+      isRichTextDocument: true
     }));
   };
 
-  const handleContentChange = (newContent: string) => {
-    setContent(newContent);
-    updateStoredData(newContent, variables);
-  };
-
-  const insertVariable = (variable: VariableType) => {
-    const variableText = `{{${variable.name}}}`;
+  const handleContentChange = (pageIndex: number, newContent: string) => {
+    // Check content limits
+    const stats = estimateContentSize(newContent);
     
-    // Simple insertion at the end of content
-    const newContent = content + (content ? ' ' : '') + variableText;
-    setContent(newContent);
-    updateStoredData(newContent, variables);
-    toast(`Inserted ${variable.label || variable.name}`);
+    // Log content stats for debugging
+    if (stats.isOverLimit) {
+      console.log(`⚠️ Page ${pageIndex + 1} content exceeds limit: ${stats.estimatedLines}/${PAGE_LIMITS.maxLines} lines`);
+    }
+    
+    // Update the page content
+    const updatedPages = pages.map((page, index) => 
+      index === pageIndex ? { ...page, content: newContent } : page
+    );
+    setPages(updatedPages);
+    updateStoredData(updatedPages);
+    
+    // Optional: Auto-create new page if current page is significantly over limit
+    // Uncomment below if you want automatic page creation
+    /*
+    if (stats.estimatedLines > PAGE_LIMITS.maxLines * 1.5 && pageIndex === pages.length - 1) {
+      console.log('📄 Auto-creating new page due to content overflow');
+      addNewPage();
+    }
+    */
   };
 
-  const addNewVariable = () => {
-    if (newVariable.trim() && !variables.some(v => v.name === newVariable.trim())) {
-      const updated = [...variables, { 
-        name: newVariable.trim(), 
-        type: newVariableType,
-        label: newVariable.trim().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-      }];
-      setVariables(updated);
-      updateStoredData(content, updated);
-      setNewVariable("");
-      setNewVariableType('text');
-      setShowVariableModal(false);
-      toast("Variable added successfully!");
+  const handleVariableClick = (variableName: string) => {
+    // Insert variable at current cursor position in current page
+    const editorRef = editorRefs.current[currentPageIndex];
+    if (editorRef) {
+      editorRef.insertVariable(variableName);
     }
   };
 
-  const removeVariable = (variableName: string) => {
-    const updated = variables.filter(v => v.name !== variableName);
-    setVariables(updated);
-    updateStoredData(content, updated);
-    toast("Variable removed");
-  };
 
   const handleContinue = async () => {
-    if (!content.trim()) {
-      toast("Please add some content to your document first.");
+    // Check if any page has content or elements
+    const hasContent = pages.some(page => page.content.trim() || page.elements.length > 0);
+    if (!hasContent) {
+      toast("Please add some content or signature fields to your document first.");
       return;
     }
 
-    // Create PDF builder data with rich text as background
-    const newPage = {
-      id: `page-${Date.now()}`,
-      format: selectedFormat,
-      elements: [],
-      richTextContent: content,
-      richTextVariables: variables
+    // Convert all pages to PDF builder format
+    const pdfPages = pages.map((page, pageIndex) => {
+      // Convert interactive signature elements to PDF builder format
+      const pdfElements = page.elements.map((element) => ({
+        id: element.id,
+        type: element.type,
+        x: element.x,
+        y: element.y, // Y coordinate is already page-relative
+        width: element.width,
+        height: element.height,
+        properties: {
+          placeholder: element.label,
+          required: true,
+          fieldName: element.name
+        },
+        // Add pre-defined label for better UX
+        preDefinedLabel: element.label,
+        placeholder: element.label,
+        required: true
+      }));
+
+      return {
+        id: page.id,
+        format: "A4" as PDFFormat, // Always use A4 format
+        elements: pdfElements,
+        richTextContent: page.content,
+        richTextVariables: COMMON_VARIABLES
+      };
+    });
+    
+    // Store in the format expected by RichTextCompletionPage
+    const completionData = {
+      pages: pdfPages,
+      selectedFormat: "A4", // Always use A4 format
+      isRichTextDocument: true
     };
     
     // Store using ApiService for consistency with completion component
-    const { ApiService } = await import('@/services/apiService');
-    await ApiService.savePDFBuilderData([newPage], selectedFormat);
+    await ApiService.savePDFBuilderData(pdfPages, "A4");
     
-    // Also store rich text specific data
-    sessionStorage.setItem('richTextBuilderData', JSON.stringify({
-      selectedFormat,
-      content,
-      variables,
-      isRichTextDocument: true
-    }));
+    // Store in sessionStorage with the key that RichTextCompletionPage expects
+    sessionStorage.setItem('richTextBuilderData', JSON.stringify(completionData));
     
-    toast("Document ready for form completion!");
+    const totalElements = pdfPages.reduce((sum, page) => sum + page.elements.length, 0);
+    toast(`Document ready! ${pages.length} pages created with ${totalElements} signature fields.`);
     navigate('/rich-text-completion');
   };
 
-  const handleSave = () => {
-    updateStoredData();
-    toast("Document saved!");
-  };
 
-  const addInteractiveElement = (signatureData: { type: string; name: string; label?: string }, x: number, y: number) => {
+  // Fixed signature dimensions - standard size for all signatures
+  const SIGNATURE_WIDTH = 240; // 240px wide (larger for signatures)
+  const SIGNATURE_HEIGHT = 80;  // 80px tall (taller for signatures)
+
+  const addInteractiveElement = (signatureData: { type: string; name: string; label?: string }, x: number, y: number, pageIndex: number) => {
     const newElement: InteractiveElement = {
       id: `signature-${Date.now()}`,
       type: 'signature',
       name: signatureData.name,
       label: signatureData.label || signatureData.name,
-      x: x - 100, // Center the element
-      y: y - 25,
-      width: 200,
-      height: 50,
+      x: x - (SIGNATURE_WIDTH / 2), // Center the element
+      y: y - (SIGNATURE_HEIGHT / 2),
+      width: SIGNATURE_WIDTH,  // Fixed dimensions
+      height: SIGNATURE_HEIGHT, // Fixed dimensions
+      pageIndex,
     };
     
-    setInteractiveElements(prev => [...prev, newElement]);
-    toast(`Added ${newElement.label} signature box`);
+    console.log(`🎯 Builder: Added signature at (${newElement.x}, ${newElement.y}) size ${newElement.width}×${newElement.height} on page ${pageIndex + 1}`);
+    
+    // DEBUG: Show coordinate context for alignment debugging
+    const container = document.querySelector(`[style*="width: ${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px"]`);
+    const toolbar = document.querySelector('.ql-toolbar');
+    if (container && toolbar) {
+      const containerRect = container.getBoundingClientRect();
+      const toolbarRect = toolbar.getBoundingClientRect();
+      const actualOffset = toolbarRect.height;
+      console.log(`🔍 BUILDER COORDINATE CONTEXT:`);
+      console.log(`   📦 Signature stored at: (${newElement.x}, ${newElement.y})px relative to container`);
+      console.log(`   🔧 Measured toolbar height: ${actualOffset}px`);
+      console.log(`   📐 CSS constant (corrected): ${TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT}px`);
+      console.log(`   🎯 Expected preview Y: ${newElement.y - TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT}px (toolbar height now correctly measured)`);
+    }
+    
+    const updatedPages = pages.map((page, index) => 
+      index === pageIndex 
+        ? { ...page, elements: [...page.elements, newElement] }
+        : page
+    );
+    setPages(updatedPages);
+    updateStoredData(updatedPages);
+    toast(`Added ${newElement.label} signature box to page ${pageIndex + 1}`);
   };
 
   const updateInteractiveElement = (updatedElement: InteractiveElement) => {
-    setInteractiveElements(prev => 
-      prev.map(el => el.id === updatedElement.id ? updatedElement : el)
+    const updatedPages = pages.map((page, index) => 
+      index === updatedElement.pageIndex
+        ? { ...page, elements: page.elements.map(el => el.id === updatedElement.id ? updatedElement : el) }
+        : page
     );
+    setPages(updatedPages);
+    updateStoredData(updatedPages);
   };
 
   const deleteInteractiveElement = (elementId: string) => {
-    setInteractiveElements(prev => prev.filter(el => el.id !== elementId));
+    const updatedPages = pages.map(page => ({
+      ...page,
+      elements: page.elements.filter(el => el.id !== elementId)
+    }));
+    setPages(updatedPages);
+    updateStoredData(updatedPages);
     toast("Signature box deleted");
   };
 
@@ -323,105 +462,49 @@ const RichTextBuilderPage = () => {
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
-            <div>
-              <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
+          <div>
+            <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
                 <FileText className="h-5 w-5" />
                 Document Editor
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Create professional documents with variables • {selectedFormat} format
-              </p>
+            </h1>
+            <p className="text-sm text-muted-foreground">
+                Create professional documents with variables • A4 format
+            </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Button 
-              onClick={handleSave}
+              onClick={() => clearEditorState(currentPageIndex)}
               variant="outline"
               size="sm"
-              className="gap-2"
+              className="gap-1"
             >
-              <Save className="h-4 w-4" />
-              Save
+              Clear Format
             </Button>
-            <Button 
-              onClick={handleContinue}
+          <Button 
+            onClick={handleContinue}
               className="bg-green-600 hover:bg-green-700 gap-2"
-            >
+          >
               Continue to Completion
-            </Button>
+          </Button>
           </div>
         </div>
       </header>
 
-      {/* Toolbar */}
-      <div className="border-b border-border bg-card px-6 py-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1">
-            <span className="text-sm font-medium text-muted-foreground">Quick Insert:</span>
-            
-            {/* Patient Name */}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-2"
-              onClick={() => {
-                const patientName = variables.find(v => v.name === 'patient_name');
-                if (patientName) {
-                  insertVariable(patientName);
-                } else {
-                  toast("Patient name variable not found");
-                }
-              }}
-            >
-              <User className="h-4 w-4" />
-              Name
-            </Button>
-
-            {/* Today's Date */}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-2"
-              onClick={() => {
-                const todayDate = variables.find(v => v.name === 'today_date');
-                if (todayDate) {
-                  insertVariable(todayDate);
-                } else {
-                  toast("Today's date variable not found");
-                }
-              }}
-            >
-              <Calendar className="h-4 w-4" />
-              Date
-            </Button>
-
-            {/* Add Custom Variable */}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-2"
-              onClick={() => setShowVariableModal(true)}
-            >
-              <Plus className="h-4 w-4" />
-              Add Variable
-            </Button>
-          </div>
-        </div>
-      </div>
-
+              
       {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar with draggable elements */}
-        <div className="w-64 border-r border-border bg-card overflow-y-auto">
+      <div className="flex flex-1 bg-gray-50">
+        {/* Sticky Sidebar with draggable elements */}
+        <div className="w-64 border-r border-border bg-card sticky top-0 h-screen overflow-y-auto">
           <div className="p-4 space-y-4">
             <h3 className="font-semibold text-sm text-foreground">Drag & Drop Elements</h3>
             
             {/* Signature Boxes */}
             <div className="space-y-2">
               <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Signatures</h4>
-              {variables.filter(v => v.type === 'signature').map((variable) => (
-                <div
-                  key={variable.name}
+              {COMMON_VARIABLES.filter(v => v.type === 'signature').map((variable) => (
+                  <div 
+                    key={variable.name}
                   draggable
                   onDragStart={(e) => {
                     e.dataTransfer.setData('text/plain', JSON.stringify({
@@ -444,143 +527,209 @@ const RichTextBuilderPage = () => {
             {/* Text Fields */}
             <div className="space-y-2">
               <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Text Fields</h4>
-              {variables.filter(v => v.type === 'text').map((variable) => (
+              {COMMON_VARIABLES.filter(v => v.type === 'text').map((variable) => (
                 <div
                   key={variable.name}
-                  draggable
+                      draggable
                   onDragStart={(e) => {
-                    e.dataTransfer.setData('text/plain', variable.name);
+                    e.dataTransfer.setData('text/plain', `{{${variable.name}}}`);
                   }}
-                  className="p-2 border border-blue-300 bg-blue-50 rounded cursor-grab active:cursor-grabbing hover:bg-blue-100 transition-colors"
+                  onClick={() => handleVariableClick(variable.name)}
+                  className="p-2 border border-blue-300 bg-blue-50 rounded cursor-pointer hover:bg-blue-100 transition-colors"
+                  title="Click to insert at cursor position or drag to any location"
                 >
                   <div className="flex items-center gap-2 text-blue-700">
                     <Type className="h-3 w-3" />
                     <span className="text-xs font-medium">{variable.label || variable.name}</span>
+                    {variable.prePopulated && (
+                      <span className="text-xs bg-green-100 text-green-700 px-1 py-0.5 rounded">Auto</span>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
+                  <p className="text-xs text-blue-600 mt-1">
+                    {variable.prePopulated ? 'Auto-filled • Click or drag to insert' : 'Click or drag to insert'}
+                  </p>
+                  </div>
+                ))}
+              </div>
 
             {/* Date Fields */}
             <div className="space-y-2">
               <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dates</h4>
-              {variables.filter(v => v.type === 'date').map((variable) => (
+              {COMMON_VARIABLES.filter(v => v.type === 'date').map((variable) => (
                 <div
                   key={variable.name}
                   draggable
                   onDragStart={(e) => {
-                    e.dataTransfer.setData('text/plain', variable.name);
+                    e.dataTransfer.setData('text/plain', `{{${variable.name}}}`);
                   }}
-                  className="p-2 border border-orange-300 bg-orange-50 rounded cursor-grab active:cursor-grabbing hover:bg-orange-100 transition-colors"
+                  onClick={() => handleVariableClick(variable.name)}
+                  className="p-2 border border-orange-300 bg-orange-50 rounded cursor-pointer hover:bg-orange-100 transition-colors"
+                  title="Click to insert at cursor position or drag to any location"
                 >
                   <div className="flex items-center gap-2 text-orange-700">
                     <Calendar className="h-3 w-3" />
                     <span className="text-xs font-medium">{variable.label || variable.name}</span>
+                    {variable.prePopulated && (
+                      <span className="text-xs bg-green-100 text-green-700 px-1 py-0.5 rounded">Auto</span>
+                    )}
                   </div>
+                  <p className="text-xs text-orange-600 mt-1">
+                    {variable.prePopulated ? 'Auto-filled • Click or drag to insert' : 'Click or drag to insert'}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Editor with Interactive Overlay */}
-        <div 
-          className="flex-1 overflow-hidden relative"
-          onDrop={(e) => {
-            console.log('Container drop event:', e);
-            const data = e.dataTransfer.getData('text/plain');
-            console.log('Drop data:', data);
-            try {
-              const signatureData = JSON.parse(data);
-              console.log('Parsed signature data:', signatureData);
-              if (signatureData.type === 'signature') {
-                e.preventDefault();
-                e.stopPropagation();
-                const rect = e.currentTarget.getBoundingClientRect();
-                addInteractiveElement(signatureData, e.clientX - rect.left, e.clientY - rect.top);
-                console.log('Added signature element');
-              }
-            } catch (error) {
-              console.log('Not signature data or parse error:', error);
-              // Not signature data, let editor handle it normally
-            }
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';
-          }}
-        >
-          {/* Rich Text Editor Layer */}
-          <div className="absolute inset-0 z-10">
-            <RichTextEditor
-              ref={editorRef}
-              value={content}
-              onChange={handleContentChange}
-              className="h-full w-full"
-              style={{ height: 'calc(100vh - 160px)', minHeight: '500px' }}
-            />
-          </div>
-
-          {/* Interactive Elements Overlay - only for signature boxes */}
-          <div className="absolute inset-0 z-20 pointer-events-none">
-            {interactiveElements.map((element) => (
-              <InteractiveSignatureBox
-                key={element.id}
-                element={element}
-                onUpdate={(updatedElement) => updateInteractiveElement(updatedElement)}
-                onDelete={(elementId) => deleteInteractiveElement(elementId)}
-              />
+        {/* Multi-Page Editor Container */}
+        <div className="flex-1 flex justify-center p-6 overflow-y-auto">
+          <div className="flex flex-col gap-6">
+            
+            {/* Pages */}
+            {pages.map((page, pageIndex) => (
+              <div key={page.id} className="relative">
+                {/* Page Header with Content Stats */}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Page {pageIndex + 1}
+                    </span>
+                    
+                    {/* Content Capacity Indicator */}
+                    {(() => {
+                      const stats = estimateContentSize(page.content || '');
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <div 
+                              className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden"
+                              title={`${stats.estimatedLines}/${PAGE_LIMITS.maxLines} lines (${stats.percentageFull.toFixed(0)}% full)`}
+                            >
+                              <div 
+                                className={`h-full transition-all duration-300 ${
+                                  stats.isOverLimit ? 'bg-red-500' : 
+                                  stats.isNearLimit ? 'bg-yellow-500' : 'bg-green-500'
+                                }`}
+                                style={{ width: `${Math.min(stats.percentageFull, 100)}%` }}
+                              />
+                            </div>
+                            <span className={`text-xs ${
+                              stats.isOverLimit ? 'text-red-600 font-medium' : 
+                              stats.isNearLimit ? 'text-yellow-600' : 'text-gray-500'
+                            }`}>
+                              {stats.estimatedLines}/{PAGE_LIMITS.maxLines}
+                            </span>
+                          </div>
+                          
+                          {stats.isOverLimit && (
+                            <Badge variant="destructive" className="text-xs">
+                              Page Full
+                            </Badge>
+                          )}
+                          {stats.isNearLimit && !stats.isOverLimit && (
+                            <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
+                              Near Limit
+                            </Badge>
+                          )}
+                        </div>
+                      );
+                    })()}
+            </div>
+            
+                  {pages.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deletePage(pageIndex)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+              </div>
+              
+                {/* Document Container - TRUE A4 794px width */}
+                <div 
+                  className="bg-white rounded-lg overflow-hidden relative shadow-md"
+                  style={{ width: containerWidth, height: containerHeight }}
+                  onDrop={(e) => {
+                    const data = e.dataTransfer.getData('text/plain');
+                    try {
+                      const signatureData = JSON.parse(data);
+                      if (signatureData.type === 'signature') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const dropX = e.clientX - rect.left;
+                        const dropY = e.clientY - rect.top;
+                        
+                        addInteractiveElement(signatureData, dropX, dropY, pageIndex);
+                      }
+                    } catch (error) {
+                      // Not signature data, let editor handle it normally
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'copy';
+                  }}
+                >
+                  {/* Rich Text Editor Layer - No internal scrolling */}
+                  <div className="absolute inset-0 z-10 overflow-hidden">
+                    <RichTextEditor
+                      ref={(ref) => {
+                        if (editorRefs.current) {
+                          editorRefs.current[pageIndex] = ref;
+                        }
+                      }}
+                      value={page.content}
+                      onChange={(newContent) => handleContentChange(pageIndex, newContent)}
+                      variables={COMMON_VARIABLES.map(v => v.name)}
+                      className="h-full w-full"
+                      style={{ 
+                        height: containerHeight, 
+                        minHeight: containerHeight,
+                        maxHeight: containerHeight,
+                        overflow: 'hidden'
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Interactive Elements Overlay - only for signature boxes */}
+                  <div className="absolute inset-0 z-20 pointer-events-none">
+                    {page.elements.map((element) => (
+                      <InteractiveSignatureBox
+                        key={element.id}
+                        element={element}
+                        onUpdate={(updatedElement) => updateInteractiveElement(updatedElement)}
+                        onDelete={(elementId) => deleteInteractiveElement(elementId)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
             ))}
+            
+            {/* Add Page Button */}
+            <div className="flex flex-col items-center mt-4 space-y-2">
+              <Button
+                onClick={addNewPage}
+                variant="outline"
+                className="w-full max-w-[595px] h-12 border-dashed border-2 border-muted-foreground/30 hover:border-primary hover:bg-primary/5"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Add New Page
+              </Button>
+              <div className="text-center text-xs text-muted-foreground max-w-[595px]">
+                Each page fits approximately {PAGE_LIMITS.maxLines} lines of content (adjusted to match PDF output). The progress bar shows current page capacity.
+              </div>
+            </div>
+            
           </div>
         </div>
       </div>
 
-      {/* Add Variable Modal */}
-      <Dialog open={showVariableModal} onOpenChange={setShowVariableModal}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">Add Custom Variable</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm font-medium">Variable Name</Label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Use snake_case format (e.g., patient_name, appointment_date)
-              </p>
-              <Input
-                placeholder="e.g., patient_name"
-                value={newVariable}
-                onChange={(e) => setNewVariable(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addNewVariable()}
-              />
-            </div>
-            
-            <div>
-              <Label className="text-sm font-medium">Variable Type</Label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Choose the input type for this variable
-              </p>
-              <Select value={newVariableType} onValueChange={(value: 'text' | 'textarea' | 'signature' | 'date') => setNewVariableType(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white">
-                  <SelectItem value="text">Text Input</SelectItem>
-                  <SelectItem value="textarea">Textarea (Multi-line)</SelectItem>
-                  <SelectItem value="date">Date Picker</SelectItem>
-                  <SelectItem value="signature">Signature Canvas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <Button onClick={addNewVariable} disabled={!newVariable.trim()} className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Variable
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

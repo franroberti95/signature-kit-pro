@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, ComponentType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,7 +31,7 @@ interface InteractivePDFElementProps {
   readOnly?: boolean; // Make field read-only (for pre-filled values)
 }
 
-const elementIcons: Record<string, any> = {
+const elementIcons: Record<string, ComponentType<{ className?: string }>> = {
   text: Type,
   signature: PenTool,
   date: Calendar,
@@ -59,6 +59,16 @@ export const InteractivePDFElement = ({
   const IconComponent = elementIcons[element.type];
 
   const handleClick = () => {
+    // Debug signature positioning
+    if (element.type === 'signature') {
+      console.log(`🎯 Signature Click Debug: ${element.id}`);
+      console.log(`   Raw position: x=${element.x}, y=${element.y}`);
+      console.log(`   Raw size: ${element.width}×${element.height}`);
+      console.log(`   Scale: ${scale}`);
+      console.log(`   Final position: x=${element.x * scale}, y=${element.y * scale}`);
+      console.log(`   Final size: ${element.width * scale}×${element.height * scale}`);
+    }
+    
     // Don't allow interaction if read-only
     if (readOnly) {
       onActivate?.(); // Still allow activation for highlighting
@@ -140,8 +150,8 @@ export const InteractivePDFElement = ({
         case "checkbox":
           return (
             <div className="w-full h-full flex items-center justify-center">
-              <div className={`w-4 h-4 border-2 border-black ${Boolean(value) ? 'bg-black' : 'bg-white'} flex items-center justify-center`}>
-                {Boolean(value) && <span className="text-white text-xs">✓</span>}
+              <div className={`w-4 h-4 border-2 border-black ${value ? 'bg-black' : 'bg-white'} flex items-center justify-center`}>
+                {value && <span className="text-white text-xs">✓</span>}
               </div>
             </div>
           );
@@ -188,7 +198,10 @@ export const InteractivePDFElement = ({
         
       case "signature":
         return (
-          <div className={baseClasses} onClick={handleClick}>
+          <div className={`${baseClasses} relative`} onClick={handleClick}>
+            {/* Debug outline to show exact bounds */}
+            <div className="absolute inset-0 border-2 border-red-500 border-dashed opacity-60 pointer-events-none z-10"></div>
+            
             {hasValue ? (
               <img 
                 src={String(value)} 
@@ -196,10 +209,17 @@ export const InteractivePDFElement = ({
                 className="max-w-full max-h-full object-contain"
               />
             ) : (
-              <>
-                <PenTool className="w-3 h-3 mr-1" />
-                Click to sign
-              </>
+              <div className="flex flex-col items-center">
+                <PenTool className="w-3 h-3 mb-1" />
+                <span className="text-xs">Click to sign</span>
+                {/* Debug info */}
+                <span className="text-xs text-red-600 font-mono mt-1">
+                  240×80px (fixed)
+                </span>
+                <span className="text-xs text-red-600 font-mono">
+                  @{element.x},{element.y}
+                </span>
+              </div>
             )}
           </div>
         );
@@ -285,6 +305,13 @@ export const InteractivePDFElement = ({
     }
   };
 
+  // Debug final CSS coordinates for signatures
+  if (element.type === 'signature') {
+    const finalLeft = element.x * scale;
+    const finalTop = element.y * scale;
+    console.log(`🎯 InteractivePDFElement CSS: ${element.id} element(x=${element.x}, y=${element.y}) × scale(${scale.toFixed(3)}) = CSS(left=${finalLeft.toFixed(1)}px, top=${finalTop.toFixed(1)}px)`);
+  }
+
   return (
     <>
       <div
@@ -308,8 +335,8 @@ export const InteractivePDFElement = ({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md">
             <SignatureCanvas
-              width={350}
-              height={180}
+              width={240}
+              height={80}
               onSignatureComplete={handleSignatureComplete}
               onCancel={() => setShowSignatureCanvas(false)}
             />

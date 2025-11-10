@@ -10,11 +10,15 @@ import { PDFFormat, ElementType, PDFElement, PDFPage } from "@/components/pdf-bu
 import { useFormCompletion } from "@/hooks/useFormCompletion";
 import { ApiService } from "@/services/apiService";
 import { toast } from "sonner";
+import RichTextEditor from "@/components/pdf-builder/RichTextEditor";
 import { ArrowLeft, FileCheck, Download, Eye, EyeOff, Edit } from "lucide-react";
+import { COMMON_VARIABLES } from "@/constants/variables";
+import { TRUE_A4_DIMENSIONS } from "@/constants/dimensions";
 
 interface FormData {
   [elementId: string]: string | boolean;
 }
+
 
 interface CompletionComponentProps {
   // Data source
@@ -60,6 +64,7 @@ export const CompletionComponent = ({
   
   // Use the form completion hook to get pre-filled data
   const { formData: preFilledData, loading: formDataLoading } = useFormCompletion();
+  
 
   useEffect(() => {
     // Check if mobile
@@ -74,8 +79,14 @@ export const CompletionComponent = ({
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load data from API service instead of sessionStorage
-        const data = await ApiService.getPDFBuilderData();
+        // Load data from sessionStorage using the provided key
+        const storedData = sessionStorage.getItem(sessionStorageKey);
+        if (!storedData) {
+          navigate('/');
+          return;
+        }
+        
+        const data = JSON.parse(storedData);
         
         if (!data || !dataValidator(data)) {
           navigate('/');
@@ -92,9 +103,23 @@ export const CompletionComponent = ({
           pageIndex: pagesData.findIndex(page => page.elements.some(el => el.id === element.id))
         }));
         
-        const preFilledElements = allElementsWithPage.filter(element => element.preDefinedValueId);
+        // Check if element is pre-populated based on COMMON_VARIABLES or existing pre-definition
+        const isElementPrePopulated = (element: PDFElement) => {
+          if (element.preDefinedValueId) return true;
+          
+          // Check against COMMON_VARIABLES for pre-populated fields
+          if (element.id && element.id.startsWith('rich-text-')) {
+            const variableName = element.id.replace('rich-text-', '');
+            const variable = COMMON_VARIABLES.find(v => v.name === variableName);
+            return variable?.prePopulated === true;
+          }
+          
+          return false;
+        };
+        
+        const preFilledElements = allElementsWithPage.filter(isElementPrePopulated);
         const interactiveElements = allElementsWithPage.filter(element => 
-          !element.preDefinedValueId && element.type !== 'date'
+          !isElementPrePopulated(element) && element.type !== 'date'
         );
         
         setAllElements(interactiveElements);
@@ -106,17 +131,33 @@ export const CompletionComponent = ({
         preFilledElements.forEach(element => {
           if (element.type === 'checkbox') {
             initialFormData[element.id] = true; // Default for pre-filled checkboxes
-          } else {
+          } else if (element.preDefinedValueId) {
             // Get the actual value from the pre-filled data based on the preDefinedValueId
             const preDefinedKey = element.preDefinedValueId as string;
             const actualValue = preFilledData[preDefinedKey];
             initialFormData[element.id] = actualValue || `Auto-filled: ${element.preDefinedLabel || element.placeholder}`;
+          } else {
+            // Handle COMMON_VARIABLES pre-populated fields
+            if (element.id && element.id.startsWith('rich-text-')) {
+              const variableName = element.id.replace('rich-text-', '');
+              const variable = COMMON_VARIABLES.find(v => v.name === variableName);
+              
+              if (variable?.prePopulated) {
+                if (variableName === 'patient_id') {
+                  initialFormData[element.id] = `PT${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+                } else if (variableName === 'today_date') {
+                  initialFormData[element.id] = new Date().toLocaleDateString();
+                } else {
+                  initialFormData[element.id] = `Auto-filled: ${variable.label}`;
+                }
+              }
+            }
           }
         });
         
-        // Set defaults for interactive elements
+        // Set defaults for interactive elements (skip pre-populated ones)
         elements.forEach(element => {
-          if (!element.preDefinedValueId) {
+          if (!isElementPrePopulated(element)) {
             if (element.type === 'checkbox') {
               initialFormData[element.id] = false;
             } else if (element.type === 'date') {
@@ -148,61 +189,182 @@ export const CompletionComponent = ({
     if (!formDataLoading) {
       loadData();
     }
-  }, [navigate, location.state, dataValidator, dataExtractor, preFilledData, formDataLoading]);
+  }, [navigate, location.state, dataValidator, dataExtractor, preFilledData, formDataLoading, sessionStorageKey]);
+
+  // Set up global click handler for inline rich text elements
+  useEffect(() => {
+    (window as any).openField = (variableName: string) => {
+      const elementId = `rich-text-${variableName}`;
+      const elementIndex = allElements.findIndex(el => el.id === elementId);
+      if (elementIndex !== -1) {
+        setCurrentFieldIndex(elementIndex);
+        setActiveElement(elementId);
+        // Scroll to bring the stepper into view
+        setTimeout(() => {
+          const stepperElement = document.querySelector('.mobile-field-navigation');
+          if (stepperElement) {
+            stepperElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 100);
+      }
+    };
+
+    return () => {
+      delete (window as any).openField;
+    };
+  }, [allElements]);
+
+  // Signature positioning adjustment disabled - was causing coordinate mismatch
+  // useEffect(() => {
+  //   if (allElements.length > 0) {
+  //     const adjustSignaturePositions = () => {
+  //       allElements.forEach((element) => {
+  //         if (element.type === 'signature') {
+  //           const signatureElement = document.getElementById(`pdf-element-${element.id}`);
+  //           if (signatureElement) {
+  //             const computedStyle = window.getComputedStyle(signatureElement);
+  //             const styleTop = signatureElement.style.top ? parseInt(signatureElement.style.top) : 0;
+  //             const computedTop = computedStyle.top ? parseInt(computedStyle.top) : 0;
+  //             const actualTop = Math.max(styleTop, computedTop);
+  //             
+  //             // Only adjust if signature is way off-screen (very conservative)
+  //             if (actualTop > 800) { // Only extreme cases
+  //               const newTop = Math.max(element.y || 100, 100);
+  //               signatureElement.style.top = `${newTop}px`;
+  //               signatureElement.style.position = 'absolute';
+  //               console.log(`📌 Repositioned off-screen signature: ${actualTop}px → ${newTop}px`);
+  //             }
+  //           }
+  //         }
+  //       });
+  //     };
+
+  //     // Single gentle adjustment
+  //     setTimeout(adjustSignaturePositions, 200);
+  //   }
+  // }, [allElements]);
 
   const scrollToElement = (elementId: string) => {
-    const element = document.getElementById(`pdf-element-${elementId}`);
-    if (!element) return;
-
-    // Find which page this element belongs to
     const elementData = allElements.find(el => el.id === elementId);
     if (!elementData) return;
 
-    const pageIndex = pages.findIndex(page => 
-      page.elements.some(el => el.id === elementId)
-    );
-    if (pageIndex === -1) return;
+    // Find target element using different selectors
+    let targetElement: HTMLElement | null = null;
+    const possibleSelectors = [
+      `pdf-element-${elementId}`, // Overlay elements (signatures)
+      `clickable-${elementId.replace('rich-text-', '')}`, // Inline text elements
+      elementId // Direct ID match
+    ];
+    
+    for (const selector of possibleSelectors) {
+      targetElement = document.getElementById(selector);
+      if (targetElement) break;
+    }
 
-    // Get the page container
-    const pageContainer = document.querySelector(`[data-page-index="${pageIndex}"]`);
-    if (!pageContainer) return;
+    if (!targetElement) {
+      console.warn(`Could not find element: ${elementId}`);
+      return;
+    }
 
+    // Smart scroll positioning - ensure elements are always visible
     const headerHeight = 80;
-    const padding = 20;
+    const mobileNavHeight = 280;
+    const elementRect = targetElement.getBoundingClientRect();
+    const elementTop = elementRect.top + window.scrollY;
+    const elementHeight = elementRect.height;
+    const viewportHeight = window.innerHeight;
     
-    // Get the page container's position in the document
-    const pageContainerTop = pageContainer.getBoundingClientRect().top + window.scrollY;
+    // Calculate available viewing area
+    const availableHeight = viewportHeight - headerHeight - mobileNavHeight;
+    const maxScroll = document.documentElement.scrollHeight - viewportHeight;
     
-    // Get element's position within the page (from its style)
-    const scale = isMobile ? 350 / 595 : 600 / 595;
-    const elementTopInPage = elementData.y * scale;
+    let targetScrollTop;
     
-    // Calculate total position: page position + element position within page
-    const totalElementTop = pageContainerTop + elementTopInPage;
+    if (elementData.type === 'signature') {
+      // Check if signature is positioned way too far down (like at 982px)
+      if (elementTop > 600) {
+        // For signatures positioned too far down, don't scroll past 50% of the page
+        const maxReasonableScroll = Math.min(maxScroll * 0.5, 400);
+        targetScrollTop = maxReasonableScroll;
+        console.log(`⚠️ Signature at ${elementTop}px is too far down, limiting scroll to ${targetScrollTop}px`);
+      } else {
+        // For reasonably positioned signatures, center them nicely
+        const idealCenterOffset = availableHeight / 3;
+        targetScrollTop = elementTop - headerHeight - idealCenterOffset;
+      }
+    } else {
+      // For text fields: keep them comfortably below header
+      const padding = Math.min(120, availableHeight / 4); // Adaptive padding
+      targetScrollTop = elementTop - headerHeight - padding;
+    }
     
-    // Calculate where to scroll
-    const targetScrollTop = totalElementTop - headerHeight - padding;
+    // Final bounds check
+    const finalScroll = Math.max(0, Math.min(targetScrollTop, maxScroll));
     
-    // Scroll to the calculated position
+    console.log(`📍 Scrolling to ${elementId} (${elementData.type}): element at ${Math.round(elementTop)}, scrolling to ${Math.round(finalScroll)} (max: ${Math.round(maxScroll)})`);
+    
     window.scrollTo({
-      top: Math.max(0, targetScrollTop),
+      top: finalScroll,
       behavior: 'smooth'
     });
+
+    // Simple highlight for text fields
+    if (elementData.type !== 'signature') {
+      setTimeout(() => {
+        targetElement.style.background = '#fff3cd';
+        targetElement.style.border = '2px solid #ffc107';
+        setTimeout(() => {
+          targetElement.style.background = '';
+          targetElement.style.border = '';
+        }, 1500);
+      }, 200);
+    }
   };
 
   const handleInputChange = (elementId: string, value: string | boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      [elementId]: value
-    }));
+    // DEBUG: Log when form data is updated
+    const isSignature = typeof value === 'string' && value.startsWith('data:image/');
+    console.log(`💾 Saving form data: ${elementId}`, {
+      valueType: typeof value,
+      valueLength: typeof value === 'string' ? value.length : 'N/A',
+      isSignature,
+      elementId
+    });
+    
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        [elementId]: value
+      };
+      console.log(`💾 Updated formData keys:`, Object.keys(updated));
+      return updated;
+    });
+    
+    // Update inline display if rich text content (only for text/date fields, not signatures)
+    if (elementId.startsWith('rich-text-')) {
+      const variableName = elementId.replace('rich-text-', '');
+      const clickableElement = document.getElementById(`clickable-${variableName}`);
+      if (clickableElement && typeof value === 'string' && value.trim()) {
+        clickableElement.textContent = value;
+        clickableElement.style.background = '#e8f5e8';
+        clickableElement.style.borderBottomColor = '#28a745';
+      }
+    }
   };
 
   const handleNavigateToField = (index: number) => {
     if (index >= 0 && index < allElements.length) {
-      setCurrentFieldIndex(index);
       const element = allElements[index];
+      
+      console.log(`Navigating to field ${index + 1}/${allElements.length}: ${element.id} (${element.type})`);
+      
+      setCurrentFieldIndex(index);
       setActiveElement(element.id);
-      setTimeout(() => scrollToElement(element.id), 100);
+      
+      // Scroll to element (signature repositioning handled on component load)
+      setTimeout(() => {
+        scrollToElement(element.id);
+      }, 100);
     }
   };
 
@@ -284,7 +446,7 @@ export const CompletionComponent = ({
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <div className="pdf-renderer-container relative border rounded-lg bg-gray-50 overflow-hidden">
+                  <div className="pdf-renderer-container relative border rounded-lg bg-gray-50 overflow-x-auto overflow-y-hidden">
                     {pages.length > 0 ? (
                       <div className="space-y-8 p-4">
                         {pages.map((page, pageIndex) => (
@@ -296,36 +458,88 @@ export const CompletionComponent = ({
                               </div>
                             )}
                              <div 
-                               className="relative bg-white shadow-lg rounded-lg overflow-hidden" 
-                               style={{ minHeight: '842px' }}
+                               className={`relative bg-white shadow-lg rounded-lg mx-auto ${page.backgroundImage === 'rich-text-content' ? '' : 'overflow-hidden'}`}
+                               style={{ width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`, height: page.backgroundImage === 'rich-text-content' ? 'auto' : `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px` }}
                              >
-                               {page.backgroundImage ? (
+                               {(() => {
+                                 const bgImage = page.backgroundImage;
+                                 const richTextContent = (page as any).richTextContent || '';
+                                 console.log('🔍 Page', pageIndex, 'backgroundImage:', bgImage, 'content length:', richTextContent.length, 'content preview:', richTextContent.substring(0, 100));
+                                 return page.backgroundImage ? (
+                                   page.backgroundImage == 'rich-text-content' ? (
+                                     // Rich text content rendered with RichTextEditor - read-only preview
+                                     <RichTextEditor
+                                       key={`preview-${pageIndex}-${richTextContent.substring(0, 50)}`}
+                                       value={richTextContent}
+                                       readOnly={true}
+                                       onChange={() => {}}
+                                       className="w-full"
+                                       style={{ width: '100%' }}
+                                     />
+                                 ) : (
                                    // Blob URL for PDF
                                    <PDFRenderer
                                      key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
                                      fileUrl={page.backgroundImage}
-                                     width={600}
-                                     height={842}
+                                     width={TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}
+                                     height={TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}
                                      pageNumber={pageIndex + 1}
-                                     className="w-full"
+                                     className=""
                                    />
-                                ) : (
-                                  <div className="w-full h-[750px] bg-white border border-gray-200 rounded flex items-center justify-center">
+                                 )
+                               ) : (
+                                  <div className="bg-white border border-gray-200 rounded flex items-center justify-center" style={{ width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`, height: `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px` }}>
                                     <div className="text-center text-muted-foreground">
                                       <p>Page {pageIndex + 1}</p>
                                       <p className="text-sm">No background image</p>
                                     </div>
                                   </div>
-                                )}
-                               {/* Interactive Elements Overlay */}
-                              {page.elements.map((element) => (
+                                )
+                               })()}
+                               {/* Interactive Elements Overlay - Show signatures for rich-text-content, skip text/date fields */}
+                              {page.elements.filter(element => 
+                                page.backgroundImage !== 'rich-text-content' || element.type === 'signature'
+                              ).map((element) => {
+                                // SIMPLIFIED: Use centralized dimensions
+                                const CONTENT_WIDTH = TRUE_A4_DIMENSIONS.CONTENT_WIDTH;
+                                const CONTENT_HEIGHT = TRUE_A4_DIMENSIONS.CONTENT_HEIGHT;
+                                const TOOLBAR_HEIGHT = TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT;
+                                
+                                const adjustedElement = element.type === 'signature' ? {
+                                  ...element,
+                                  // No horizontal adjustment needed - preview now matches builder dimensions exactly
+                                  x: element.x, // Direct coordinate mapping - no centering offset
+                                  y: element.y - TOOLBAR_HEIGHT, // Only remove toolbar offset
+                                  // Store percentage info for debugging (relative to content area)
+                                  xPercent: (element.x / CONTENT_WIDTH * 100).toFixed(1),
+                                  yPercent: ((element.y - TOOLBAR_HEIGHT) / CONTENT_HEIGHT * 100).toFixed(1)
+                                } : element;
+                                
+                                // Debug positioning with direct coordinate mapping
+                                if (element.type === 'signature') {
+                                  console.log(`🎯 Desktop preview: ${element.id}`);
+                                  console.log(`   📱 Builder coords: (${element.x}, ${element.y})`);
+                                  console.log(`   🔧 Adjustments: toolbar -${TOOLBAR_HEIGHT}px only (containers now match exactly - corrected height)`);
+                                  console.log(`   🎯 Preview coords: (${adjustedElement.x}, ${adjustedElement.y}) [direct mapping]`);
+                                  
+                                  // Show alignment status with corrected toolbar height
+                                  const builderExpectedY = element.y - TOOLBAR_HEIGHT;
+                                  const previewActualY = adjustedElement.y;
+                                  const alignmentDiff = previewActualY - builderExpectedY;
+                                  console.log(`   📐 ALIGNMENT ANALYSIS (matching container sizes):`);
+                                  console.log(`      Builder expected preview Y: ${builderExpectedY}px`);
+                                  console.log(`      Preview actual Y: ${previewActualY}px`);
+                                  console.log(`      ${alignmentDiff === 0 ? '✅ PERFECT' : '❌'} Difference: ${alignmentDiff > 0 ? '+' : ''}${alignmentDiff}px ${alignmentDiff > 0 ? '(still too low)' : alignmentDiff < 0 ? '(too high)' : '(ALIGNED!)'}`);
+                                }
+                                
+                                return (
                                 <div
                                   key={element.id}
                                   id={`pdf-element-${element.id}`}
                                 >
                                      <InteractivePDFElement
-                                       element={element}
-                                       scale={600 / 595} // A4 width scale factor
+                                       element={adjustedElement}
+                                       scale={1.0} // No scaling needed - preview container is same size as builder
                                        value={formData[element.id] || ''}
                                        onUpdate={(value) => handleInputChange(element.id, value)}
                                        isActive={activeElement === element.id}
@@ -336,7 +550,8 @@ export const CompletionComponent = ({
                                         readOnly={!!element.preDefinedValueId} // Make pre-filled fields read-only
                                      />
                                 </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         ))}
@@ -362,17 +577,35 @@ export const CompletionComponent = ({
               </Card>
             ) : (
               // Mobile View
-              <div className="pdf-renderer-container relative bg-gray-50 overflow-hidden">
+              <div className="pdf-renderer-container relative bg-gray-50 overflow-x-auto overflow-y-hidden">
                 {pages.length > 0 ? (
                   <div className="space-y-8 p-2">
                     {pages.map((page, pageIndex) => (
                       <div key={page.id} className="relative" data-page-index={pageIndex}>
                          <div 
-                           className="relative bg-white shadow-lg rounded overflow-hidden" 
-                           style={{ minHeight: '495px' }}
+                           className="relative bg-white shadow-lg rounded overflow-hidden mx-auto" 
+                           style={{ width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`, height: `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px` }}
                          >
                            {page.backgroundImage ? (
-                              typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
+                              page.backgroundImage === 'rich-text-content' ? (
+                                // Rich text content rendered with ReactQuill (read-only, no toolbar)
+                                <div 
+                                  className="bg-white overflow-hidden rich-text-preview"
+                                  style={{ 
+                                    width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`,  // Match builder: 794px
+                                    height: `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px`, // Match builder: 1123px
+                                  }}
+                                >
+                                  <RichTextEditor
+                                    key={`preview-mobile-${pageIndex}-${(page as any).richTextContent?.substring(0, 50)}`}
+                                    value={(page as any).richTextContent || ''}
+                                    readOnly={true}
+                                    onChange={() => {}} // Required prop even in read-only mode
+                                    className="w-full"
+                                    style={{ width: '100%' }}
+                                  />
+                                </div>
+                              ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
                                 // Rendered page as image
                                 <img
                                  src={page.backgroundImage}
@@ -384,49 +617,75 @@ export const CompletionComponent = ({
                                 <PDFRenderer
                                   key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
                                   fileUrl={page.backgroundImage}
-                                  width={350}
-                                  height={495}
+                                  width={TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}
+                                  height={TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}
                                   pageNumber={pageIndex + 1}
-                                  className="w-full"
+                                  className=""
                                 />
                              ) : page.backgroundImage instanceof File ? (
                                 // File object (PDF or other file)
                                  <PDFRenderer
                                    key={`pdf-page-${pageIndex}-${page.backgroundImage.name}`}
                                    fileUrl={page.backgroundImage}
-                                   width={350}
-                                   height={495}
+                                   width={TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}
+                                   height={TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}
                                    pageNumber={pageIndex + 1}
-                                   className="w-full"
+                                   className=""
                                  />
                               ) : (
                                 // Other string format
                                  <PDFRenderer
                                    key={`pdf-page-${pageIndex}`}
                                    fileUrl={page.backgroundImage}
-                                   width={350}
-                                   height={495}
+                                   width={TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}
+                                   height={TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}
                                    pageNumber={pageIndex + 1}
-                                   className="w-full"
+                                   className=""
                                  />
                               )
                             ) : (
-                              <div className="w-full h-[495px] bg-white border border-gray-200 rounded flex items-center justify-center">
+                              <div className="bg-white border border-gray-200 rounded flex items-center justify-center" style={{ width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`, height: `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px` }}>
                                 <div className="text-center text-muted-foreground">
                                   <p>Page {pageIndex + 1}</p>
                                   <p className="text-sm">No background image</p>
                                 </div>
                               </div>
                             )}
-                          {/* Interactive Elements Overlay */}
-                          {page.elements.map((element) => (
+                          {/* Interactive Elements Overlay - Show signatures for rich-text-content, skip text/date fields */}
+                          {page.elements.filter(element => 
+                            page.backgroundImage !== 'rich-text-content' || element.type === 'signature'
+                          ).map((element) => {
+                            // SIMPLIFIED: Use centralized dimensions (same as desktop)
+                            const CONTENT_WIDTH = TRUE_A4_DIMENSIONS.CONTENT_WIDTH;
+                            const CONTENT_HEIGHT = TRUE_A4_DIMENSIONS.CONTENT_HEIGHT;
+                            const TOOLBAR_HEIGHT = TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT;
+                            
+                            const adjustedElement = element.type === 'signature' ? {
+                              ...element,
+                              // No horizontal adjustment needed - preview now matches builder dimensions exactly
+                              x: element.x, // Direct coordinate mapping - no centering offset
+                              y: element.y - TOOLBAR_HEIGHT, // Only remove toolbar offset
+                              // Store percentage info for debugging (relative to content area)
+                              xPercent: (element.x / CONTENT_WIDTH * 100).toFixed(1),
+                              yPercent: ((element.y - TOOLBAR_HEIGHT) / CONTENT_HEIGHT * 100).toFixed(1)
+                            } : element;
+                            
+                            // Debug mobile positioning with direct coordinate mapping  
+                            if (element.type === 'signature') {
+                              console.log(`📱 Mobile preview: ${element.id}`);
+                              console.log(`   📱 Builder coords: (${element.x}, ${element.y})`);
+                              console.log(`   🔧 Adjustments: toolbar -${TOOLBAR_HEIGHT}px only (containers now match exactly - corrected height)`);
+                              console.log(`   🎯 Preview coords: (${adjustedElement.x}, ${adjustedElement.y}) [direct mapping + formatting fixed]`);
+                            }
+                            
+                            return (
                             <div
                               key={element.id}
                               id={`pdf-element-${element.id}`}
                             >
                                <InteractivePDFElement
-                                 element={element}
-                                 scale={350 / 595} // A4 width scale factor for mobile
+                                 element={adjustedElement}
+                                 scale={1.0} // No scaling needed - mobile container is same size as builder
                                  value={formData[element.id] || ''}
                                  onUpdate={(value) => handleInputChange(element.id, value)}
                                  isActive={activeElement === element.id}
@@ -436,7 +695,8 @@ export const CompletionComponent = ({
                                  readOnly={!!element.preDefinedValueId} // Make pre-filled fields read-only
                                />
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
@@ -463,14 +723,16 @@ export const CompletionComponent = ({
 
         {/* Field Navigation Stepper */}
         <div className="h-64" /> {/* Spacer for mobile navigation */}
-        <MobileFieldNavigation
-          elements={allElements}
-          currentIndex={currentFieldIndex}
-          onNavigate={handleNavigateToField}
-          formData={formData}
-          onFieldUpdate={handleInputChange}
-          onDownload={downloadPDF}
-        />
+        <div className="mobile-field-navigation">
+          <MobileFieldNavigation
+            elements={allElements}
+            currentIndex={currentFieldIndex}
+            onNavigate={handleNavigateToField}
+            formData={formData}
+            onFieldUpdate={handleInputChange}
+            onDownload={downloadPDF}
+          />
+        </div>
       </div>
     </div>
   );
