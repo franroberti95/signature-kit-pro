@@ -246,7 +246,10 @@ export const CompletionComponent = ({
 
   const scrollToElement = (elementId: string) => {
     const elementData = allElements.find(el => el.id === elementId);
-    if (!elementData) return;
+    if (!elementData) {
+      console.warn(`Element not found in allElements: ${elementId}`);
+      return;
+    }
 
     // Find target element using different selectors
     let targetElement: HTMLElement | null = null;
@@ -258,67 +261,135 @@ export const CompletionComponent = ({
     
     for (const selector of possibleSelectors) {
       targetElement = document.getElementById(selector);
-      if (targetElement) break;
+      if (targetElement) {
+        console.log(`✅ Found element using selector: ${selector}`);
+        break;
+      }
     }
 
     if (!targetElement) {
-      console.warn(`Could not find element: ${elementId}`);
+      console.warn(`Could not find element with any selector: ${elementId}`);
+      // Try to find by querying all elements with the ID pattern
+      const allElementsWithId = document.querySelectorAll(`[id*="${elementId}"]`);
+      if (allElementsWithId.length > 0) {
+        console.log(`Found ${allElementsWithId.length} elements with similar IDs:`, 
+          Array.from(allElementsWithId).map(el => el.id));
+      }
       return;
     }
 
-    // Smart scroll positioning - ensure elements are always visible
-    const headerHeight = 80;
-    const mobileNavHeight = 280;
+    // Get element's position relative to viewport
     const elementRect = targetElement.getBoundingClientRect();
     const elementTop = elementRect.top + window.scrollY;
+    const elementBottom = elementRect.bottom + window.scrollY;
     const elementHeight = elementRect.height;
     const viewportHeight = window.innerHeight;
     
-    // Calculate available viewing area
-    const availableHeight = viewportHeight - headerHeight - mobileNavHeight;
+    // Calculate header and stepper heights accurately
+    const headerHeight = 80;
+    
+    // Get actual stepper height from DOM
+    const stepperElement = document.querySelector('.mobile-field-navigation');
+    const stepperHeight = stepperElement ? stepperElement.getBoundingClientRect().height : (isMobile ? 280 : 0);
+    
+    // Calculate the visible area between header and stepper
+    const visibleAreaTop = headerHeight;
+    const visibleAreaBottom = viewportHeight - stepperHeight;
+    const visibleAreaHeight = visibleAreaBottom - visibleAreaTop;
+    
     const maxScroll = document.documentElement.scrollHeight - viewportHeight;
     
-    let targetScrollTop;
+    // Check if element is already fully visible in the visible area
+    const isElementVisible = (
+      elementRect.top >= visibleAreaTop &&
+      elementRect.bottom <= visibleAreaBottom
+    );
     
-    if (elementData.type === 'signature') {
-      // Check if signature is positioned way too far down (like at 982px)
-      if (elementTop > 600) {
-        // For signatures positioned too far down, don't scroll past 50% of the page
-        const maxReasonableScroll = Math.min(maxScroll * 0.5, 400);
-        targetScrollTop = maxReasonableScroll;
-        console.log(`⚠️ Signature at ${elementTop}px is too far down, limiting scroll to ${targetScrollTop}px`);
-      } else {
-        // For reasonably positioned signatures, center them nicely
-        const idealCenterOffset = availableHeight / 3;
-        targetScrollTop = elementTop - headerHeight - idealCenterOffset;
-      }
-    } else {
-      // For text fields: keep them comfortably below header
-      const padding = Math.min(120, availableHeight / 4); // Adaptive padding
-      targetScrollTop = elementTop - headerHeight - padding;
-    }
-    
-    // Final bounds check
-    const finalScroll = Math.max(0, Math.min(targetScrollTop, maxScroll));
-    
-    console.log(`📍 Scrolling to ${elementId} (${elementData.type}): element at ${Math.round(elementTop)}, scrolling to ${Math.round(finalScroll)} (max: ${Math.round(maxScroll)})`);
-    
-    window.scrollTo({
-      top: finalScroll,
-      behavior: 'smooth'
-    });
-
-    // Simple highlight for text fields
-    if (elementData.type !== 'signature') {
-      setTimeout(() => {
+    if (isElementVisible) {
+      console.log(`📍 Element ${elementId} is already visible in visible area, no scroll needed`);
+      // Still highlight it
+      if (elementData.type !== 'signature') {
         targetElement.style.background = '#fff3cd';
         targetElement.style.border = '2px solid #ffc107';
         setTimeout(() => {
-          targetElement.style.background = '';
-          targetElement.style.border = '';
+          targetElement!.style.background = '';
+          targetElement!.style.border = '';
         }, 1500);
-      }, 200);
+      }
+      return;
     }
+    
+    // Calculate target scroll position to place element in visible area
+    let targetScrollTop: number;
+    
+    // Get current scroll position
+    const currentScrollY = window.scrollY;
+    const elementTopRelativeToViewport = elementRect.top;
+    const elementBottomRelativeToViewport = elementRect.bottom;
+    
+    // Check if element is above visible area
+    if (elementTopRelativeToViewport < visibleAreaTop) {
+      // Element is above visible area - scroll up to show it
+      // Position element at the top of visible area with some padding
+      const padding = 20;
+      targetScrollTop = elementTop - visibleAreaTop - padding;
+    }
+    // Check if element is below visible area
+    else if (elementBottomRelativeToViewport > visibleAreaBottom) {
+      // Element is below visible area - scroll down to show it
+      // Position element at the bottom of visible area with some padding
+      const padding = 20;
+      targetScrollTop = elementBottom - visibleAreaBottom + padding;
+    }
+    // Element is partially visible - center it in visible area
+    else {
+      // Center the element in the visible area
+      const centerOfVisibleArea = visibleAreaTop + (visibleAreaHeight / 2);
+      const elementCenter = elementTopRelativeToViewport + (elementHeight / 2);
+      const offset = elementCenter - centerOfVisibleArea;
+      targetScrollTop = currentScrollY + offset;
+    }
+    
+    // Ensure we don't scroll past document bounds
+    const finalScroll = Math.max(0, Math.min(targetScrollTop, maxScroll));
+    
+    console.log(`📍 Scrolling to ${elementId} (${elementData.type}):`);
+    console.log(`   Element: top=${Math.round(elementTop)}, bottom=${Math.round(elementBottom)}, height=${Math.round(elementHeight)}`);
+    console.log(`   Visible area: top=${visibleAreaTop}, bottom=${visibleAreaBottom}, height=${Math.round(visibleAreaHeight)}`);
+    console.log(`   Header: ${headerHeight}px, Stepper: ${Math.round(stepperHeight)}px`);
+    console.log(`   Current scroll: ${Math.round(currentScrollY)}, Target scroll: ${Math.round(finalScroll)}`);
+    
+    // Only scroll if significant movement needed
+    const scrollOffset = finalScroll - currentScrollY;
+    
+    if (Math.abs(scrollOffset) > 10) {
+      window.scrollTo({
+        top: finalScroll,
+        behavior: 'smooth'
+      });
+    } else {
+      console.log(`   No scroll needed (offset: ${Math.round(scrollOffset)}px)`);
+    }
+
+    // Highlight the element after scrolling
+    setTimeout(() => {
+      if (elementData.type !== 'signature') {
+        targetElement!.style.transition = 'background 0.3s, border 0.3s';
+        targetElement!.style.background = '#fff3cd';
+        targetElement!.style.border = '2px solid #ffc107';
+        setTimeout(() => {
+          targetElement!.style.background = '';
+          targetElement!.style.border = '';
+        }, 1500);
+      } else {
+        // For signatures, add a subtle pulse effect
+        targetElement!.style.transition = 'box-shadow 0.3s';
+        targetElement!.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.5)';
+        setTimeout(() => {
+          targetElement!.style.boxShadow = '';
+        }, 1500);
+      }
+    }, 400); // Wait for scroll to complete
   };
 
   const handleInputChange = (elementId: string, value: string | boolean) => {
@@ -361,8 +432,36 @@ export const CompletionComponent = ({
       setCurrentFieldIndex(index);
       setActiveElement(element.id);
       
-      // Scroll to element (signature repositioning handled on component load)
+      // Find which page this element belongs to
+      const elementPageIndex = pages.findIndex(page => 
+        page.elements.some(el => el.id === element.id)
+      );
+      
+      // Scroll to element with improved focus handling
       setTimeout(() => {
+        // First, scroll to the page container if element is on a different page
+        if (elementPageIndex >= 0) {
+          const pageContainer = document.querySelector(`[data-page-index="${elementPageIndex}"]`) as HTMLElement;
+          if (pageContainer) {
+            // Scroll page container into view first
+            const containerRect = pageContainer.getBoundingClientRect();
+            const containerTop = containerRect.top + window.scrollY;
+            const headerHeight = 80;
+            
+            window.scrollTo({
+              top: Math.max(0, containerTop - headerHeight - 20),
+              behavior: 'smooth'
+            });
+            
+            // Wait for page scroll, then scroll to element
+            setTimeout(() => {
+              scrollToElement(element.id);
+            }, 300);
+            return;
+          }
+        }
+        
+        // If no page container found or element is on first page, scroll directly to element
         scrollToElement(element.id);
       }, 100);
     }
