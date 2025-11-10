@@ -353,7 +353,9 @@ const RichTextBuilderPage = () => {
         // Add pre-defined label for better UX
         preDefinedLabel: element.label,
         placeholder: element.label,
-        required: true
+        required: true,
+        // Preserve pageIndex so completion screen knows which page this element belongs to
+        pageIndex: element.pageIndex !== undefined ? element.pageIndex : pageIndex
       }));
 
       return {

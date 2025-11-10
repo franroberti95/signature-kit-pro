@@ -31,6 +31,7 @@ interface ExtendedPDFElement extends PDFElement {
   stepperType?: string;
   stepperOrder?: number;
   properties?: { [key: string]: unknown };
+  pageIndex?: number; // Track which page this element belongs to (from builder)
 }
 
 interface RichTextData {
@@ -61,12 +62,24 @@ const RichTextCompletionPage = () => {
     const sourcePage = allBuilderPages[0];
     const richTextVariables = sourcePage?.richTextVariables || [];
     
-    // Collect all elements from all builder pages
+    // Collect all elements from all builder pages, preserving their pageIndex
     const allElements: ExtendedPDFElement[] = [];
-    allBuilderPages.forEach(page => {
+    allBuilderPages.forEach((page, pageIndex) => {
       if (page.elements) {
-        allElements.push(...page.elements);
+        page.elements.forEach(element => {
+          // Preserve the pageIndex from the builder, or use the current page index
+          const elementWithPageIndex: ExtendedPDFElement = {
+            ...element,
+            pageIndex: (element as any).pageIndex !== undefined ? (element as any).pageIndex : pageIndex
+          };
+          allElements.push(elementWithPageIndex);
+        });
       }
+    });
+    
+    console.log(`📄 Collected ${allElements.length} elements from ${allBuilderPages.length} pages`);
+    allElements.forEach((el, i) => {
+      console.log(`  Element ${i + 1} (${el.id}): pageIndex=${el.pageIndex}, type=${el.type}, pos=(${el.x}, ${el.y})`);
     });
     
     console.log(`📄 Processing ${allBuilderPages.length} pages from builder`);
@@ -282,25 +295,28 @@ const RichTextCompletionPage = () => {
       
       allFormElements.forEach(element => {
         if (element.type === 'signature') {
-          // Signature coordinates from builder are relative to content area
-          // Preview now uses same coordinate system, so no adjustment needed
-          const builderY = element.y || 0;
-          const adjustedY = builderY; // No toolbar offset needed
+          // Use the pageIndex from the builder if available, otherwise calculate from Y coordinate
+          let targetPageIndex = element.pageIndex;
           
-          // Determine which page based on ACTUAL content height
-          const pageIndex = Math.floor(adjustedY / contentHeight);
-          const clampedPageIndex = Math.max(0, Math.min(pageIndex, numPages - 1));
+          if (targetPageIndex === undefined || targetPageIndex < 0 || targetPageIndex >= numPages) {
+            // Fallback: calculate from Y coordinate if pageIndex is not available
+            const builderY = element.y || 0;
+            const adjustedY = builderY;
+            targetPageIndex = Math.floor(adjustedY / contentHeight);
+            console.log(`⚠️ Signature ${element.id} has no pageIndex, calculating from Y=${builderY} → page ${targetPageIndex + 1}`);
+          }
           
-          // Calculate Y position relative to the specific page
-          const relativeY = adjustedY - (clampedPageIndex * contentHeight);
+          const clampedPageIndex = Math.max(0, Math.min(targetPageIndex, numPages - 1));
           
+          // Y coordinate is already relative to the page it belongs to (from builder)
+          // No need to adjust for page offset since coordinates are page-relative
           const adjustedElement = {
             ...element,
-            y: relativeY
+            y: element.y || 0
           };
           
           pageElements[clampedPageIndex].push(adjustedElement);
-          console.log(`📍 Signature ${element.id}: builderY=${builderY} → adjustedY=${adjustedY} (no toolbar offset) → page ${clampedPageIndex + 1}, relativeY=${relativeY}`);
+          console.log(`📍 Signature ${element.id}: pageIndex=${element.pageIndex} → page ${clampedPageIndex + 1}, y=${element.y}`);
         } else {
           // Text/date elements go on the first page (they use inline approach)
           pageElements[0].push(element);
