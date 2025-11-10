@@ -54,34 +54,29 @@ const RichTextCompletionPage = () => {
 
 
   const extractRichTextData = (data: RichTextData) => {
-    const sourcePage = data.pages[0];
-    const richTextVariables = sourcePage.richTextVariables || [];
-    // PRESERVE original HTML content with all formatting
-    const originalRichTextContent = sourcePage.richTextContent || "";
+    // Process ALL pages from the builder, not just the first one
+    const allBuilderPages = data.pages || [];
     
-    // Create a copy for variable processing (for PDF generation)
-    let richTextContent = originalRichTextContent;
+    // Get variables from the first page (they're shared across all pages)
+    const sourcePage = allBuilderPages[0];
+    const richTextVariables = sourcePage?.richTextVariables || [];
     
-    // FIRST: Convert styled variables back to {{variable}} format for proper processing
-    // Updated regex to handle the actual Quill embed structure with nested spans
-    
-    // Pattern for Quill embed with nested spans and special characters:
-    // <span class="variable-embed" ... data-variable="patient_name" ...><span contenteditable="false">Patient Name</span></span>
-    const quillEmbedRegex = /<span[^>]*class=["'][^"']*variable-embed[^"']*["'][^>]*data-variable=["']([^"']+)["'][^>]*>[\s\S]*?<\/span>/g;
-    
-    let matchCount = 0;
-    
-    // Extract and convert Quill embeds (only for processing, not for display)
-    richTextContent = richTextContent.replace(quillEmbedRegex, (match, variableName) => {
-      console.log(`✅ Found variable: ${variableName}`);
-      matchCount++;
-      return `{{${variableName}}}`;
+    // Collect all elements from all builder pages
+    const allElements: ExtendedPDFElement[] = [];
+    allBuilderPages.forEach(page => {
+      if (page.elements) {
+        allElements.push(...page.elements);
+      }
     });
     
-    console.log(`✅ Converted ${matchCount} embed variables to stepper format`);
+    console.log(`📄 Processing ${allBuilderPages.length} pages from builder`);
+    allBuilderPages.forEach((page, index) => {
+      console.log(`  Page ${index + 1}: ${page.richTextContent?.length || 0} chars, ${page.elements?.length || 0} elements`);
+    });
     
-    // Use existing elements from the source page (interactive signature boxes)
-    const allElements: ExtendedPDFElement[] = sourcePage.elements || [];
+    // Variables are processed per page in the contentPages loop below
+    
+    // Elements are already collected from all builder pages above
     
     console.log(`🎯 Builder → Completion: Signature coordinates from builder:`, 
       allElements
@@ -89,64 +84,49 @@ const RichTextCompletionPage = () => {
         .map(e => `${e.id}: x=${e.x}, y=${e.y}, w=${e.width}, h=${e.height}`)
     );
     
-    // SPLIT CONTENT INTO MULTIPLE PAGES (like PDF export does)
-    const splitContentIntoPages = () => {
-      // Convert HTML to text and estimate lines (preserve spaces like editor)
-      const textContent = richTextContent
-        .replace(/<[^>]*>/g, '') // Remove HTML tags (don't add spaces)  
-        .replace(/&nbsp;/g, ' ') // Convert HTML non-breaking spaces
-        .replace(/&amp;/g, '&') // Decode HTML entities
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/\n/g, ' ') // Convert newlines to spaces for line estimation
-        .trim();
+    // Use the pages directly from the builder - each page has its own content
+    // Process each builder page's content
+    const contentPages: string[] = [];
+    allBuilderPages.forEach((builderPage, index) => {
+      // PRESERVE original HTML content with all formatting for each page
+      const pageContent = builderPage.richTextContent || "";
       
-      // Page dimensions and margins (TRUE A4 dimensions)
-      const containerWidth = TRUE_A4_DIMENSIONS.CONTAINER_WIDTH;
-      const containerHeight = TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT;
-      const containerPadding = TRUE_A4_DIMENSIONS.PADDING;
-      const lineHeight = 20; // Estimated line height
-      const maxLinesPerPage = Math.floor((containerHeight - containerPadding * 2) / lineHeight);
+      // Convert styled variables back to {{variable}} format for processing
+      const quillEmbedRegex = /<span[^>]*class=["'][^"']*variable-embed[^"']*["'][^>]*data-variable=["']([^"']+)["'][^>]*>[\s\S]*?<\/span>/g;
+      const processedContent = pageContent.replace(quillEmbedRegex, (match, variableName) => {
+        return `{{${variableName}}}`;
+      });
       
-      // Estimate characters per line (rough approximation)
-      const charsPerLine = 80;
-      const lines = Math.ceil(textContent.length / charsPerLine);
-      const numPages = Math.max(1, Math.ceil(lines / maxLinesPerPage));
-      
-      console.log(`📄 Content analysis: ${textContent.length} chars → ${lines} lines → ${numPages} pages (${maxLinesPerPage} lines/page)`);
-      console.log(`📄 Using container: ${containerWidth}×${containerHeight}, padding=${containerPadding}`);
-      
-      // Split content roughly by character count
-      const contentPages: string[] = [];
-      const charsPerPage = Math.ceil(textContent.length / numPages);
-      
-      for (let i = 0; i < numPages; i++) {
-        const startChar = i * charsPerPage;
-        const endChar = Math.min((i + 1) * charsPerPage, textContent.length);
-        let pageContent = textContent.substring(startChar, endChar);
-        
-        // Add back minimal HTML structure for display
-        pageContent = `<p>${pageContent}</p>`;
-        contentPages.push(pageContent);
-      }
-      
-      return { contentPages, numPages, containerHeight };
-    };
+      contentPages.push(processedContent);
+      console.log(`📄 Builder page ${index + 1}: ${pageContent.length} chars (original), ${processedContent.length} chars (processed)`);
+    });
     
-    const { contentPages, numPages, containerHeight } = splitContentIntoPages();
+    const numPages = allBuilderPages.length;
+    const containerHeight = TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT;
     
     // Extract variables from content (now in {{variable}} format)
+    // Check all pages for variable usage
     const usedVariables: { name: string; type: string; position: number }[] = [];
     
     richTextVariables.forEach((variable: VariableType) => {
       const varName = typeof variable === 'object' ? variable.name : variable;
       const varType = typeof variable === 'object' ? variable.type : 'text';
       
-      // Check if this variable is used in the content and get its position
-      const position = richTextContent.indexOf(`{{${varName}}}`);
-      if (position !== -1) {
-        usedVariables.push({ name: varName, type: varType, position });
+      // Check if this variable is used in any page's content
+      let foundPosition = -1;
+      let cumulativePosition = 0;
+      
+      for (let i = 0; i < contentPages.length; i++) {
+        const position = contentPages[i].indexOf(`{{${varName}}}`);
+        if (position !== -1) {
+          foundPosition = cumulativePosition + position;
+          break;
+        }
+        cumulativePosition += contentPages[i].length;
+      }
+      
+      if (foundPosition !== -1) {
+        usedVariables.push({ name: varName, type: varType, position: foundPosition });
       }
     });
     
@@ -173,7 +153,19 @@ const RichTextCompletionPage = () => {
       if (variable.type === 'signature') {
         // Position based on actual HTML structure before the signature
         const variablePosition = variable.position;
-        const textBeforeSignature = richTextContent.substring(0, variablePosition);
+        // Find which page this variable is on and get the content before it
+        let cumulativeLength = 0;
+        let pageIndex = 0;
+        let textBeforeSignature = '';
+        for (let i = 0; i < contentPages.length; i++) {
+          if (cumulativeLength + contentPages[i].length > variablePosition) {
+            pageIndex = i;
+            const positionInPage = variablePosition - cumulativeLength;
+            textBeforeSignature = contentPages[i].substring(0, positionInPage);
+            break;
+          }
+          cumulativeLength += contentPages[i].length;
+        }
         
         // Count actual HTML elements that create visual lines
         const paragraphs = (textBeforeSignature.match(/<p[^>]*>/g) || []).length;
@@ -321,22 +313,24 @@ const RichTextCompletionPage = () => {
     const pageElementArrays = distributeElementsAcrossPages();
     
     // CREATE MULTIPLE PAGES with distributed content and elements
-    // Use ORIGINAL HTML content directly - preserve all formatting!
-    // richTextContent at this point has variables converted to {{variable}} format (processed)
-    // originalRichTextContent has the original HTML with embeds (for display)
-    console.log(`📄 Page creation: richTextContent length=${richTextContent.length}, originalRichTextContent length=${originalRichTextContent.length}`);
-    console.log(`📄 Processed content preview:`, richTextContent.substring(0, 200));
-    console.log(`📄 Original content preview:`, originalRichTextContent.substring(0, 200));
+    // Use ORIGINAL HTML content directly from each builder page - preserve all formatting!
+    console.log(`📄 Creating ${allBuilderPages.length} pages from builder`);
     
-    const virtualPages: RichTextPDFPage[] = contentPages.map((pageContent, pageIndex) => ({
-      id: `${sourcePage.id || 'rich-text-page'}-${pageIndex + 1}`,
-      format: (data.selectedFormat as PDFFormat) || 'A4',
-      elements: pageElementArrays[pageIndex],
-      backgroundImage: 'rich-text-content', // Special identifier for rich text
-      richTextContent: originalRichTextContent, // Use original HTML with all formatting preserved (for display)
-      richTextVariables,
-      originalRichTextContent: pageIndex === 0 ? richTextContent : '', // Keep processed version (with {{variable}}) only on first page for PDF generation
-    }));
+    // Use the original HTML content from each builder page directly
+    const virtualPages: RichTextPDFPage[] = allBuilderPages.map((builderPage, pageIndex) => {
+      const originalPageContent = builderPage.richTextContent || "";
+      const processedPageContent = contentPages[pageIndex] || "";
+      
+      return {
+        id: builderPage.id || `rich-text-page-${pageIndex + 1}`,
+        format: (data.selectedFormat as PDFFormat) || 'A4',
+        elements: pageElementArrays[pageIndex] || [],
+        backgroundImage: 'rich-text-content', // Special identifier for rich text
+        richTextContent: originalPageContent, // Use original HTML from builder page (for display)
+        richTextVariables,
+        originalRichTextContent: pageIndex === 0 ? processedPageContent : '', // Keep processed version (with {{variable}}) only on first page for PDF generation
+      };
+    });
     
     console.log(`📄 Created ${virtualPages.length} pages with content split`);
     virtualPages.forEach((page, i) => {
@@ -558,7 +552,13 @@ const RichTextCompletionPage = () => {
         const dateValue = new Date(value as string).toLocaleDateString();
         finalContent = finalContent.replace(regex, dateValue);
       } else {
-        finalContent = finalContent.replace(regex, value as string);
+        // Clean the value to remove any BOM or problematic characters
+        const cleanValue = (value as string)
+          .replace(/^\uFEFF/, '') // Remove UTF-8 BOM
+          .replace(/^[\uFEFF\u200B-\u200D\u2060]+/, '') // Remove zero-width characters
+          .replace(/[\uFEFF\u200B-\u200D\u2060]+$/, '') // Remove trailing zero-width characters
+          .replace(/[\uFEFF\u200B-\u200D\u2060]+/g, ' '); // Replace zero-width characters with space
+        finalContent = finalContent.replace(regex, cleanValue);
       }
     });
     
@@ -602,7 +602,7 @@ const RichTextCompletionPage = () => {
     // Helper function to parse HTML and extract text segments with formatting
     const parseHTMLToSegments = (html: string) => {
       const segments: Array<{
-        text: string;
+        text?: string;
         bold?: boolean;
         italic?: boolean;
         underline?: boolean;
@@ -627,7 +627,14 @@ const RichTextCompletionPage = () => {
         align: 'left' | 'center' | 'right' | 'justify';
       }) => {
         if (node.nodeType === Node.TEXT_NODE) {
-          const text = node.textContent || '';
+          let text = node.textContent || '';
+          // Remove BOM and other problematic characters
+          text = text
+            .replace(/^\uFEFF/, '') // Remove UTF-8 BOM
+            .replace(/^[\uFEFF\u200B-\u200D\u2060]+/, '') // Remove zero-width characters
+            .replace(/[\uFEFF\u200B-\u200D\u2060]+$/, '') // Remove trailing zero-width characters
+            .replace(/[\uFEFF\u200B-\u200D\u2060]+/g, ' '); // Replace zero-width characters with space
+          
           if (text.trim()) {
             segments.push({
               text: text,
@@ -785,6 +792,15 @@ const RichTextCompletionPage = () => {
       
       // Handle text with formatting
       if (segment.text) {
+        // Clean the text one more time to ensure no BOM or problematic characters
+        const cleanText = segment.text
+          .replace(/^\uFEFF/, '') // Remove UTF-8 BOM
+          .replace(/^[\uFEFF\u200B-\u200D\u2060]+/, '') // Remove zero-width characters
+          .replace(/[\uFEFF\u200B-\u200D\u2060]+$/, '') // Remove trailing zero-width characters
+          .replace(/[\uFEFF\u200B-\u200D\u2060]+/g, ' '); // Replace zero-width characters with space
+        
+        if (!cleanText.trim()) return; // Skip empty segments
+        
         // Apply formatting
         const fontStyle = segment.bold && segment.italic ? 'bolditalic' :
                          segment.bold ? 'bold' :
@@ -806,7 +822,7 @@ const RichTextCompletionPage = () => {
         }
         
         // Split text to fit page width
-        const lines = pdf.splitTextToSize(segment.text, pdfContentWidth - (currentX - marginX));
+        const lines = pdf.splitTextToSize(cleanText, pdfContentWidth - (currentX - marginX));
         
         lines.forEach((line: string, lineIndex: number) => {
           if (lineIndex > 0) {
