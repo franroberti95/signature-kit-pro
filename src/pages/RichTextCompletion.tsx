@@ -29,7 +29,6 @@ interface RichTextPDFPage extends PDFPage {
 
 interface ExtendedPDFElement extends PDFElement {
   stepperType?: string;
-  stepperOrder?: number;
   properties?: { [key: string]: unknown };
   pageIndex?: number; // Track which page this element belongs to (from builder)
 }
@@ -62,15 +61,17 @@ const RichTextCompletionPage = () => {
     const sourcePage = allBuilderPages[0];
     const richTextVariables = sourcePage?.richTextVariables || [];
     
-    // Collect all elements from all builder pages, preserving their pageIndex
+    // Collect all elements from all builder pages in storage order
+    // Elements are already sorted by Y coordinate in the builder, so just read them in order
     const allElements: ExtendedPDFElement[] = [];
     allBuilderPages.forEach((page, pageIndex) => {
       if (page.elements) {
-        page.elements.forEach(element => {
-          // Preserve the pageIndex from the builder, or use the current page index
+        // Read elements in the order they're stored (already sorted by Y coordinate in builder)
+        page.elements.forEach((element, elementIndex) => {
           const elementWithPageIndex: ExtendedPDFElement = {
             ...element,
-            pageIndex: (element as any).pageIndex !== undefined ? (element as any).pageIndex : pageIndex
+            pageIndex: (element as ExtendedPDFElement).pageIndex !== undefined ? (element as ExtendedPDFElement).pageIndex : pageIndex,
+            stepperType: element.type
           };
           allElements.push(elementWithPageIndex);
         });
@@ -121,6 +122,9 @@ const RichTextCompletionPage = () => {
     // Check all pages for variable usage
     const usedVariables: { name: string; type: string; position: number }[] = [];
     
+    // Count interactive elements to continue ordering variables after them
+    const interactiveElementCount = allElements.length;
+    
     richTextVariables.forEach((variable: VariableType) => {
       const varName = typeof variable === 'object' ? variable.name : variable;
       const varType = typeof variable === 'object' ? variable.type : 'text';
@@ -143,18 +147,9 @@ const RichTextCompletionPage = () => {
       }
     });
     
-    // Sort variables by their position in the document, but prioritize text/date fields first, then signatures
-    usedVariables.sort((a, b) => {
-      // First priority: text/date fields before signatures
-      if (a.type !== 'signature' && b.type === 'signature') return -1;
-      if (a.type === 'signature' && b.type !== 'signature') return 1;
-      
-      // Second priority: document position within the same type
-      return a.position - b.position;
-    });
-    
-    // Debug: Variables ordered by document position
-    console.log('Stepper order - Text fields first, then signatures:', 
+    // Variables are already in the order they appear in the document (by position)
+    // No need to sort - just use them in the order found
+    console.log('Variables found in document:', 
       usedVariables.map(v => `${v.name} (${v.type})`).join(' → ')
     );
     
@@ -163,34 +158,35 @@ const RichTextCompletionPage = () => {
     
     // Create form elements for the stepper (signatures need positioning, text/date don't)
     const variableElements = usedVariables.map((variable, varIndex) => {
+      // Find which page this variable is on based on its position in content
+      const variablePosition = variable.position;
+      let cumulativeLength = 0;
+      let variablePageIndex = 0;
+      let textBeforeVariable = '';
+      for (let i = 0; i < contentPages.length; i++) {
+        if (cumulativeLength + contentPages[i].length > variablePosition) {
+          variablePageIndex = i;
+          const positionInPage = variablePosition - cumulativeLength;
+          textBeforeVariable = contentPages[i].substring(0, positionInPage);
+          break;
+        }
+        cumulativeLength += contentPages[i].length;
+      }
+      
       if (variable.type === 'signature') {
         // Position based on actual HTML structure before the signature
-        const variablePosition = variable.position;
-        // Find which page this variable is on and get the content before it
-        let cumulativeLength = 0;
-        let pageIndex = 0;
-        let textBeforeSignature = '';
-        for (let i = 0; i < contentPages.length; i++) {
-          if (cumulativeLength + contentPages[i].length > variablePosition) {
-            pageIndex = i;
-            const positionInPage = variablePosition - cumulativeLength;
-            textBeforeSignature = contentPages[i].substring(0, positionInPage);
-            break;
-          }
-          cumulativeLength += contentPages[i].length;
-        }
         
         // Count actual HTML elements that create visual lines
-        const paragraphs = (textBeforeSignature.match(/<p[^>]*>/g) || []).length;
-        const lineBreaks = (textBeforeSignature.match(/<br\s*\/?>/g) || []).length;
-        const divs = (textBeforeSignature.match(/<div[^>]*>/g) || []).length;
+        const paragraphs = (textBeforeVariable.match(/<p[^>]*>/g) || []).length;
+        const lineBreaks = (textBeforeVariable.match(/<br\s*\/?>/g) || []).length;
+        const divs = (textBeforeVariable.match(/<div[^>]*>/g) || []).length;
         
         // Fallback: if minimal HTML structure, estimate from plain text
         let estimatedLines = paragraphs + lineBreaks + divs;
         
-        if (estimatedLines === 0 && textBeforeSignature.length > 0) {
+        if (estimatedLines === 0 && textBeforeVariable.length > 0) {
           // Strip HTML and count approximate lines based on text length
-          const plainText = textBeforeSignature.replace(/<[^>]*>/g, '').trim();
+          const plainText = textBeforeVariable.replace(/<[^>]*>/g, '').trim();
           if (plainText.length > 0) {
             // Rough estimate: 80 characters per line in rich text editor
             estimatedLines = Math.ceil(plainText.length / 80);
@@ -224,60 +220,92 @@ const RichTextCompletionPage = () => {
           placeholder: variable.name.replace(/_/g, ' '),
           required: true,
           preDefinedLabel: variable.name.replace(/_/g, ' '),
-          stepperOrder: variable.position, // Add position for sorting
-          stepperType: variable.type // Add type for sorting
+          stepperType: variable.type,
+          pageIndex: variablePageIndex // Add pageIndex for variable elements
         };
       } else {
-        // Text/date fields use inline approach, minimal positioning needed
-      return {
+        // Text/date fields - calculate Y position based on content position for ordering
+        // Count actual HTML elements that create visual lines before the variable
+        const paragraphs = (textBeforeVariable.match(/<p[^>]*>/g) || []).length;
+        const lineBreaks = (textBeforeVariable.match(/<br\s*\/?>/g) || []).length;
+        const divs = (textBeforeVariable.match(/<div[^>]*>/g) || []).length;
+        
+        // Fallback: if minimal HTML structure, estimate from plain text
+        let estimatedLines = paragraphs + lineBreaks + divs;
+        
+        if (estimatedLines === 0 && textBeforeVariable.length > 0) {
+          // Strip HTML and count approximate lines based on text length
+          const plainText = textBeforeVariable.replace(/<[^>]*>/g, '').trim();
+          if (plainText.length > 0) {
+            // Rough estimate: 80 characters per line in rich text editor
+            estimatedLines = Math.ceil(plainText.length / 80);
+          }
+        }
+        
+        // Ensure we have at least some positioning if there's content before
+        estimatedLines = Math.max(0, estimatedLines);
+        
+        // Calculate Y coordinate similar to signatures for proper ordering
+        // Use same dimensions as builder/preview
+        const padding = 64; // p-16 = 64px
+        const lineHeight = 20; // Font: 12pt, lineHeight: 1.6 → roughly 19-20px per line
+        const pageContentHeight = TRUE_A4_DIMENSIONS.CONTENT_HEIGHT;
+        
+        // Calculate Y position: page offset + padding + lines
+        const y = (variablePageIndex * pageContentHeight) + padding + (estimatedLines * lineHeight);
+        
+        return {
           id: `rich-text-${variable.name}`,
           type: variable.type === 'date' ? 'date' as const : 'text' as const,
           x: 0, // Not used for inline approach
-          y: 0, // Not used for inline approach  
+          y: y, // Calculate Y for proper ordering with interactive elements
           width: 200,
           height: 40,
           placeholder: variable.name.replace(/_/g, ' '),
           required: true,
           preDefinedLabel: variable.name.replace(/_/g, ' '),
-          stepperOrder: variable.position, // Add position for sorting
-          stepperType: variable.type // Add type for sorting
+          stepperType: variable.type,
+          pageIndex: variablePageIndex // Add pageIndex for variable elements
         };
       }
     });
     
-    // Combine ALL elements (interactive signature boxes + text variables) and sort properly
-    let allFormElements = [...allElements, ...variableElements];
+    // Combine ALL elements and sort by Y coordinate (document position)
+    // Interactive elements have Y from builder, variables have calculated Y
+    let allFormElements: ExtendedPDFElement[] = [];
     
-    // Remove duplicates based on ID
-    const uniqueElements = new Map();
+    // Add interactive elements (in storage order from builder, already sorted by Y)
+    allFormElements.push(...allElements);
+    
+    // Add variables (with calculated Y coordinates)
+    allFormElements.push(...variableElements);
+    
+    // Remove duplicates based on ID (keep first occurrence)
+    const uniqueElements = new Map<string, ExtendedPDFElement>();
     allFormElements.forEach(element => {
-      uniqueElements.set(element.id, element);
+      if (!uniqueElements.has(element.id)) {
+        uniqueElements.set(element.id, element);
+      }
     });
     allFormElements = Array.from(uniqueElements.values());
     
-    // Sort ALL elements by type priority (text/date first, then signatures) and position
+    // Sort all elements by pageIndex first, then by Y coordinate to maintain document order
     allFormElements.sort((a, b) => {
-      const aType = a.stepperType || (a.type === 'signature' ? 'signature' : 'text');
-      const bType = b.stepperType || (b.type === 'signature' ? 'signature' : 'text');
-      const aOrder = a.stepperOrder || 0;
-      const bOrder = b.stepperOrder || 0;
-      
-      // First priority: text/date fields before signatures
-      if (aType !== 'signature' && bType === 'signature') return -1;
-      if (aType === 'signature' && bType !== 'signature') return 1;
-      
-      // Second priority: document position within the same type
-      return aOrder - bOrder;
+      const aPage = a.pageIndex ?? 0;
+      const bPage = b.pageIndex ?? 0;
+      if (aPage !== bPage) {
+        return aPage - bPage;
+      }
+      return (a.y || 0) - (b.y || 0);
     });
     
-    // Note: Removed automatic signature spacing that was overriding user-positioned coordinates
-    
-    console.log('Final stepper order:', allFormElements.map(e => ({ 
+    console.log('Final stepper order (sorted by page and Y):', allFormElements.map((e, i) => ({ 
+      index: i,
       id: e.id, 
       type: e.type, 
+      pageIndex: e.pageIndex,
       x: e.x, 
-      y: e.y,
-      stepperOrder: e.stepperOrder 
+      y: e.y
     })));
     
     // DISTRIBUTE SIGNATURES ACROSS PAGES using FIXED A4 dimensions

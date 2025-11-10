@@ -336,27 +336,36 @@ const RichTextBuilderPage = () => {
     }
 
     // Convert all pages to PDF builder format
+    // Sort elements by Y coordinate (top to bottom) before storing - order is preserved in array
     const pdfPages = pages.map((page, pageIndex) => {
+      // Sort elements on this page by Y coordinate (top to bottom)
+      const sortedElements = [...page.elements].sort((a, b) => {
+        return (a.y || 0) - (b.y || 0);
+      });
+      
       // Convert interactive signature elements to PDF builder format
-      const pdfElements = page.elements.map((element) => ({
-        id: element.id,
-        type: element.type,
-        x: element.x,
-        y: element.y, // Y coordinate is already page-relative
-        width: element.width,
-        height: element.height,
-        properties: {
+      // Array order is preserved, so stepper will use this order
+      const pdfElements = sortedElements.map((element, elementIndex) => {
+        return {
+          id: element.id,
+          type: element.type,
+          x: element.x,
+          y: element.y, // Y coordinate is already page-relative
+          width: element.width,
+          height: element.height,
+          properties: {
+            placeholder: element.label,
+            required: true,
+            fieldName: element.name
+          },
+          // Add pre-defined label for better UX
+          preDefinedLabel: element.label,
           placeholder: element.label,
           required: true,
-          fieldName: element.name
-        },
-        // Add pre-defined label for better UX
-        preDefinedLabel: element.label,
-        placeholder: element.label,
-        required: true,
-        // Preserve pageIndex so completion screen knows which page this element belongs to
-        pageIndex: element.pageIndex !== undefined ? element.pageIndex : pageIndex
-      }));
+          // Preserve pageIndex so completion screen knows which page this element belongs to
+          pageIndex: element.pageIndex !== undefined ? element.pageIndex : pageIndex
+        };
+      });
 
       return {
         id: page.id,
