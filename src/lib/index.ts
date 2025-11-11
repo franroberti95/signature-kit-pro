@@ -3,6 +3,23 @@ export { ToolbarPanel } from '../components/pdf-builder/ToolbarPanel';
 export { PDFCanvas } from '../components/pdf-builder/PDFCanvas';
 export { CompletionComponent } from './CompletionComponent';
 
+// Embedded components (for external use with API key)
+export { PDFBuilderEmbed } from './PDFBuilderEmbed';
+export { RichTextBuilderEmbed } from './RichTextBuilderEmbed';
+export type { PDFBuilderEmbedProps } from './PDFBuilderEmbed';
+export type { RichTextBuilderEmbedProps } from './RichTextBuilderEmbed';
+
+// SDK (API client without React dependencies)
+export { default as SignatureKitProSDK } from './sdk';
+export type {
+  SDKConfig,
+  Document,
+  CreateDocumentParams,
+  UpdateDocumentParams,
+  CreateSessionParams,
+  Session,
+} from './sdk';
+
 // Additional component exports
 export { PDFRenderer } from '../components/pdf-builder/PDFRenderer';
 export { SignatureCanvas } from '../components/pdf-builder/SignatureCanvas';

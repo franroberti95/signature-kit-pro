@@ -1,5 +1,5 @@
 // GET, POST /api/api-keys - List and create API keys
-import type { AuthenticatedRequest } from '../_types';
+import type { ApiKey, AuthenticatedRequest } from '../_types';
 import type { VercelResponse } from '@vercel/node';
 import { requireAuth } from '../_middleware';
 import { sql } from '../_db';
@@ -54,7 +54,7 @@ async function handler(req: AuthenticatedRequest, res: VercelResponse) {
         INSERT INTO api_keys (user_id, key_name, api_key, api_key_hash)
         VALUES (${req.userId}, ${keyName || null}, ${apiKey}, ${apiKeyHash})
         RETURNING id, key_name, created_at
-      `;
+      ` as ApiKey[];
 
       return res.status(201).json({
         key: {

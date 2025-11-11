@@ -4,11 +4,15 @@ import { sql } from '../_db';
 import { verifyPassword } from '../_utils';
 import { logger } from '../_logger';
 import jwt from 'jsonwebtoken';
+import type { UserWithPassword } from '../types/user';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required');
 }
+
+// TypeScript: After the check above, this is guaranteed to be a string
+const verifiedJwtSecret: string = JWT_SECRET;
 
 export default async function handler(
   req: VercelRequest,
@@ -30,7 +34,7 @@ export default async function handler(
       SELECT id, email, password_hash, name, subscription_tier, subscription_status, active
       FROM users
       WHERE email = ${email.toLowerCase().trim()}
-    `;
+    ` as UserWithPassword[];
 
     if (users.length === 0) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -65,7 +69,7 @@ export default async function handler(
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email },
-      JWT_SECRET,
+      verifiedJwtSecret,
       { expiresIn: '7d' }
     );
 

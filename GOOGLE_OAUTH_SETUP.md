@@ -20,7 +20,7 @@ This guide will help you set up Google Sign-In for your application.
    - Application type: **Web application**
    - Name: "Signature Kit Pro Web Client"
    - Authorized redirect URIs:
-     - For local development: `http://localhost:5173/api/auth/google-callback`
+     - For local development: `http://localhost:3000/api/auth/google-callback` (when using `vercel dev`)
      - For production: `https://yourdomain.com/api/auth/google-callback`
      - For Vercel: `https://your-app.vercel.app/api/auth/google-callback`
 7. Copy the **Client ID** and **Client Secret**
@@ -34,7 +34,7 @@ Add these variables:
 ```bash
 GOOGLE_CLIENT_ID=your-client-id-here.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-client-secret-here
-FRONTEND_URL=http://localhost:5173
+FRONTEND_URL=http://localhost:3000
 ```
 
 ### Production (Vercel)
@@ -82,8 +82,9 @@ Or if you're creating a fresh database, the schema in `database/schema.sql` alre
 ### "redirect_uri_mismatch" Error
 
 - Make sure the redirect URI in Google Console **exactly matches** the one in your code
-- For local dev: `http://localhost:5173/api/auth/google-callback`
-- For production: `https://yourdomain.com/api/auth/google-callback`
+- For local dev: `http://localhost:3000/api/auth/google-callback` (must match `FRONTEND_URL` in `.env.local` when using `vercel dev`)
+- For production: `https://yourdomain.com/api/auth/google-callback` (must match `FRONTEND_URL` in Vercel env vars)
+- **Important**: The redirect URI must match EXACTLY - no trailing slashes, correct protocol (http vs https)
 
 ### "invalid_client" Error
 

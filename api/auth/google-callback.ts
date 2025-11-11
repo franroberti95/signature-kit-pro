@@ -1,13 +1,23 @@
 // GET /api/auth/google-callback - Google OAuth callback
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sql } from '../../_db';
-import { logger } from '../../_logger';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+import { sql } from '../_db';
+import { logger } from '../_logger';
 import jwt from 'jsonwebtoken';
+import type { User } from '../types/user';
+
+// Load .env.local manually if not in Vercel (for local dev)
+if (!process.env.VERCEL) {
+  // Use process.cwd() which works in both CommonJS and ES modules
+  const rootPath = process.cwd();
+  config({ path: resolve(rootPath, '.env.local') });
+}
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8080';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required');
@@ -15,6 +25,11 @@ if (!JWT_SECRET) {
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
   throw new Error('GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables are required');
 }
+
+// TypeScript: After the checks above, these are guaranteed to be strings
+const verifiedJwtSecret: string = JWT_SECRET;
+const verifiedGoogleClientId: string = GOOGLE_CLIENT_ID;
+const verifiedGoogleClientSecret: string = GOOGLE_CLIENT_SECRET;
 
 export default async function handler(
   req: VercelRequest,
@@ -35,9 +50,9 @@ export default async function handler(
       return res.redirect(`${FRONTEND_URL}/login?error=invalid_state`);
     }
 
-    // Get the origin from the request to build correct redirect URI
-    const origin = req.headers.origin || req.headers.referer?.split('/').slice(0, 3).join('/') || FRONTEND_URL;
-    const redirectUri = `${origin}/api/auth/google-callback`;
+    // Build redirect URI - use FRONTEND_URL for consistency
+    // This must match exactly what's configured in Google Cloud Console
+    const redirectUri = `${FRONTEND_URL}/api/auth/google-callback`;
 
     // Exchange code for access token
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -47,8 +62,8 @@ export default async function handler(
       },
       body: new URLSearchParams({
         code,
-        client_id: GOOGLE_CLIENT_ID!,
-        client_secret: GOOGLE_CLIENT_SECRET!,
+        client_id: verifiedGoogleClientId,
+        client_secret: verifiedGoogleClientSecret,
         redirect_uri: redirectUri,
         grant_type: 'authorization_code',
       }),
@@ -59,7 +74,7 @@ export default async function handler(
       return res.redirect(`${FRONTEND_URL}/login?error=token_exchange_failed`);
     }
 
-    const tokenData = await tokenResponse.json();
+    const tokenData = await tokenResponse.json() as { access_token: string; token_type?: string; expires_in?: number };
     const accessToken = tokenData.access_token;
 
     // Get user info from Google
@@ -74,21 +89,21 @@ export default async function handler(
       return res.redirect(`${FRONTEND_URL}/login?error=user_info_failed`);
     }
 
-    const googleUser = await userResponse.json();
-    const { email, name, picture } = googleUser;
+    const googleUser = await userResponse.json() as { email: string; name?: string; picture?: string; id?: string };
+    const { email, name } = googleUser;
 
     if (!email) {
       return res.redirect(`${FRONTEND_URL}/login?error=no_email`);
     }
 
     // Find or create user
-    let users = await sql`
+    const users = await sql`
       SELECT id, email, name, subscription_tier, subscription_status, active
       FROM users
       WHERE email = ${email.toLowerCase().trim()}
-    `;
+    ` as User[];
 
-    let user;
+    let user: Pick<User, 'id' | 'email' | 'name' | 'subscription_tier' | 'subscription_status' | 'active'>;
     if (users.length === 0) {
       // Create new user (no password for OAuth users)
       const newUsers = await sql`
@@ -100,8 +115,8 @@ export default async function handler(
           'free',
           'active'
         )
-        RETURNING id, email, name, subscription_tier, subscription_status
-      `;
+        RETURNING id, email, name, subscription_tier, subscription_status, active
+      ` as Pick<User, 'id' | 'email' | 'name' | 'subscription_tier' | 'subscription_status' | 'active'>[];
       user = newUsers[0];
     } else {
       user = users[0];
@@ -131,14 +146,30 @@ export default async function handler(
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email },
-      JWT_SECRET,
+      verifiedJwtSecret,
       { expiresIn: '7d' }
     );
 
     // Redirect to frontend with token
     return res.redirect(`${FRONTEND_URL}/auth/callback?token=${token}`);
   } catch (error) {
-    logger.error('Google OAuth callback error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    logger.error('Google OAuth callback error:', {
+      message: errorMessage,
+      stack: errorStack,
+      error: error,
+    });
+    
+    // Log to console in dev for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.error('OAuth Error Details:', {
+        message: errorMessage,
+        stack: errorStack,
+        error,
+      });
+    }
+    
     return res.redirect(`${FRONTEND_URL}/login?error=oauth_failed`);
   }
 }

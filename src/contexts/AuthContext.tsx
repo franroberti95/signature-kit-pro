@@ -39,20 +39,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchUser = async (authToken: string) => {
     try {
+      console.log('[AuthContext] Fetching user with token:', {
+        hasToken: !!authToken,
+        tokenLength: authToken?.length,
+        tokenPreview: authToken?.substring(0, 20) + '...',
+      });
+
       const response = await fetch('/api/auth/me', {
         headers: {
           Authorization: `Bearer ${authToken}`,
         },
       });
 
+      console.log('[AuthContext] Response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('[AuthContext] User data received:', data);
         setUser(data.user);
       } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[AuthContext] Failed to fetch user:', errorData);
         localStorage.removeItem('auth_token');
         setToken(null);
       }
     } catch (error) {
+      console.error('[AuthContext] Error fetching user:', error);
       localStorage.removeItem('auth_token');
       setToken(null);
     } finally {

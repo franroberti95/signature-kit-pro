@@ -15,10 +15,11 @@ export function getSql() {
   return sqlInstance;
 }
 
-// Export sql as a Proxy that lazy-loads on first use
-export const sql = new Proxy({} as ReturnType<typeof neon>, {
-  get(_target, prop) {
-    return (getSql() as any)[prop];
-  },
-});
+// Export sql as a function that works with template literals
+// This approach works better with ES modules
+function sqlFunction(strings: TemplateStringsArray, ...values: unknown[]) {
+  const sqlInstance = getSql();
+  return sqlInstance(strings, ...values);
+}
 
+export const sql = sqlFunction as ReturnType<typeof neon>;

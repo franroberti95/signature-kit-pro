@@ -4,6 +4,7 @@ import type { VercelResponse } from '@vercel/node';
 import { requireAuth } from '../_middleware';
 import { sql } from '../_db';
 import { logger } from '../_logger';
+import type { User } from '../types/user';
 
 async function handler(req: AuthenticatedRequest, res: VercelResponse) {
   try {
@@ -15,7 +16,7 @@ async function handler(req: AuthenticatedRequest, res: VercelResponse) {
       SELECT id, email, name, subscription_tier, subscription_status, subscription_expires_at, created_at, last_login_at
       FROM users
       WHERE id = ${req.userId} AND active = true
-    `;
+    ` as User[];
 
     if (users.length === 0) {
       return res.status(404).json({ error: 'User not found' });

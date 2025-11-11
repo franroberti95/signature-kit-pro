@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { SignatureCanvas } from "@/components/pdf-builder/SignatureCanvas";
 import { toast } from "sonner";
 import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 import { TRUE_A4_DIMENSIONS, CoordinateHelpers } from "@/constants/dimensions";
 
 interface FormData {

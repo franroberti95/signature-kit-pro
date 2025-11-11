@@ -14,7 +14,39 @@ export default defineConfig({
       fileName: (format) => `signature-kit-pro.${format === "es" ? "js" : "umd.cjs"}`,
     },
     rollupOptions: {
-      external: ["react", "react-dom"],
+      // Externalize dependencies - these won't be bundled
+      external: (id) => {
+        // Always externalize React (peer dependencies)
+        if (id === "react" || id === "react-dom") {
+          return true;
+        }
+        
+        // Externalize all backend dependencies
+        if (
+          id === "bcrypt" ||
+          id === "jsonwebtoken" ||
+          id === "@neondatabase/serverless" ||
+          id === "@vercel/node" ||
+          id === "dotenv" ||
+          id.startsWith("@vercel/") ||
+          id.startsWith("@neondatabase/")
+        ) {
+          return true;
+        }
+        
+        // Externalize Node.js built-ins
+        const nodeBuiltins = [
+          "crypto", "fs", "path", "url", "http", "https",
+          "stream", "util", "events", "buffer", "os", "zlib",
+          "net", "tls", "dns", "querystring", "assert", "child_process"
+        ];
+        if (nodeBuiltins.includes(id)) {
+          return true;
+        }
+        
+        // Bundle everything else (frontend dependencies)
+        return false;
+      },
       output: {
         globals: {
           react: "React",
