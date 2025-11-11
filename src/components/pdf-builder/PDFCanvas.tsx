@@ -5,6 +5,7 @@ import { PDFPage, PDFElement, ElementType, PreDefinedFieldsConfig } from "./PDFB
 import { PDFElementComponent } from "./PDFElementComponent";
 import { PDFRenderer } from "./PDFRenderer";
 import { toast } from "sonner";
+import { TRUE_A4_DIMENSIONS } from "@/constants/dimensions";
 
 interface PDFCanvasProps {
   pages: PDFPage[];
@@ -18,13 +19,13 @@ interface PDFCanvasProps {
 const getPageDimensions = (format: string) => {
   switch (format) {
     case "A4":
-      return { width: 595, height: 842 }; // A4 in points
+      return { width: TRUE_A4_DIMENSIONS.CONTAINER_WIDTH, height: TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT }; // A4 at 96 DPI
     case "A5":
-      return { width: 420, height: 595 }; // A5 in points
+      return { width: 420, height: 595 }; // A5 in points (keep legacy for now)
     case "Letter":
-      return { width: 612, height: 792 }; // Letter in points
+      return { width: 612, height: 792 }; // Letter in points (keep legacy for now)
     default:
-      return { width: 595, height: 842 };
+      return { width: TRUE_A4_DIMENSIONS.CONTAINER_WIDTH, height: TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT };
   }
 };
 
@@ -41,18 +42,6 @@ export const PDFCanvas = ({
   const [isDragOver, setIsDragOver] = useState<{ [key: number]: boolean }>({});
   const [scale, setScale] = useState(1.0);
 
-  const getPageDimensions = (format: string) => {
-    switch (format) {
-      case "A4":
-        return { width: 595, height: 842 }; // A4 in points
-      case "A5":
-        return { width: 420, height: 595 }; // A5 in points
-      case "Letter":
-        return { width: 612, height: 792 }; // Letter in points
-      default:
-        return { width: 595, height: 842 };
-    }
-  };
 
   
 

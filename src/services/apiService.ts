@@ -129,7 +129,9 @@ export class ApiService {
     await simulateDelay(100);
     
     const data = { pages, selectedFormat };
+    // Save to both localStorage (for persistence) and sessionStorage (for completion component)
     localStorage.setItem('pdf-builder-data', JSON.stringify(data));
+    sessionStorage.setItem('pdf-builder-data', JSON.stringify(data));
     
     return { success: true };
   }

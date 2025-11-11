@@ -11,7 +11,7 @@ interface FormData {
 const PDFCompletionPage = () => {
   // Data validation function
   const validatePDFData = (data: any) => {
-    return data && data.pages && Array.isArray(data.pages);
+    return data && data.pages && Array.isArray(data.pages) && data.pages.length > 0;
   };
 
   // Data extraction function
@@ -21,7 +21,9 @@ const PDFCompletionPage = () => {
     // Collect all form elements from all pages
     const elements: PDFElement[] = [];
     pagesData.forEach((page: PDFPage) => {
-      elements.push(...page.elements);
+      if (page.elements && Array.isArray(page.elements)) {
+        elements.push(...page.elements);
+      }
     });
     
     return {

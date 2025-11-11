@@ -413,7 +413,7 @@ export const CompletionComponent = ({
                 <CardContent>
                   <div className="pdf-renderer-container relative border rounded-lg bg-gray-50 overflow-x-auto overflow-y-hidden">
                     {pages.length > 0 ? (
-                      <div className="space-y-8 p-4">
+                      <div className="space-y-8">
                         {pages.map((page, pageIndex) => (
                           <div key={page.id} className="relative" data-page-index={pageIndex}>
                             {/* Page Number Label */}
@@ -469,11 +469,16 @@ export const CompletionComponent = ({
                                 const CONTENT_HEIGHT = TRUE_A4_DIMENSIONS.CONTENT_HEIGHT;
                                 const TOOLBAR_HEIGHT = TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT;
                                 
+                                // Only adjust for toolbar if this is rich text content (which has a toolbar)
+                                // PDF pages don't have a toolbar, so no adjustment needed
+                                const isRichTextPage = page.backgroundImage === 'rich-text-content';
+                                
+                                // For PDF pages (not rich text), coordinates are stored relative to the canvas
+                                // No adjustment needed for X as the coordinate systems match
                                 const adjustedElement = element.type === 'signature' ? {
                                   ...element,
-                                  // No horizontal adjustment needed - preview now matches builder dimensions exactly
-                                  x: element.x, // Direct coordinate mapping - no centering offset
-                                  y: element.y - TOOLBAR_HEIGHT // Only remove toolbar offset
+                                  x: element.x, // Direct coordinate mapping - coordinates are already correct
+                                  y: isRichTextPage ? element.y - TOOLBAR_HEIGHT : element.y // Only remove toolbar offset for rich text pages
                                 } : element;
                                 
                                 return (
@@ -523,7 +528,7 @@ export const CompletionComponent = ({
               // Mobile View
               <div className="pdf-renderer-container relative bg-gray-50 overflow-x-auto overflow-y-hidden">
                 {pages.length > 0 ? (
-                  <div className="space-y-8 p-2">
+                  <div className="space-y-8">
                     {pages.map((page, pageIndex) => (
                       <div key={page.id} className="relative" data-page-index={pageIndex}>
                          <div 
@@ -604,11 +609,15 @@ export const CompletionComponent = ({
                             const CONTENT_HEIGHT = TRUE_A4_DIMENSIONS.CONTENT_HEIGHT;
                             const TOOLBAR_HEIGHT = TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT;
                             
+                            // Only adjust for toolbar if this is rich text content (which has a toolbar)
+                            // PDF pages don't have a toolbar, so no adjustment needed
+                            const isRichTextPage = page.backgroundImage === 'rich-text-content';
+                            
                             const adjustedElement = element.type === 'signature' ? {
                               ...element,
                               // No horizontal adjustment needed - preview now matches builder dimensions exactly
                               x: element.x, // Direct coordinate mapping - no centering offset
-                              y: element.y - TOOLBAR_HEIGHT // Only remove toolbar offset
+                              y: isRichTextPage ? element.y - TOOLBAR_HEIGHT : element.y // Only remove toolbar offset for rich text pages
                             } : element;
                             
                             return (
