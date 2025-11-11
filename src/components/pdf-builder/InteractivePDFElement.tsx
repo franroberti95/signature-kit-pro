@@ -59,16 +59,6 @@ export const InteractivePDFElement = ({
   const IconComponent = elementIcons[element.type];
 
   const handleClick = () => {
-    // Debug signature positioning
-    if (element.type === 'signature') {
-      console.log(`🎯 Signature Click Debug: ${element.id}`);
-      console.log(`   Raw position: x=${element.x}, y=${element.y}`);
-      console.log(`   Raw size: ${element.width}×${element.height}`);
-      console.log(`   Scale: ${scale}`);
-      console.log(`   Final position: x=${element.x * scale}, y=${element.y * scale}`);
-      console.log(`   Final size: ${element.width * scale}×${element.height * scale}`);
-    }
-    
     // Don't allow interaction if read-only
     if (readOnly) {
       onActivate?.(); // Still allow activation for highlighting
@@ -199,9 +189,6 @@ export const InteractivePDFElement = ({
       case "signature":
         return (
           <div className={`${baseClasses} relative`} onClick={handleClick}>
-            {/* Debug outline to show exact bounds */}
-            <div className="absolute inset-0 border-2 border-red-500 border-dashed opacity-60 pointer-events-none z-10"></div>
-            
             {hasValue ? (
               <img 
                 src={String(value)} 
@@ -212,13 +199,6 @@ export const InteractivePDFElement = ({
               <div className="flex flex-col items-center">
                 <PenTool className="w-3 h-3 mb-1" />
                 <span className="text-xs">Click to sign</span>
-                {/* Debug info */}
-                <span className="text-xs text-red-600 font-mono mt-1">
-                  240×80px (fixed)
-                </span>
-                <span className="text-xs text-red-600 font-mono">
-                  @{element.x},{element.y}
-                </span>
               </div>
             )}
           </div>
@@ -305,12 +285,6 @@ export const InteractivePDFElement = ({
     }
   };
 
-  // Debug final CSS coordinates for signatures
-  if (element.type === 'signature') {
-    const finalLeft = element.x * scale;
-    const finalTop = element.y * scale;
-    console.log(`🎯 InteractivePDFElement CSS: ${element.id} element(x=${element.x}, y=${element.y}) × scale(${scale.toFixed(3)}) = CSS(left=${finalLeft.toFixed(1)}px, top=${finalTop.toFixed(1)}px)`);
-  }
 
   return (
     <>

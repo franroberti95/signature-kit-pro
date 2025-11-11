@@ -62,7 +62,7 @@ const RichTextCompletionPage = () => {
     const richTextVariables = sourcePage?.richTextVariables || [];
     
     // Collect all elements from all builder pages in storage order
-    // Elements are already sorted by Y coordinate in the builder, so just read them in ordergit
+    // Elements are already sorted by Y coordinate in the builder, so just read them in ordergitg
     const allElements: ExtendedPDFElement[] = [];
     allBuilderPages.forEach((page, pageIndex) => {
       if (page.elements) {

@@ -245,143 +245,68 @@ export const CompletionComponent = ({
   // }, [allElements]);
 
   const scrollToElement = (elementId: string) => {
-    console.log(`🔍 Looking for element: ${elementId}`);
-    
-    // Find target element using different selectors
+    // Find target element
     let targetElement: HTMLElement | null = null;
     
-    // For rich-text elements, try to find by data-variable attribute
+    // Text variables are rendered with data-variable attribute
     if (elementId.startsWith('rich-text-')) {
       const variableName = elementId.replace('rich-text-', '');
-      console.log(`🔍 Looking for text variable: ${variableName}`);
-      
-      // Try to find by data-variable attribute (how variables are rendered in rich text)
       targetElement = document.querySelector(`[data-variable="${variableName}"]`) as HTMLElement;
-      if (targetElement) {
-        console.log(`✅ Found text variable with data-variable="${variableName}"`);
-      } else {
-        // Fallback: try clickable- ID
-        targetElement = document.getElementById(`clickable-${variableName}`);
-        if (targetElement) {
-          console.log(`✅ Found text variable with ID: clickable-${variableName}`);
-        }
-      }
     }
     
-    // If not found yet, try other selectors
+    // Try other selectors for signatures and fallback
     if (!targetElement) {
-      const possibleSelectors = [
-        `pdf-element-${elementId}`, // Overlay elements (signatures)
-        `clickable-${elementId.replace('rich-text-', '')}`, // Inline text elements
-        elementId // Direct ID match
+      const selectors = [
+        `pdf-element-${elementId}`,
+        `clickable-${elementId.replace('rich-text-', '')}`,
+        elementId
       ];
       
-      console.log(`🔍 Trying selectors:`, possibleSelectors);
-      
-      for (const selector of possibleSelectors) {
+      for (const selector of selectors) {
         targetElement = document.getElementById(selector);
-        if (targetElement) {
-          console.log(`✅ Found element with selector: ${selector}`);
-          break;
-        }
+        if (targetElement) break;
       }
     }
 
-    if (!targetElement) {
-      console.warn(`❌ Could not find element: ${elementId}`);
-      // Try to find any element with similar ID or data-variable
-      if (elementId.startsWith('rich-text-')) {
-        const variableName = elementId.replace('rich-text-', '');
-        const allWithVariable = document.querySelectorAll(`[data-variable*="${variableName}"]`);
-        if (allWithVariable.length > 0) {
-          console.log(`Found ${allWithVariable.length} elements with data-variable containing "${variableName}":`, 
-            Array.from(allWithVariable).map(el => (el as HTMLElement).getAttribute('data-variable')));
-        }
-      }
-      const allWithId = document.querySelectorAll(`[id*="${elementId}"]`);
-      if (allWithId.length > 0) {
-        console.log(`Found ${allWithId.length} elements with similar IDs:`, 
-          Array.from(allWithId).map(el => el.id));
-      }
-      return;
-    }
+    if (!targetElement) return;
 
-    // Get element's position from DOM
+    // Calculate scroll position
     const elementRect = targetElement.getBoundingClientRect();
     const currentScrollY = window.scrollY || window.pageYOffset;
     const isSignature = !elementId.startsWith('rich-text-');
+    const paddingTop = 20;
     
-    // For signatures, find the page container and use stored Y coordinate
     let elementTopAbsolute = elementRect.top + currentScrollY;
     
+    // For signatures, use stored Y coordinate relative to page container
     if (isSignature) {
-      // Find the page container
       const pageContainer = targetElement.closest('[data-page-index]');
       if (pageContainer) {
         const containerRect = (pageContainer as HTMLElement).getBoundingClientRect();
         const containerTopAbsolute = containerRect.top + currentScrollY;
-        
-        // Get the signature element's stored Y coordinate from the element data
         const elementData = allElements.find(el => el.id === elementId);
-        if (elementData && elementData.y !== undefined) {
-          // Signature Y is relative to container, so: container position + signature Y
+        
+        if (elementData?.y !== undefined) {
           elementTopAbsolute = containerTopAbsolute + elementData.y;
-          
-          console.log(`📦 Signature using stored Y coordinate:`, {
-            containerTopAbsolute: Math.round(containerTopAbsolute),
-            signatureY: elementData.y,
-            calculatedAbsolute: Math.round(elementTopAbsolute)
-          });
         }
       }
     }
     
-    const paddingTop = 20;
-    // For signatures, subtract the element height so the top is visible, not the bottom
+    // Subtract signature height so top is visible, not bottom
     const signatureHeight = isSignature ? (elementRect.height || 80) : 0;
-    const targetScroll = elementTopAbsolute - paddingTop - signatureHeight;
+    const targetScroll = Math.max(0, elementTopAbsolute - paddingTop - signatureHeight);
     
-    console.log(`📍 Element position:`, {
-      elementId,
-      elementType: isSignature ? 'signature' : 'text-variable',
-      elementRectTop: Math.round(elementRect.top),
-      currentScrollY: Math.round(currentScrollY),
-      elementTopAbsolute: Math.round(elementTopAbsolute),
-      targetScroll: Math.round(targetScroll),
-      elementHeight: Math.round(elementRect.height),
-      // Show what will be visible after scroll
-      elementTopAfterScroll: Math.round(targetScroll + paddingTop),
-      elementBottomAfterScroll: Math.round(targetScroll + paddingTop + elementRect.height)
-    });
-    
-    // Scroll directly to the calculated position
-    // This should position the element so its top is at paddingTop from viewport top
     window.scrollTo({
-      top: Math.max(0, targetScroll),
+      top: targetScroll,
       behavior: 'smooth'
     });
-    
-    console.log(`✅ Scrolled ${isSignature ? 'signature' : 'text variable'} to: ${Math.round(targetScroll)} (element top will be at ${Math.round(targetScroll + paddingTop)}px from document top)`);
   };
 
   const handleInputChange = (elementId: string, value: string | boolean) => {
-    // DEBUG: Log when form data is updated
-    const isSignature = typeof value === 'string' && value.startsWith('data:image/');
-    console.log(`💾 Saving form data: ${elementId}`, {
-      valueType: typeof value,
-      valueLength: typeof value === 'string' ? value.length : 'N/A',
-      isSignature,
-      elementId
-    });
-    
-    setFormData(prev => {
-      const updated = {
-        ...prev,
-        [elementId]: value
-      };
-      console.log(`💾 Updated formData keys:`, Object.keys(updated));
-      return updated;
-    });
+    setFormData(prev => ({
+      ...prev,
+      [elementId]: value
+    }));
     
     // Update inline display if rich text content (only for text/date fields, not signatures)
     if (elementId.startsWith('rich-text-')) {
@@ -424,7 +349,6 @@ export const CompletionComponent = ({
       onComplete(formData);
     } else {
       toast.success("Form completed successfully!");
-      console.log("Completed form data:", formData);
     }
   };
 
@@ -505,7 +429,6 @@ export const CompletionComponent = ({
                                {(() => {
                                  const bgImage = page.backgroundImage;
                                  const richTextContent = (page as any).richTextContent || '';
-                                 console.log('🔍 Page', pageIndex, 'backgroundImage:', bgImage, 'content length:', richTextContent.length, 'content preview:', richTextContent.substring(0, 100));
                                  return page.backgroundImage ? (
                                    page.backgroundImage == 'rich-text-content' ? (
                                      // Rich text content rendered with RichTextEditor - read-only preview
@@ -550,28 +473,8 @@ export const CompletionComponent = ({
                                   ...element,
                                   // No horizontal adjustment needed - preview now matches builder dimensions exactly
                                   x: element.x, // Direct coordinate mapping - no centering offset
-                                  y: element.y - TOOLBAR_HEIGHT, // Only remove toolbar offset
-                                  // Store percentage info for debugging (relative to content area)
-                                  xPercent: (element.x / CONTENT_WIDTH * 100).toFixed(1),
-                                  yPercent: ((element.y - TOOLBAR_HEIGHT) / CONTENT_HEIGHT * 100).toFixed(1)
+                                  y: element.y - TOOLBAR_HEIGHT // Only remove toolbar offset
                                 } : element;
-                                
-                                // Debug positioning with direct coordinate mapping
-                                if (element.type === 'signature') {
-                                  console.log(`🎯 Desktop preview: ${element.id}`);
-                                  console.log(`   📱 Builder coords: (${element.x}, ${element.y})`);
-                                  console.log(`   🔧 Adjustments: toolbar -${TOOLBAR_HEIGHT}px only (containers now match exactly - corrected height)`);
-                                  console.log(`   🎯 Preview coords: (${adjustedElement.x}, ${adjustedElement.y}) [direct mapping]`);
-                                  
-                                  // Show alignment status with corrected toolbar height
-                                  const builderExpectedY = element.y - TOOLBAR_HEIGHT;
-                                  const previewActualY = adjustedElement.y;
-                                  const alignmentDiff = previewActualY - builderExpectedY;
-                                  console.log(`   📐 ALIGNMENT ANALYSIS (matching container sizes):`);
-                                  console.log(`      Builder expected preview Y: ${builderExpectedY}px`);
-                                  console.log(`      Preview actual Y: ${previewActualY}px`);
-                                  console.log(`      ${alignmentDiff === 0 ? '✅ PERFECT' : '❌'} Difference: ${alignmentDiff > 0 ? '+' : ''}${alignmentDiff}px ${alignmentDiff > 0 ? '(still too low)' : alignmentDiff < 0 ? '(too high)' : '(ALIGNED!)'}`);
-                                }
                                 
                                 return (
                                 <div
@@ -705,19 +608,8 @@ export const CompletionComponent = ({
                               ...element,
                               // No horizontal adjustment needed - preview now matches builder dimensions exactly
                               x: element.x, // Direct coordinate mapping - no centering offset
-                              y: element.y - TOOLBAR_HEIGHT, // Only remove toolbar offset
-                              // Store percentage info for debugging (relative to content area)
-                              xPercent: (element.x / CONTENT_WIDTH * 100).toFixed(1),
-                              yPercent: ((element.y - TOOLBAR_HEIGHT) / CONTENT_HEIGHT * 100).toFixed(1)
+                              y: element.y - TOOLBAR_HEIGHT // Only remove toolbar offset
                             } : element;
-                            
-                            // Debug mobile positioning with direct coordinate mapping  
-                            if (element.type === 'signature') {
-                              console.log(`📱 Mobile preview: ${element.id}`);
-                              console.log(`   📱 Builder coords: (${element.x}, ${element.y})`);
-                              console.log(`   🔧 Adjustments: toolbar -${TOOLBAR_HEIGHT}px only (containers now match exactly - corrected height)`);
-                              console.log(`   🎯 Preview coords: (${adjustedElement.x}, ${adjustedElement.y}) [direct mapping + formatting fixed]`);
-                            }
                             
                             return (
                             <div

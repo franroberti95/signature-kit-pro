@@ -117,14 +117,7 @@ const InteractiveSignatureBox = ({ element, onUpdate, onDelete }: {
       <div className="signature-content p-2 text-center text-purple-700 text-sm font-medium flex flex-col items-center justify-center h-full">
         <PenTool className="h-4 w-4 mb-1" />
         <span>{element.label}</span>
-        {/* Debug info */}
-        <span className="text-xs text-purple-500 font-mono mt-1">
-          240×80px (fixed)
-        </span>
-        <span className="text-xs text-purple-500 font-mono">
-          @{element.x},{element.y}
-        </span>
-  </div>
+      </div>
   
       {/* Delete button */}
       <button
