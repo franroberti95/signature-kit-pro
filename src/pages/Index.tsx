@@ -1,7 +1,7 @@
-import PDFStart from "./PDFStart";
+import { Navigate } from "react-router-dom";
 
 const Index = () => {
-  return <PDFStart />;
+  return <Navigate to="/" replace />;
 };
 
 export default Index;
