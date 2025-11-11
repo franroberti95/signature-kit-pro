@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, Check, X, Trash2 } from "lucide-react";
 import { PDFElement } from "./PDFBuilder";
 import { DatePicker } from "./DatePicker";
 import { SignatureCanvas } from "./SignatureCanvas";
+import { TRUE_A4_DIMENSIONS } from "@/constants/dimensions";
 import { toast } from "sonner";
 import { COMMON_VARIABLES } from "@/constants/variables";
 
@@ -182,8 +183,8 @@ export const MobileFieldNavigation = ({
             {getFieldLabel()}
             <div className="flex justify-center p-2 rounded-md border-2 border-border">
                 <SignatureCanvas
-                  width={240}
-                  height={80}
+                  width={TRUE_A4_DIMENSIONS.SIGNATURE_WIDTH}
+                  height={TRUE_A4_DIMENSIONS.SIGNATURE_HEIGHT}
                   onSignatureComplete={(dataURL) => {
                     setLocalValue(dataURL);
                     onFieldUpdate(currentElement.id, dataURL);

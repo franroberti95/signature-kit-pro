@@ -62,7 +62,7 @@ const RichTextCompletionPage = () => {
     const richTextVariables = sourcePage?.richTextVariables || [];
     
     // Collect all elements from all builder pages in storage order
-    // Elements are already sorted by Y coordinate in the builder, so just read them in ordergitg
+    // Elements are already sorted by Y coordinate in the builder, so just read them in order
     const allElements: ExtendedPDFElement[] = [];
     allBuilderPages.forEach((page, pageIndex) => {
       if (page.elements) {
@@ -78,25 +78,6 @@ const RichTextCompletionPage = () => {
       }
     });
     
-    console.log(`📄 Collected ${allElements.length} elements from ${allBuilderPages.length} pages`);
-    allElements.forEach((el, i) => {
-      console.log(`  Element ${i + 1} (${el.id}): pageIndex=${el.pageIndex}, type=${el.type}, pos=(${el.x}, ${el.y})`);
-    });
-    
-    console.log(`📄 Processing ${allBuilderPages.length} pages from builder`);
-    allBuilderPages.forEach((page, index) => {
-      console.log(`  Page ${index + 1}: ${page.richTextContent?.length || 0} chars, ${page.elements?.length || 0} elements`);
-    });
-    
-    // Variables are processed per page in the contentPages loop below
-    
-    // Elements are already collected from all builder pages above
-    
-    console.log(`🎯 Builder → Completion: Signature coordinates from builder:`, 
-      allElements
-        .filter(e => e.type === 'signature')
-        .map(e => `${e.id}: x=${e.x}, y=${e.y}, w=${e.width}, h=${e.height}`)
-    );
     
     // Use the pages directly from the builder - each page has its own content
     // Process each builder page's content
@@ -112,7 +93,6 @@ const RichTextCompletionPage = () => {
       });
       
       contentPages.push(processedContent);
-      console.log(`📄 Builder page ${index + 1}: ${pageContent.length} chars (original), ${processedContent.length} chars (processed)`);
     });
     
     const numPages = allBuilderPages.length;
@@ -147,11 +127,6 @@ const RichTextCompletionPage = () => {
       }
     });
     
-    // Variables are already in the order they appear in the document (by position)
-    // No need to sort - just use them in the order found
-    console.log('Variables found in document:', 
-      usedVariables.map(v => `${v.name} (${v.type})`).join(' → ')
-    );
     
     // Create positioned PDF elements for used variables (one per variable)
     // Note: Content now uses dynamic replacement in CompletionComponent instead of static placeholders
@@ -208,7 +183,6 @@ const RichTextCompletionPage = () => {
         const x = padding + 10; // Slightly indented from left
         const y = padding + (estimatedLines * lineHeight) + 10; // Direct line-based positioning
         
-        console.log(`📍 Signature ${variable.name}: ${isMobile ? 'Mobile' : 'Desktop'} p=${paragraphs}, br=${lineBreaks}, div=${divs} → ${estimatedLines} lines → y=${Math.round(y)}px`);
         
         return {
           id: `rich-text-${variable.name}`,
@@ -299,14 +273,6 @@ const RichTextCompletionPage = () => {
       return (a.y || 0) - (b.y || 0);
     });
     
-    console.log('Final stepper order (sorted by page and Y):', allFormElements.map((e, i) => ({ 
-      index: i,
-      id: e.id, 
-      type: e.type, 
-      pageIndex: e.pageIndex,
-      x: e.x, 
-      y: e.y
-    })));
     
     // DISTRIBUTE SIGNATURES ACROSS PAGES using FIXED A4 dimensions
     const distributeElementsAcrossPages = () => {
@@ -316,7 +282,6 @@ const RichTextCompletionPage = () => {
       const containerPadding = TRUE_A4_DIMENSIONS.PADDING;
       const contentHeight = TRUE_A4_DIMENSIONS.CONTENT_HEIGHT;
       
-      console.log(`📏 Fixed A4 dimensions: containerSize=${containerWidth}×${containerHeight}, padding=${containerPadding}, contentHeight=${contentHeight}`);
       
       // Create array of page element collections
       const pageElements: ExtendedPDFElement[][] = Array(numPages).fill(null).map(() => []);
@@ -331,7 +296,6 @@ const RichTextCompletionPage = () => {
             const builderY = element.y || 0;
             const adjustedY = builderY;
             targetPageIndex = Math.floor(adjustedY / contentHeight);
-            console.log(`⚠️ Signature ${element.id} has no pageIndex, calculating from Y=${builderY} → page ${targetPageIndex + 1}`);
           }
           
           const clampedPageIndex = Math.max(0, Math.min(targetPageIndex, numPages - 1));
@@ -344,7 +308,6 @@ const RichTextCompletionPage = () => {
           };
           
           pageElements[clampedPageIndex].push(adjustedElement);
-          console.log(`📍 Signature ${element.id}: pageIndex=${element.pageIndex} → page ${clampedPageIndex + 1}, y=${element.y}`);
         } else {
           // Text/date elements go on the first page (they use inline approach)
           pageElements[0].push(element);
@@ -358,7 +321,6 @@ const RichTextCompletionPage = () => {
     
     // CREATE MULTIPLE PAGES with distributed content and elements
     // Use ORIGINAL HTML content directly from each builder page - preserve all formatting!
-    console.log(`📄 Creating ${allBuilderPages.length} pages from builder`);
     
     // Use the original HTML content from each builder page directly
     const virtualPages: RichTextPDFPage[] = allBuilderPages.map((builderPage, pageIndex) => {
@@ -376,10 +338,6 @@ const RichTextCompletionPage = () => {
       };
     });
     
-    console.log(`📄 Created ${virtualPages.length} pages with content split`);
-    virtualPages.forEach((page, i) => {
-      console.log(`  Page ${i + 1}: ${page.elements.length} elements`);
-    });
 
     return {
       pages: virtualPages,
@@ -392,14 +350,6 @@ const RichTextCompletionPage = () => {
   const handleRichTextDownload = async (pages: PDFPage[], formData: FormData) => {
     try {
     
-    // DEBUG: Log all formData keys to see what's actually stored
-    console.log('🔍 DEBUG: All formData keys:', Object.keys(formData));
-    console.log('🔍 DEBUG: FormData entries:', Object.entries(formData).map(([key, value]) => ({
-      key,
-      valueType: typeof value,
-      valueLength: typeof value === 'string' ? value.length : 'N/A',
-      isSignature: typeof value === 'string' && value.startsWith('data:image/')
-    })));
     
     // Get content from the first page
     // NOTE: richTextContent has original HTML (for display), originalRichTextContent has processed version (for PDF)
@@ -418,7 +368,6 @@ const RichTextCompletionPage = () => {
       richTextContent = sourceContent.replace(quillEmbedRegex, (match, variableName) => {
         return `{{${variableName}}}`;
       });
-      console.log(`📄 PDF: Processed HTML content to {{variable}} format`);
     }
     
     const richTextVariables = firstPage.richTextVariables || [];
@@ -439,13 +388,10 @@ const RichTextCompletionPage = () => {
                 y: element.y + (pageIndex * contentHeight) // Restore absolute position
               };
               allSignatureElements.push(absoluteElement);
-              console.log(`📄 PDF: Signature ${element.id} - page ${pageIndex + 1}, relativeY=${element.y} → absoluteY=${absoluteElement.y} (standard coordinates)`);
             }
           });
         });
     
-    console.log(`📄 PDF Generation: Processing ${richTextContent.length} chars with ${allSignatureElements.length} signatures across ${pages.length} pages`);
-    console.log(`📄 PDF: Content preview (first 200 chars):`, richTextContent.substring(0, 200));
     
     // Create PDF with EXACT A4 dimensions matching screen coordinates
     const pdf = new jsPDF({
@@ -476,15 +422,6 @@ const RichTextCompletionPage = () => {
     
     // Both text and signatures use absolute positioning with same baseline
     
-    console.log(`📄 PDF Page setup: ${pageWidth}×${pageHeight}mm`);
-    console.log(`📄 Screen content: ${screenContentWidth}×${screenContentHeight}px (ReactQuill effective area)`);
-    console.log(`📄 PDF content: ${pdfContentWidth.toFixed(1)}×${pdfContentHeight.toFixed(1)}mm (EXACT pixel conversion at 96 DPI)`);
-    console.log(`📄 PDF margins: X=${marginX.toFixed(1)}mm, Y=${marginY.toFixed(1)}mm (centered on A4)`);
-    console.log(`📏 Line height: ${lineHeight}mm (matches builder's 1.6 line-height)`);
-    console.log(`🎯 TRUE A4 MATCH: ${screenContentWidth}px → ${pdfContentWidth.toFixed(1)}mm, ${screenContentHeight}px → ${pdfContentHeight.toFixed(1)}mm (96 DPI conversion)`);
-    console.log(`🔍 DIMENSIONS COMPARISON:`);
-    console.log(`   📐 Calculated: marginX=${marginX.toFixed(1)}mm, marginY=${marginY.toFixed(1)}mm, contentW=${pdfContentWidth.toFixed(1)}mm, contentH=${pdfContentHeight.toFixed(1)}mm`);
-    console.log(`   🏗️ Constants: marginX=${TRUE_A4_DIMENSIONS.PDF_MARGIN_X_MM.toFixed(1)}mm, marginY=${TRUE_A4_DIMENSIONS.PDF_MARGIN_Y_MM.toFixed(1)}mm, contentW=${TRUE_A4_DIMENSIONS.PDF_CONTENT_WIDTH_MM.toFixed(1)}mm, contentH=${TRUE_A4_DIMENSIONS.PDF_CONTENT_HEIGHT_MM.toFixed(1)}mm`);
     
     // Check if we have content to work with
     if (!richTextContent || richTextContent.trim() === '') {
@@ -511,16 +448,9 @@ const RichTextCompletionPage = () => {
       const varName = key.replace('rich-text-', '');
       if (value && typeof value === 'string') {
         variableValues[varName] = value;
-        // Track variable values (signatures logged separately)
-        if (!value.startsWith('data:image/')) {
-          console.log(`Text variable: ${varName} = ${value}`);
-        }
       }
     });
     
-    console.log(`📄 PDF: About to process ${allSignatureElements.length} signature elements:`, 
-      allSignatureElements.map(e => `${e.id}: pos(${e.x}, ${e.y}) size(${e.width}×${e.height})`)
-    );
     
     // Check for signature data from interactive elements (signature boxes) across ALL pages
     allSignatureElements.forEach(element => {
@@ -530,21 +460,8 @@ const RichTextCompletionPage = () => {
         const directKey = element.id;
         const prefixedKey = `element-${element.id}`;
         
-        // DEBUG: Show what we're looking for
-        console.log(`🔍 Looking for signature: ${element.id}`);
-        console.log(`   Trying keys: "${directKey}", "${prefixedKey}"`);
-        console.log(`   Available keys in formData:`, Object.keys(formData).filter(k => k.includes(element.id) || element.id.includes(k.replace('element-', ''))));
-        
         const signatureData = formData[directKey] || formData[prefixedKey];
         const usedKey = formData[directKey] ? directKey : prefixedKey;
-        
-        // Debug signature data lookup
-        if (!signatureData) {
-          console.log(`❌ No signature data found for ${element.id} (tried keys: ${directKey}, ${prefixedKey})`);
-          console.log(`   Available formData keys:`, Object.keys(formData));
-        } else {
-          console.log(`✅ Found signature data for ${element.id} using key: ${usedKey}`);
-        }
         
         if (signatureData && typeof signatureData === 'string' && signatureData.startsWith('data:image/')) {
           // This is an interactive signature box with data
@@ -558,11 +475,6 @@ const RichTextCompletionPage = () => {
             y: element.y
           });
           
-          console.log(`✅ Added interactive signature: ${elementName} at position (${element.x}, ${element.y}) using key: ${usedKey}`);
-        } else if (signatureData) {
-          console.log(`⚠️ Found data for ${element.id} but it's not a signature image:`, typeof signatureData, typeof signatureData === 'string' ? signatureData.substring(0, 50) : signatureData);
-        } else {
-          console.log(`❌ No signature data found for element ${element.id}`);
         }
       }
     });
@@ -584,7 +496,6 @@ const RichTextCompletionPage = () => {
       
       if (varType === 'signature' && typeof value === 'string' && value.startsWith('data:image/')) {
         // For signatures, store image info and replace with named placeholder text
-        console.log('Found signature for', varName, 'with data length:', value.length);
         signatureImages.push({
           name: varName,
           imageData: value,
@@ -606,7 +517,6 @@ const RichTextCompletionPage = () => {
       }
     });
     
-    console.log(`Signatures collected: ${signatureImages.length} (${signatureImages.filter(s => s.x !== undefined).length} positioned, ${signatureImages.filter(s => !s.x && !s.y).length} inline)`);
     
     // Extract images from HTML content before converting to plain text
     const imgRegex = /<img[^>]+src="([^"]+)"[^>]*>/gi;
@@ -640,7 +550,6 @@ const RichTextCompletionPage = () => {
       imageCount++;
     }
     
-    console.log(`Found ${embeddedImages.length} images in content`);
     
     // Parse HTML and render with formatting preserved
     // Helper function to parse HTML and extract text segments with formatting
@@ -776,7 +685,6 @@ const RichTextCompletionPage = () => {
     };
     
     const segments = parseHTMLToSegments(finalContent);
-    console.log(`📝 Parsed ${segments.length} text segments with formatting`);
     
     // Render segments to PDF with formatting
     let currentX = marginX;
@@ -804,7 +712,6 @@ const RichTextCompletionPage = () => {
           try {
             pdf.addImage(signature.imageData, 'PNG', currentX, currentY - 5, signature.width, signature.height);
             currentX += signature.width;
-            console.log(`✅ Embedded signature: ${segment.isSignature}`);
           } catch (error) {
             console.warn('Failed to add signature image:', error);
             pdf.text(`[${segment.isSignature.toUpperCase()} ERROR]`, currentX, currentY);
@@ -826,7 +733,6 @@ const RichTextCompletionPage = () => {
             pdf.addImage(imageData.src, imageFormat, currentX, currentY - 5, imageData.width, imageData.height);
             currentX += imageData.width;
             currentY += Math.max(imageData.height, lineHeight);
-            console.log(`✅ Embedded image ${segment.isImage}`);
           } catch (error) {
             console.warn(`Failed to add image ${segment.isImage}:`, error);
           }
@@ -904,43 +810,18 @@ const RichTextCompletionPage = () => {
     });
     
     yPosition = currentY + lineHeight;
-    console.log(`📝 TEXT POSITIONING: ${yPosition.toFixed(1)}mm height in ${pdfContentHeight}mm content area`);
 
     // Add positioned signatures from interactive elements
     signatureImages.forEach(signature => {
       if (signature.x !== undefined && signature.y !== undefined) {
         try {
-          // DEBUG: Let's see what coordinates we're working with
-          console.log(`🔍 DEBUGGING SIGNATURE COORDINATES for ${signature.name}:`);
-          console.log(`   📱 Raw builder coordinates: x=${signature.x}, y=${signature.y}px`);
-          
           // SIMPLIFIED: Use centralized coordinate conversion
           const { pdfX, pdfY } = CoordinateHelpers.builderToPDF(signature.x, signature.y);
-          const previewCoords = CoordinateHelpers.builderToPreview(signature.x, signature.y);
-          
-          // DETAILED DEBUG: Show coordinate transformation step by step
-          const contentX = signature.x - TRUE_A4_DIMENSIONS.PADDING;
-          const contentY = signature.y - TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT - TRUE_A4_DIMENSIONS.PADDING;
-          const contentXPercent = contentX / TRUE_A4_DIMENSIONS.CONTENT_WIDTH;
-          const contentYPercent = contentY / TRUE_A4_DIMENSIONS.CONTENT_HEIGHT;
-          
-          console.log(`   🔄 COORDINATE TRANSFORMATION:`);
-          console.log(`   📱 Builder container coords: (${signature.x}, ${signature.y})px`);
-          console.log(`   📦 Content area coords: (${contentX}, ${contentY})px (after removing padding+toolbar)`);
-          console.log(`   📊 Content area percentages: ${(contentXPercent*100).toFixed(1)}% X, ${(contentYPercent*100).toFixed(1)}% Y`);
-          console.log(`   📄 Final PDF coords: (${pdfX.toFixed(1)}, ${pdfY.toFixed(1)})mm`);
-          
-          console.log(`   🖥️ Preview coordinates (toolbar only): x=${previewCoords.x}, y=${previewCoords.y}px`);
-          
-          console.log(`   🎯 CONVERSION SUMMARY: Builder(${signature.x},${signature.y}) → Preview(${previewCoords.x},${previewCoords.y}) → PDF(${pdfX.toFixed(1)},${pdfY.toFixed(1)})`);
           
           // SIMPLIFIED: Calculate PDF signature size proportionally
-          const BUILDER_SIGNATURE_WIDTH = 240; // Fixed width in builder
-          const BUILDER_SIGNATURE_HEIGHT = 80;  // Fixed height in builder
-          
           // Calculate proportional PDF size based on TRUE A4 content areas
-          let pdfWidth = BUILDER_SIGNATURE_WIDTH * pdfContentWidth / screenContentWidth;
-          let pdfHeight = BUILDER_SIGNATURE_HEIGHT * pdfContentHeight / screenContentHeight;
+          let pdfWidth = TRUE_A4_DIMENSIONS.SIGNATURE_WIDTH * pdfContentWidth / screenContentWidth;
+          let pdfHeight = TRUE_A4_DIMENSIONS.SIGNATURE_HEIGHT * pdfContentHeight / screenContentHeight;
           
           // Cap PDF signature size to prevent overflow
           const MAX_PDF_WIDTH = 60;  // Maximum 60mm wide (~2.4 inches)
@@ -958,14 +839,7 @@ const RichTextCompletionPage = () => {
             pdfWidth = pdfWidth * scale; // Scale width proportionally
           }
           
-          console.log(`📏 SIGNATURE POSITIONING DEBUG: ${signature.name}`);
-          console.log(`   📱 Screen coordinate: (${signature.x}, ${signature.y})px`);
-          console.log(`   📄 PDF coordinate: (${pdfX.toFixed(1)}, ${pdfY.toFixed(1)})mm [PERCENTAGE-BASED]`);
-          console.log(`   📏 Signature size: ${pdfWidth.toFixed(1)}×${pdfHeight.toFixed(1)}mm in PDF`);
-          
           pdf.addImage(signature.imageData, 'PNG', pdfX, pdfY, pdfWidth, pdfHeight);
-          console.log(`✅ Added signature to PDF at (${pdfX.toFixed(1)}, ${pdfY.toFixed(1)})mm using centralized coordinate conversion`);
-          console.log(`🎯 FINAL CHECK: PDF addImage called with X=${pdfX.toFixed(1)}mm, Y=${pdfY.toFixed(1)}mm (from CoordinateHelpers.builderToPDF)`);
         } catch (error) {
           console.warn(`❌ Failed positioned signature: ${signature.name}`, error);
         }
@@ -991,9 +865,8 @@ const RichTextCompletionPage = () => {
       title="Complete Document"
       subtitle="Click directly on the document to fill out fields"
       onDownload={handleRichTextDownload}
-      onComplete={(formData) => {
+      onComplete={() => {
         toast.success("Document completed successfully!");
-        console.log("Completed rich text data:", formData);
       }}
     />
   );

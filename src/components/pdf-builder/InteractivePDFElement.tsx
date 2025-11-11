@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SignatureCanvas } from "./SignatureCanvas";
+import { TRUE_A4_DIMENSIONS } from "@/constants/dimensions";
 import { DatePicker } from "./DatePicker";
 import { PDFElement } from "./PDFBuilder";
 import { 
@@ -309,8 +310,8 @@ export const InteractivePDFElement = ({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md">
             <SignatureCanvas
-              width={240}
-              height={80}
+              width={TRUE_A4_DIMENSIONS.SIGNATURE_WIDTH}
+              height={TRUE_A4_DIMENSIONS.SIGNATURE_HEIGHT}
               onSignatureComplete={handleSignatureComplete}
               onCancel={() => setShowSignatureCanvas(false)}
             />

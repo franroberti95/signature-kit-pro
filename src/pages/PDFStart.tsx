@@ -40,7 +40,6 @@ const PDFStart = () => {
         const pdfDoc = await PDFDocument.load(pdfBytes);
         const pageCount = pdfDoc.getPageCount();
         
-        console.log(`PDF has ${pageCount} pages`);
         
         // Create page objects for each page in the PDF
         const newPages = Array.from({ length: pageCount }, (_, index) => ({
@@ -94,7 +93,6 @@ const PDFStart = () => {
       const pdfDoc = await PDFDocument.load(pdfBytes);
       const pageCount = pdfDoc.getPageCount();
       
-      console.log(`Converted PDF has ${pageCount} pages`);
       
       // Create a blob URL for the converted PDF
       const blobUrl = URL.createObjectURL(pdfBlob);

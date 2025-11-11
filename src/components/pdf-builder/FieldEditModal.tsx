@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SignatureCanvas } from "./SignatureCanvas";
+import { TRUE_A4_DIMENSIONS } from "@/constants/dimensions";
 import { DatePicker } from "./DatePicker";
 import { PDFElement } from "./PDFBuilder";
 import RichTextEditor from "./RichTextEditor";
@@ -46,8 +47,8 @@ export const FieldEditModal = ({
         return (
           <div className="py-4">
             <SignatureCanvas
-              width={240}
-              height={80}
+              width={TRUE_A4_DIMENSIONS.SIGNATURE_WIDTH}
+              height={TRUE_A4_DIMENSIONS.SIGNATURE_HEIGHT}
               onSignatureComplete={handleSignatureComplete}
               onCancel={onClose}
             />

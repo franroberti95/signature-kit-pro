@@ -14,12 +14,13 @@ import {
 } from "lucide-react";
 import RichTextEditor, { RichTextEditorRef } from "@/components/pdf-builder/RichTextEditor";
 import { ApiService } from "@/services/apiService";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 type PDFFormat = "A4" | "A5" | "Letter";
 
 import { VariableType, COMMON_VARIABLES } from '@/constants/variables';
 import { TRUE_A4_DIMENSIONS, PAGE_LIMITS } from '@/constants/dimensions';
+
+const { SIGNATURE_WIDTH, SIGNATURE_HEIGHT } = TRUE_A4_DIMENSIONS;
 
 interface InteractiveElement {
   id: string;
@@ -37,6 +38,30 @@ interface PageData {
   id: string;
   content: string;
   elements: InteractiveElement[];
+}
+
+interface StoredPDFElement {
+  id: string;
+  type: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  name?: string;
+  label?: string;
+  preDefinedLabel?: string;
+  properties?: {
+    placeholder?: string;
+    fieldName?: string;
+  };
+  pageIndex?: number;
+}
+
+interface StoredPDFPage {
+  id?: string;
+  content?: string;
+  richTextContent?: string;
+  elements?: StoredPDFElement[];
 }
 
 // PAGE_LIMITS now imported from centralized constants
@@ -132,7 +157,6 @@ const InteractiveSignatureBox = ({ element, onUpdate, onDelete }: {
 
 const RichTextBuilderPage = () => {
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
   
   // Multi-page state management
   const [pages, setPages] = useState<PageData[]>([
@@ -169,14 +193,6 @@ const RichTextBuilderPage = () => {
     };
   };
 
-  // Get content stats for current page
-  const getCurrentPageStats = () => {
-    const currentPage = pages[currentPageIndex];
-    return currentPage ? estimateContentSize(currentPage.content || '') : { 
-      characters: 0, estimatedLines: 0, percentageFull: 0, isNearLimit: false, isOverLimit: false 
-    };
-  };
-
   useEffect(() => {
     // Load data from sessionStorage
     const storedData = sessionStorage.getItem('richTextBuilderData');
@@ -184,14 +200,56 @@ const RichTextBuilderPage = () => {
       try {
         const data = JSON.parse(storedData);
         if (data.pages && Array.isArray(data.pages)) {
-          // Multi-page format
-          setPages(data.pages);
+          // Check if pages are in PDF format (from handleContinue) or builder format
+          const restoredPages: PageData[] = (data.pages as StoredPDFPage[]).map((page) => {
+            // If page has richTextContent, it's from handleContinue (PDF format)
+            if (page.richTextContent !== undefined) {
+              // Convert PDF format back to builder format
+              return {
+                id: page.id || `page-${Date.now()}`,
+                content: page.richTextContent || "",
+                elements: (page.elements || []).map((el): InteractiveElement => ({
+                  id: el.id,
+                  type: el.type as 'signature',
+                  name: el.properties?.fieldName || el.name || '',
+                  label: el.preDefinedLabel || el.properties?.placeholder || el.label || el.name || '',
+                  x: el.x || 0,
+                  y: el.y || 0,
+                  width: el.width || SIGNATURE_WIDTH,
+                  height: el.height || SIGNATURE_HEIGHT,
+                  pageIndex: el.pageIndex !== undefined ? el.pageIndex : 0
+                }))
+              };
+            } else {
+              // Already in builder format, but ensure elements have all required properties
+              return {
+                id: page.id || `page-${Date.now()}`,
+                content: page.content || "",
+                elements: ((page as unknown as PageData).elements || []).map((el): InteractiveElement => ({
+                  id: el.id,
+                  type: el.type || 'signature',
+                  name: el.name || '',
+                  label: el.label || el.name || '',
+                  x: el.x || 0,
+                  y: el.y || 0,
+                  width: el.width || SIGNATURE_WIDTH,
+                  height: el.height || SIGNATURE_HEIGHT,
+                  pageIndex: el.pageIndex !== undefined ? el.pageIndex : 0
+                }))
+              };
+            }
+          });
+          setPages(restoredPages);
         } else {
           // Legacy single-page format - convert to multi-page
           const legacyPage: PageData = {
             id: `page-${Date.now()}`,
             content: data.content || "",
-            elements: (data.interactiveElements || []).map((el: InteractiveElement) => ({ ...el, pageIndex: 0 }))
+            elements: ((data.interactiveElements as InteractiveElement[]) || []).map((el): InteractiveElement => ({
+              ...el,
+              label: el.label || el.name || '',
+              pageIndex: 0
+            }))
           };
           setPages([legacyPage]);
         }
@@ -205,33 +263,6 @@ const RichTextBuilderPage = () => {
       setPages([{ id: `page-${Date.now()}`, content: "", elements: [] }]);
     }
 
-    // DEBUG: Comprehensive coordinate system analysis
-    setTimeout(() => {
-      const container = document.querySelector(`[style*="width: ${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px"]`);
-      const toolbar = document.querySelector('.ql-toolbar');
-      const editor = document.querySelector('.ql-editor');
-      
-      if (container && toolbar && editor) {
-        const containerRect = container.getBoundingClientRect();
-        const toolbarRect = toolbar.getBoundingClientRect();
-        const editorRect = editor.getBoundingClientRect();
-        
-        console.log(`📏 COORDINATE SYSTEM ANALYSIS:`);
-        console.log(`   📦 Container: ${containerRect.height}px tall, starts at ${containerRect.top}`);
-        console.log(`   🔧 Toolbar: ${toolbarRect.height}px tall, starts at ${toolbarRect.top}`);
-        console.log(`   📝 Editor: ${editorRect.height}px tall, starts at ${editorRect.top}`);
-        console.log(`   📐 CSS constant: ${TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT}px`);
-        
-        // Calculate the actual offset from container top to editor content start
-        const actualOffset = editorRect.top - containerRect.top;
-        console.log(`   ✨ ACTUAL TOTAL OFFSET: ${actualOffset}px (container top → editor content)`);
-        console.log(`   ${actualOffset === TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT ? '✅' : '❌'} Match with constant: ${actualOffset === TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT}`);
-        
-        if (actualOffset !== TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT) {
-          console.log(`   🔄 SUGGESTED FIX: Update TOOLBAR_HEIGHT to ${actualOffset}px`);
-        }
-      }
-    }, 1000); // Wait for ReactQuill to fully render
   }, [navigate]);
 
   // Function to clear editor state and reset formatting for current page
@@ -289,10 +320,6 @@ const RichTextBuilderPage = () => {
     // Check content limits
     const stats = estimateContentSize(newContent);
     
-    // Log content stats for debugging
-    if (stats.isOverLimit) {
-      console.log(`⚠️ Page ${pageIndex + 1} content exceeds limit: ${stats.estimatedLines}/${PAGE_LIMITS.maxLines} lines`);
-    }
     
     // Update the page content
     const updatedPages = pages.map((page, index) => 
@@ -388,10 +415,6 @@ const RichTextBuilderPage = () => {
   };
 
 
-  // Fixed signature dimensions - standard size for all signatures
-  const SIGNATURE_WIDTH = 240; // 240px wide (larger for signatures)
-  const SIGNATURE_HEIGHT = 80;  // 80px tall (taller for signatures)
-
   const addInteractiveElement = (signatureData: { type: string; name: string; label?: string }, x: number, y: number, pageIndex: number) => {
     const newElement: InteractiveElement = {
       id: `signature-${Date.now()}`,
@@ -400,26 +423,11 @@ const RichTextBuilderPage = () => {
       label: signatureData.label || signatureData.name,
       x: x - (SIGNATURE_WIDTH / 2), // Center the element
       y: y - (SIGNATURE_HEIGHT / 2),
-      width: SIGNATURE_WIDTH,  // Fixed dimensions
-      height: SIGNATURE_HEIGHT, // Fixed dimensions
+      width: SIGNATURE_WIDTH,
+      height: SIGNATURE_HEIGHT,
       pageIndex,
     };
     
-    console.log(`🎯 Builder: Added signature at (${newElement.x}, ${newElement.y}) size ${newElement.width}×${newElement.height} on page ${pageIndex + 1}`);
-    
-    // DEBUG: Show coordinate context for alignment debugging
-    const container = document.querySelector(`[style*="width: ${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px"]`);
-    const toolbar = document.querySelector('.ql-toolbar');
-    if (container && toolbar) {
-      const containerRect = container.getBoundingClientRect();
-      const toolbarRect = toolbar.getBoundingClientRect();
-      const actualOffset = toolbarRect.height;
-      console.log(`🔍 BUILDER COORDINATE CONTEXT:`);
-      console.log(`   📦 Signature stored at: (${newElement.x}, ${newElement.y})px relative to container`);
-      console.log(`   🔧 Measured toolbar height: ${actualOffset}px`);
-      console.log(`   📐 CSS constant (corrected): ${TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT}px`);
-      console.log(`   🎯 Expected preview Y: ${newElement.y - TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT}px (toolbar height now correctly measured)`);
-    }
     
     const updatedPages = pages.map((page, index) => 
       index === pageIndex 

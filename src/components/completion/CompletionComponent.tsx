@@ -293,7 +293,7 @@ export const CompletionComponent = ({
     }
     
     // Subtract signature height so top is visible, not bottom
-    const signatureHeight = isSignature ? (elementRect.height || 80) : 0;
+    const signatureHeight = isSignature ? (elementRect.height || TRUE_A4_DIMENSIONS.SIGNATURE_HEIGHT) : 0;
     const targetScroll = Math.max(0, elementTopAbsolute - paddingTop - signatureHeight);
     
     window.scrollTo({

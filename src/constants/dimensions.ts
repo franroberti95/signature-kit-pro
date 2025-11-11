@@ -14,6 +14,10 @@ export const TRUE_A4_DIMENSIONS = {
   // ReactQuill specific  
   TOOLBAR_HEIGHT: 83,     // ReactQuill toolbar (measured actual height from browser)
   
+  // Signature dimensions
+  SIGNATURE_WIDTH: 240,   // Fixed signature box width in pixels
+  SIGNATURE_HEIGHT: 80,   // Fixed signature box height in pixels
+  
   // PDF conversion (96 DPI)
   DPI: 96,
   MM_PER_INCH: 25.4,
