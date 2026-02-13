@@ -1,6 +1,6 @@
 {
   "name": "signature-kit-pro",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "type": "module",
   "main": "./dist/signature-kit-pro.umd.cjs",
   "module": "./dist/signature-kit-pro.js",

@@ -11,8 +11,8 @@ export interface PDFTemplate {
   pages: PDFPage[];
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-const API_KEY = import.meta.env.VITE_API_KEY || '';
+const API_URL = import.meta.env.SIGNATURE_KIT_PRO_API_URL || 'http://localhost:3000/api';
+const API_KEY = import.meta.env.SIGNATURE_KIT_PRO_API_KEY || '';
 
 export class ApiService {
   private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

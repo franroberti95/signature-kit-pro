@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react-swc";
 import { resolve } from "path";
 
 export default defineConfig({
+  envPrefix: "SIGNATURE_KIT_PRO_",
   plugins: [
     react(),
   ],
@@ -20,7 +21,7 @@ export default defineConfig({
         if (id === "react" || id === "react-dom") {
           return true;
         }
-        
+
         // Externalize all backend dependencies
         if (
           id === "bcrypt" ||
@@ -33,7 +34,7 @@ export default defineConfig({
         ) {
           return true;
         }
-        
+
         // Externalize Node.js built-ins
         const nodeBuiltins = [
           "crypto", "fs", "path", "url", "http", "https",
@@ -43,7 +44,7 @@ export default defineConfig({
         if (nodeBuiltins.includes(id)) {
           return true;
         }
-        
+
         // Bundle everything else (frontend dependencies)
         return false;
       },

@@ -76,8 +76,8 @@ const PDFStart = () => {
       formData.append('file', file);
 
       // Use the configured API URL
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-      const apiKey = import.meta.env.VITE_API_KEY || '';
+      const apiUrl = import.meta.env.SIGNATURE_KIT_PRO_API_URL || 'http://localhost:3000/api';
+      const apiKey = import.meta.env.SIGNATURE_KIT_PRO_API_KEY || '';
 
       const response = await fetch(`${apiUrl}/convert-to-pdf`, {
         method: 'POST',

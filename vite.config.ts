@@ -5,6 +5,7 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  envPrefix: "SIGNATURE_KIT_PRO_",
   server: {
     host: "::",
     // Port is managed by vercel dev when running via vercel dev
