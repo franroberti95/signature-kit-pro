@@ -27,6 +27,7 @@ export interface PDFElement {
   options?: string[]; // for select elements
   preDefinedValueId?: string | number; // ID from pre-defined options
   preDefinedLabel?: string; // Label for display
+  role?: 'source' | 'target'; // 'source' = Sender fills, 'target' = Signer fills
 }
 
 export interface PDFPage {

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 export interface PDFBuilderEmbedProps {
   apiKey: string;
   apiBaseUrl?: string;
+  customerId?: string; // Customer ID for multi-tenant scenarios
   initialDocumentId?: string; // Load existing document
   onSave?: (documentId: string) => void;
   onContinue?: (documentId: string) => void;
@@ -19,6 +20,7 @@ export interface PDFBuilderEmbedProps {
 export const PDFBuilderEmbed = ({
   apiKey,
   apiBaseUrl,
+  customerId,
   initialDocumentId,
   onSave,
   onContinue,
@@ -27,7 +29,7 @@ export const PDFBuilderEmbed = ({
   const [pages, setPages] = useState<PDFPage[]>([]);
   const [selectedFormat, setSelectedFormat] = useState<PDFFormat>("A4");
   const [loading, setLoading] = useState(true);
-  const [sdk] = useState(() => new SignatureKitProSDK({ apiKey, apiBaseUrl }));
+  const [sdk] = useState(() => new SignatureKitProSDK({ apiKey, apiBaseUrl, customerId }));
 
   useEffect(() => {
     const loadData = async () => {
@@ -124,7 +126,7 @@ export const PDFBuilderEmbed = ({
 
   const handleSave = async () => {
     try {
-      const result = await sdk.savePDFBuilder(pages, selectedFormat);
+      const result = await sdk.savePDFBuilder(pages, selectedFormat, undefined, customerId);
       toast.success("Document saved successfully");
       onSave?.(result.documentId);
     } catch (error) {
@@ -136,7 +138,7 @@ export const PDFBuilderEmbed = ({
   const handleContinue = async () => {
     try {
       // Save first, then call onContinue
-      const result = await sdk.savePDFBuilder(pages, selectedFormat);
+      const result = await sdk.savePDFBuilder(pages, selectedFormat, undefined, customerId);
       toast.success("Document saved");
       onContinue?.(result.documentId);
     } catch (error) {

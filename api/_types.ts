@@ -28,6 +28,7 @@ export interface ApiKey {
   created_at: string;
   last_used_at: string | null;
   active: boolean;
+  expires_at: string | null;
 }
 
 export interface Document {

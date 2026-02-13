@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,6 @@ import { SignatureCanvas } from "./SignatureCanvas";
 import { TRUE_A4_DIMENSIONS } from "@/constants/dimensions";
 import { DatePicker } from "./DatePicker";
 import { PDFElement } from "./PDFBuilder";
-import RichTextEditor from "./RichTextEditor";
 import { X, Check } from "lucide-react";
 
 interface FieldEditModalProps {
@@ -16,7 +15,7 @@ interface FieldEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   value: string | boolean;
-  onSave: (value: string | boolean) => void;
+  onSave: (value: string | boolean, role?: 'source' | 'target') => void;
 }
 
 export const FieldEditModal = ({
@@ -27,15 +26,30 @@ export const FieldEditModal = ({
   onSave
 }: FieldEditModalProps) => {
   const [localValue, setLocalValue] = useState<string | boolean>(value);
+  const [localRole, setLocalRole] = useState<'source' | 'target'>('target');
+
+  useEffect(() => {
+    if (isOpen) {
+      setLocalValue(value);
+      setLocalRole(element?.role || 'target');
+    }
+  }, [isOpen, value, element]);
 
   const handleSave = () => {
-    onSave(localValue);
+    onSave(localValue, localRole);
     onClose();
   };
 
   const handleSignatureComplete = (dataURL: string) => {
     setLocalValue(dataURL);
-    onSave(dataURL);
+    // For signature directly, we might want to save immediately or wait for save button
+    // But consistent with original, we wait for save button unless we want auto-save
+    // Original implementation called onSave immediately for signature?
+    // Let's keep it simple: update local state, user must click Save.
+    // Wait, original might have closed on signature complete.
+    // Let's look at previous version... it did `onSave(dataURL); onClose();`
+    // So let's do that but include role.
+    onSave(dataURL, localRole);
     onClose();
   };
 
@@ -117,7 +131,31 @@ export const FieldEditModal = ({
             {element.type === 'signature' ? 'Add Signature' : `Edit ${element.type}`}
           </DialogTitle>
         </DialogHeader>
-        
+
+        <div className="mb-4">
+          <label className="text-sm font-medium text-foreground block mb-2">Who fills this?</label>
+          <div className="flex gap-2 p-1 bg-muted rounded-lg">
+            <button
+              className={`flex-1 text-sm py-1.5 px-3 rounded-md transition-colors ${localRole === 'source'
+                  ? 'bg-background shadow-sm text-foreground font-medium'
+                  : 'text-muted-foreground hover:text-foreground'
+                }`}
+              onClick={() => setLocalRole('source')}
+            >
+              Sender (Pre-fill)
+            </button>
+            <button
+              className={`flex-1 text-sm py-1.5 px-3 rounded-md transition-colors ${(localRole === 'target' || !localRole)
+                  ? 'bg-background shadow-sm text-foreground font-medium'
+                  : 'text-muted-foreground hover:text-foreground'
+                }`}
+              onClick={() => setLocalRole('target')}
+            >
+              Signer (Recipient)
+            </button>
+          </div>
+        </div>
+
         {renderFieldInput()}
 
         {element.type !== 'signature' && (

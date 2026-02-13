@@ -25,18 +25,18 @@ interface CompletionComponentProps {
   sessionStorageKey: string;
   dataValidator: (data: any) => boolean;
   dataExtractor: (data: any) => { pages: PDFPage[], elements: PDFElement[] };
-  
+
   // Navigation
   backRoute: string;
   backButtonText: string;
-  
+
   // UI texts
   title: string;
   subtitle?: string;
-  
+
   // Download handler
   onDownload: (pages: PDFPage[], formData: FormData) => Promise<void>;
-  
+
   // Optional completion handler
   onComplete?: (formData: FormData) => void;
 }
@@ -61,10 +61,10 @@ export const CompletionComponent = ({
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0);
   const [showOverlay, setShowOverlay] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  
+
   // Use the form completion hook to get pre-filled data
   const { formData: preFilledData, loading: formDataLoading } = useFormCompletion();
-  
+
 
   useEffect(() => {
     // Check if mobile
@@ -85,48 +85,48 @@ export const CompletionComponent = ({
           navigate('/');
           return;
         }
-        
+
         const data = JSON.parse(storedData);
-        
+
         if (!data || !dataValidator(data)) {
           navigate('/');
           return;
         }
-        
+
         const { pages: pagesData, elements } = dataExtractor(data);
-        
+
         setPages(pagesData);
-        
+
         // Filter elements and separate pre-filled from interactive
         const allElementsWithPage = elements.map(element => ({
           ...element,
           pageIndex: pagesData.findIndex(page => page.elements.some(el => el.id === element.id))
         }));
-        
+
         // Check if element is pre-populated based on COMMON_VARIABLES or existing pre-definition
         const isElementPrePopulated = (element: PDFElement) => {
           if (element.preDefinedValueId) return true;
-          
+
           // Check against COMMON_VARIABLES for pre-populated fields
           if (element.id && element.id.startsWith('rich-text-')) {
             const variableName = element.id.replace('rich-text-', '');
             const variable = COMMON_VARIABLES.find(v => v.name === variableName);
             return variable?.prePopulated === true;
           }
-          
+
           return false;
         };
-        
+
         const preFilledElements = allElementsWithPage.filter(isElementPrePopulated);
-        const interactiveElements = allElementsWithPage.filter(element => 
+        const interactiveElements = allElementsWithPage.filter(element =>
           !isElementPrePopulated(element) && element.type !== 'date'
         );
-        
+
         setAllElements(interactiveElements);
-        
+
         // Initialize form data
         const initialFormData: FormData = {};
-        
+
         // Set pre-defined values using the actual backend data
         preFilledElements.forEach(element => {
           if (element.type === 'checkbox') {
@@ -136,12 +136,15 @@ export const CompletionComponent = ({
             const preDefinedKey = element.preDefinedValueId as string;
             const actualValue = preFilledData[preDefinedKey];
             initialFormData[element.id] = actualValue || `Auto-filled: ${element.preDefinedLabel || element.placeholder}`;
+          } else if (element.role === 'source' && element.content) {
+            // Pre-fill Source inputs with the content defined in Builder
+            initialFormData[element.id] = element.content;
           } else {
             // Handle COMMON_VARIABLES pre-populated fields
             if (element.id && element.id.startsWith('rich-text-')) {
               const variableName = element.id.replace('rich-text-', '');
               const variable = COMMON_VARIABLES.find(v => v.name === variableName);
-              
+
               if (variable?.prePopulated) {
                 if (variableName === 'patient_id') {
                   initialFormData[element.id] = `PT${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
@@ -154,7 +157,7 @@ export const CompletionComponent = ({
             }
           }
         });
-        
+
         // Set defaults for interactive elements (skip pre-populated ones)
         elements.forEach(element => {
           if (!isElementPrePopulated(element)) {
@@ -168,9 +171,9 @@ export const CompletionComponent = ({
             }
           }
         });
-        
+
         setFormData(initialFormData);
-        
+
         // Focus first interactive element if mobile and exists
         if (interactiveElements.length > 0) {
           setActiveElement(interactiveElements[0].id);
@@ -178,7 +181,7 @@ export const CompletionComponent = ({
             setTimeout(() => scrollToElement(interactiveElements[0].id), 300);
           }
         }
-        
+
       } catch (error) {
         console.error('Error loading data:', error);
         navigate('/');
@@ -247,13 +250,13 @@ export const CompletionComponent = ({
   const scrollToElement = (elementId: string) => {
     // Find target element
     let targetElement: HTMLElement | null = null;
-    
+
     // Text variables are rendered with data-variable attribute
     if (elementId.startsWith('rich-text-')) {
       const variableName = elementId.replace('rich-text-', '');
       targetElement = document.querySelector(`[data-variable="${variableName}"]`) as HTMLElement;
     }
-    
+
     // Try other selectors for signatures and fallback
     if (!targetElement) {
       const selectors = [
@@ -261,7 +264,7 @@ export const CompletionComponent = ({
         `clickable-${elementId.replace('rich-text-', '')}`,
         elementId
       ];
-      
+
       for (const selector of selectors) {
         targetElement = document.getElementById(selector);
         if (targetElement) break;
@@ -275,9 +278,9 @@ export const CompletionComponent = ({
     const currentScrollY = window.scrollY || window.pageYOffset;
     const isSignature = !elementId.startsWith('rich-text-');
     const paddingTop = 20;
-    
+
     let elementTopAbsolute = elementRect.top + currentScrollY;
-    
+
     // For signatures, use stored Y coordinate relative to page container
     if (isSignature) {
       const pageContainer = targetElement.closest('[data-page-index]');
@@ -285,17 +288,17 @@ export const CompletionComponent = ({
         const containerRect = (pageContainer as HTMLElement).getBoundingClientRect();
         const containerTopAbsolute = containerRect.top + currentScrollY;
         const elementData = allElements.find(el => el.id === elementId);
-        
+
         if (elementData?.y !== undefined) {
           elementTopAbsolute = containerTopAbsolute + elementData.y;
         }
       }
     }
-    
+
     // Subtract signature height so top is visible, not bottom
     const signatureHeight = isSignature ? (elementRect.height || TRUE_A4_DIMENSIONS.SIGNATURE_HEIGHT) : 0;
     const targetScroll = Math.max(0, elementTopAbsolute - paddingTop - signatureHeight);
-    
+
     window.scrollTo({
       top: targetScroll,
       behavior: 'smooth'
@@ -307,7 +310,7 @@ export const CompletionComponent = ({
       ...prev,
       [elementId]: value
     }));
-    
+
     // Update inline display if rich text content (only for text/date fields, not signatures)
     if (elementId.startsWith('rich-text-')) {
       const variableName = elementId.replace('rich-text-', '');
@@ -323,10 +326,10 @@ export const CompletionComponent = ({
   const handleNavigateToField = (index: number) => {
     if (index >= 0 && index < allElements.length) {
       const element = allElements[index];
-      
+
       setCurrentFieldIndex(index);
       setActiveElement(element.id);
-      
+
       // Wait for DOM to update, then scroll to element
       setTimeout(() => {
         scrollToElement(element.id);
@@ -340,7 +343,7 @@ export const CompletionComponent = ({
     if (elementIndex !== -1) {
       setCurrentFieldIndex(elementIndex);
     }
-    
+
     // Mobile field navigation will handle editing
   };
 
@@ -368,14 +371,14 @@ export const CompletionComponent = ({
       pages.forEach(page => {
         elements.push(...page.elements);
       });
-      
+
       const completedFields = elements.filter(element => {
         const value = formData[element.id];
         // Pre-filled elements are automatically considered complete
         if (element.preDefinedValueId) return true;
         return value !== "" && value !== false && value !== null && value !== undefined;
       }).length;
-      
+
       return Math.round((completedFields / elements.length) * 100);
     } catch {
       return 0;
@@ -402,265 +405,265 @@ export const CompletionComponent = ({
       <div className="mx-auto p-6 pb-[50vh] max-w-4xl">
         {/* PDF with Interactive Elements */}
         <div>
-            {!isMobile ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Interactive PDF</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Click on the highlighted areas to fill out the form
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="pdf-renderer-container relative border rounded-lg bg-gray-50 overflow-x-auto overflow-y-hidden">
-                    {pages.length > 0 ? (
-                      <div className="space-y-8">
-                        {pages.map((page, pageIndex) => (
-                          <div key={page.id} className="relative" data-page-index={pageIndex}>
-                            {/* Page Number Label */}
-                            {pages.length > 1 && (
-                              <div className="absolute -top-6 left-0 text-sm text-muted-foreground">
-                                Page {pageIndex + 1}
-                              </div>
-                            )}
-                             <div 
-                               className={`relative bg-white shadow-lg rounded-lg mx-auto ${page.backgroundImage === 'rich-text-content' ? '' : 'overflow-hidden'}`}
-                               style={{ width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`, height: page.backgroundImage === 'rich-text-content' ? 'auto' : `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px` }}
-                             >
-                               {(() => {
-                                 const bgImage = page.backgroundImage;
-                                 const richTextContent = (page as any).richTextContent || '';
-                                 return page.backgroundImage ? (
-                                   page.backgroundImage == 'rich-text-content' ? (
-                                     // Rich text content rendered with RichTextEditor - read-only preview
-                                     <RichTextEditor
-                                       key={`preview-${pageIndex}-${richTextContent.substring(0, 50)}`}
-                                       value={richTextContent}
-                                       readOnly={true}
-                                       onChange={() => {}}
-                                       className="w-full"
-                                       style={{ width: '100%' }}
-                                     />
-                                 ) : (
-                                   // Blob URL for PDF
-                                   <PDFRenderer
-                                     key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
-                                     fileUrl={page.backgroundImage}
-                                     width={TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}
-                                     height={TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}
-                                     pageNumber={pageIndex + 1}
-                                     className=""
-                                   />
-                                 )
-                               ) : (
-                                  <div className="bg-white border border-gray-200 rounded flex items-center justify-center" style={{ width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`, height: `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px` }}>
-                                    <div className="text-center text-muted-foreground">
-                                      <p>Page {pageIndex + 1}</p>
-                                      <p className="text-sm">No background image</p>
-                                    </div>
-                                  </div>
+          {!isMobile ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Interactive PDF</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Click on the highlighted areas to fill out the form
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="pdf-renderer-container relative border rounded-lg bg-gray-50 overflow-x-auto overflow-y-hidden">
+                  {pages.length > 0 ? (
+                    <div className="space-y-8">
+                      {pages.map((page, pageIndex) => (
+                        <div key={page.id} className="relative" data-page-index={pageIndex}>
+                          {/* Page Number Label */}
+                          {pages.length > 1 && (
+                            <div className="absolute -top-6 left-0 text-sm text-muted-foreground">
+                              Page {pageIndex + 1}
+                            </div>
+                          )}
+                          <div
+                            className={`relative bg-white shadow-lg rounded-lg mx-auto ${page.backgroundImage === 'rich-text-content' ? '' : 'overflow-hidden'}`}
+                            style={{ width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`, height: page.backgroundImage === 'rich-text-content' ? 'auto' : `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px` }}
+                          >
+                            {(() => {
+                              const bgImage = page.backgroundImage;
+                              const richTextContent = (page as any).richTextContent || '';
+                              return page.backgroundImage ? (
+                                page.backgroundImage == 'rich-text-content' ? (
+                                  // Rich text content rendered with RichTextEditor - read-only preview
+                                  <RichTextEditor
+                                    key={`preview-${pageIndex}-${richTextContent.substring(0, 50)}`}
+                                    value={richTextContent}
+                                    readOnly={true}
+                                    onChange={() => { }}
+                                    className="w-full"
+                                    style={{ width: '100%' }}
+                                  />
+                                ) : (
+                                  // Blob URL for PDF
+                                  <PDFRenderer
+                                    key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
+                                    fileUrl={page.backgroundImage}
+                                    width={TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}
+                                    height={TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}
+                                    pageNumber={pageIndex + 1}
+                                    className=""
+                                  />
                                 )
-                               })()}
-                               {/* Interactive Elements Overlay - Show signatures for rich-text-content, skip text/date fields */}
-                              {page.elements.filter(element => 
-                                page.backgroundImage !== 'rich-text-content' || element.type === 'signature'
-                              ).map((element) => {
-                                // SIMPLIFIED: Use centralized dimensions
-                                const CONTENT_WIDTH = TRUE_A4_DIMENSIONS.CONTENT_WIDTH;
-                                const CONTENT_HEIGHT = TRUE_A4_DIMENSIONS.CONTENT_HEIGHT;
-                                const TOOLBAR_HEIGHT = TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT;
-                                
-                                // Only adjust for toolbar if this is rich text content (which has a toolbar)
-                                // PDF pages don't have a toolbar, so no adjustment needed
-                                const isRichTextPage = page.backgroundImage === 'rich-text-content';
-                                
-                                // For PDF pages (not rich text), coordinates are stored relative to the canvas
-                                // No adjustment needed for X as the coordinate systems match
-                                const adjustedElement = element.type === 'signature' ? {
-                                  ...element,
-                                  x: element.x, // Direct coordinate mapping - coordinates are already correct
-                                  y: isRichTextPage ? element.y - TOOLBAR_HEIGHT : element.y // Only remove toolbar offset for rich text pages
-                                } : element;
-                                
-                                return (
+                              ) : (
+                                <div className="bg-white border border-gray-200 rounded flex items-center justify-center" style={{ width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`, height: `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px` }}>
+                                  <div className="text-center text-muted-foreground">
+                                    <p>Page {pageIndex + 1}</p>
+                                    <p className="text-sm">No background image</p>
+                                  </div>
+                                </div>
+                              )
+                            })()}
+                            {/* Interactive Elements Overlay - Show signatures for rich-text-content, skip text/date fields */}
+                            {page.elements.filter(element =>
+                              page.backgroundImage !== 'rich-text-content' || element.type === 'signature'
+                            ).map((element) => {
+                              // SIMPLIFIED: Use centralized dimensions
+                              const CONTENT_WIDTH = TRUE_A4_DIMENSIONS.CONTENT_WIDTH;
+                              const CONTENT_HEIGHT = TRUE_A4_DIMENSIONS.CONTENT_HEIGHT;
+                              const TOOLBAR_HEIGHT = TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT;
+
+                              // Only adjust for toolbar if this is rich text content (which has a toolbar)
+                              // PDF pages don't have a toolbar, so no adjustment needed
+                              const isRichTextPage = page.backgroundImage === 'rich-text-content';
+
+                              // For PDF pages (not rich text), coordinates are stored relative to the canvas
+                              // No adjustment needed for X as the coordinate systems match
+                              const adjustedElement = element.type === 'signature' ? {
+                                ...element,
+                                x: element.x, // Direct coordinate mapping - coordinates are already correct
+                                y: isRichTextPage ? element.y - TOOLBAR_HEIGHT : element.y // Only remove toolbar offset for rich text pages
+                              } : element;
+
+                              return (
                                 <div
                                   key={element.id}
                                   id={`pdf-element-${element.id}`}
                                 >
-                                     <InteractivePDFElement
-                                       element={adjustedElement}
-                                       scale={1.0} // No scaling needed - preview container is same size as builder
-                                       value={formData[element.id] || ''}
-                                       onUpdate={(value) => handleInputChange(element.id, value)}
-                                       isActive={activeElement === element.id}
-                                       onActivate={() => handleElementClick(element.id)}
-                                       hideOverlay={!showOverlay}
-                                        isMobile={element.type !== 'date'} // Dates are not interactive
-                                        showHighlight={activeElement === element.id}
-                                        readOnly={!!element.preDefinedValueId} // Make pre-filled fields read-only
-                                     />
-                                </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-[750px] text-muted-foreground">
-                        <div className="text-center">
-                          <p className="text-lg mb-2">No PDF uploaded</p>
-                          <p className="text-sm">Please go back and upload a PDF file first.</p>
-                          <Button 
-                            onClick={() => navigate(backRoute)} 
-                            className="mt-4"
-                            variant="outline"
-                          >
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            {backButtonText}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              // Mobile View
-              <div className="pdf-renderer-container relative bg-gray-50 overflow-x-auto overflow-y-hidden">
-                {pages.length > 0 ? (
-                  <div className="space-y-8">
-                    {pages.map((page, pageIndex) => (
-                      <div key={page.id} className="relative" data-page-index={pageIndex}>
-                         <div 
-                           className="relative bg-white shadow-lg rounded overflow-hidden mx-auto" 
-                           style={{ width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`, height: `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px` }}
-                         >
-                           {page.backgroundImage ? (
-                              page.backgroundImage === 'rich-text-content' ? (
-                                // Rich text content rendered with ReactQuill (read-only, no toolbar)
-                                <div 
-                                  className="bg-white overflow-hidden rich-text-preview"
-                                  style={{ 
-                                    width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`,  // Match builder: 794px
-                                    height: `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px`, // Match builder: 1123px
-                                  }}
-                                >
-                                  <RichTextEditor
-                                    key={`preview-mobile-${pageIndex}-${(page as any).richTextContent?.substring(0, 50)}`}
-                                    value={(page as any).richTextContent || ''}
-                                    readOnly={true}
-                                    onChange={() => {}} // Required prop even in read-only mode
-                                    className="w-full"
-                                    style={{ width: '100%' }}
+                                  <InteractivePDFElement
+                                    element={adjustedElement}
+                                    scale={1.0} // No scaling needed - preview container is same size as builder
+                                    value={formData[element.id] || ''}
+                                    onUpdate={(value) => handleInputChange(element.id, value)}
+                                    isActive={activeElement === element.id}
+                                    onActivate={() => handleElementClick(element.id)}
+                                    hideOverlay={!showOverlay}
+                                    isMobile={element.type !== 'date'} // Dates are not interactive
+                                    showHighlight={activeElement === element.id}
+                                    readOnly={!!element.preDefinedValueId || element.role === 'source'} // Make pre-filled and Source fields read-only
                                   />
                                 </div>
-                              ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
-                                // Rendered page as image
-                                <img
-                                 src={page.backgroundImage}
-                                 alt={`Page ${pageIndex + 1}`}
-                                 className="w-full h-full object-contain bg-white"
-                               />
-                             ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('blob:') ? (
-                               // Blob URL for PDF
-                                <PDFRenderer
-                                  key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
-                                  fileUrl={page.backgroundImage}
-                                  width={TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}
-                                  height={TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}
-                                  pageNumber={pageIndex + 1}
-                                  className=""
-                                />
-                             ) : page.backgroundImage instanceof File ? (
-                                // File object (PDF or other file)
-                                 <PDFRenderer
-                                   key={`pdf-page-${pageIndex}-${page.backgroundImage.name}`}
-                                   fileUrl={page.backgroundImage}
-                                   width={TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}
-                                   height={TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}
-                                   pageNumber={pageIndex + 1}
-                                   className=""
-                                 />
-                              ) : (
-                                // Other string format
-                                 <PDFRenderer
-                                   key={`pdf-page-${pageIndex}`}
-                                   fileUrl={page.backgroundImage}
-                                   width={TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}
-                                   height={TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}
-                                   pageNumber={pageIndex + 1}
-                                   className=""
-                                 />
-                              )
-                            ) : (
-                              <div className="bg-white border border-gray-200 rounded flex items-center justify-center" style={{ width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`, height: `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px` }}>
-                                <div className="text-center text-muted-foreground">
-                                  <p>Page {pageIndex + 1}</p>
-                                  <p className="text-sm">No background image</p>
-                                </div>
-                              </div>
-                            )}
-                          {/* Interactive Elements Overlay - Show signatures for rich-text-content, skip text/date fields */}
-                          {page.elements.filter(element => 
-                            page.backgroundImage !== 'rich-text-content' || element.type === 'signature'
-                          ).map((element) => {
-                            // SIMPLIFIED: Use centralized dimensions (same as desktop)
-                            const CONTENT_WIDTH = TRUE_A4_DIMENSIONS.CONTENT_WIDTH;
-                            const CONTENT_HEIGHT = TRUE_A4_DIMENSIONS.CONTENT_HEIGHT;
-                            const TOOLBAR_HEIGHT = TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT;
-                            
-                            // Only adjust for toolbar if this is rich text content (which has a toolbar)
-                            // PDF pages don't have a toolbar, so no adjustment needed
-                            const isRichTextPage = page.backgroundImage === 'rich-text-content';
-                            
-                            const adjustedElement = element.type === 'signature' ? {
-                              ...element,
-                              // No horizontal adjustment needed - preview now matches builder dimensions exactly
-                              x: element.x, // Direct coordinate mapping - no centering offset
-                              y: isRichTextPage ? element.y - TOOLBAR_HEIGHT : element.y // Only remove toolbar offset for rich text pages
-                            } : element;
-                            
-                            return (
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-[750px] text-muted-foreground">
+                      <div className="text-center">
+                        <p className="text-lg mb-2">No PDF uploaded</p>
+                        <p className="text-sm">Please go back and upload a PDF file first.</p>
+                        <Button
+                          onClick={() => navigate(backRoute)}
+                          className="mt-4"
+                          variant="outline"
+                        >
+                          <ArrowLeft className="w-4 h-4 mr-2" />
+                          {backButtonText}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            // Mobile View
+            <div className="pdf-renderer-container relative bg-gray-50 overflow-x-auto overflow-y-hidden">
+              {pages.length > 0 ? (
+                <div className="space-y-8">
+                  {pages.map((page, pageIndex) => (
+                    <div key={page.id} className="relative" data-page-index={pageIndex}>
+                      <div
+                        className="relative bg-white shadow-lg rounded overflow-hidden mx-auto"
+                        style={{ width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`, height: `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px` }}
+                      >
+                        {page.backgroundImage ? (
+                          page.backgroundImage === 'rich-text-content' ? (
+                            // Rich text content rendered with ReactQuill (read-only, no toolbar)
+                            <div
+                              className="bg-white overflow-hidden rich-text-preview"
+                              style={{
+                                width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`,  // Match builder: 794px
+                                height: `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px`, // Match builder: 1123px
+                              }}
+                            >
+                              <RichTextEditor
+                                key={`preview-mobile-${pageIndex}-${(page as any).richTextContent?.substring(0, 50)}`}
+                                value={(page as any).richTextContent || ''}
+                                readOnly={true}
+                                onChange={() => { }} // Required prop even in read-only mode
+                                className="w-full"
+                                style={{ width: '100%' }}
+                              />
+                            </div>
+                          ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('data:image/') ? (
+                            // Rendered page as image
+                            <img
+                              src={page.backgroundImage}
+                              alt={`Page ${pageIndex + 1}`}
+                              className="w-full h-full object-contain bg-white"
+                            />
+                          ) : typeof page.backgroundImage === 'string' && page.backgroundImage.startsWith('blob:') ? (
+                            // Blob URL for PDF
+                            <PDFRenderer
+                              key={`pdf-page-${pageIndex}-${page.backgroundImage}`}
+                              fileUrl={page.backgroundImage}
+                              width={TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}
+                              height={TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}
+                              pageNumber={pageIndex + 1}
+                              className=""
+                            />
+                          ) : page.backgroundImage instanceof File ? (
+                            // File object (PDF or other file)
+                            <PDFRenderer
+                              key={`pdf-page-${pageIndex}-${page.backgroundImage.name}`}
+                              fileUrl={page.backgroundImage}
+                              width={TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}
+                              height={TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}
+                              pageNumber={pageIndex + 1}
+                              className=""
+                            />
+                          ) : (
+                            // Other string format
+                            <PDFRenderer
+                              key={`pdf-page-${pageIndex}`}
+                              fileUrl={page.backgroundImage}
+                              width={TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}
+                              height={TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}
+                              pageNumber={pageIndex + 1}
+                              className=""
+                            />
+                          )
+                        ) : (
+                          <div className="bg-white border border-gray-200 rounded flex items-center justify-center" style={{ width: `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`, height: `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px` }}>
+                            <div className="text-center text-muted-foreground">
+                              <p>Page {pageIndex + 1}</p>
+                              <p className="text-sm">No background image</p>
+                            </div>
+                          </div>
+                        )}
+                        {/* Interactive Elements Overlay - Show signatures for rich-text-content, skip text/date fields */}
+                        {page.elements.filter(element =>
+                          page.backgroundImage !== 'rich-text-content' || element.type === 'signature'
+                        ).map((element) => {
+                          // SIMPLIFIED: Use centralized dimensions (same as desktop)
+                          const CONTENT_WIDTH = TRUE_A4_DIMENSIONS.CONTENT_WIDTH;
+                          const CONTENT_HEIGHT = TRUE_A4_DIMENSIONS.CONTENT_HEIGHT;
+                          const TOOLBAR_HEIGHT = TRUE_A4_DIMENSIONS.TOOLBAR_HEIGHT;
+
+                          // Only adjust for toolbar if this is rich text content (which has a toolbar)
+                          // PDF pages don't have a toolbar, so no adjustment needed
+                          const isRichTextPage = page.backgroundImage === 'rich-text-content';
+
+                          const adjustedElement = element.type === 'signature' ? {
+                            ...element,
+                            // No horizontal adjustment needed - preview now matches builder dimensions exactly
+                            x: element.x, // Direct coordinate mapping - no centering offset
+                            y: isRichTextPage ? element.y - TOOLBAR_HEIGHT : element.y // Only remove toolbar offset for rich text pages
+                          } : element;
+
+                          return (
                             <div
                               key={element.id}
                               id={`pdf-element-${element.id}`}
                             >
-                               <InteractivePDFElement
-                                 element={adjustedElement}
-                                 scale={1.0} // No scaling needed - mobile container is same size as builder
-                                 value={formData[element.id] || ''}
-                                 onUpdate={(value) => handleInputChange(element.id, value)}
-                                 isActive={activeElement === element.id}
-                                 onActivate={() => handleElementClick(element.id)}
-                                 hideOverlay={!showOverlay}
-                                 isMobile={true}
-                                 readOnly={!!element.preDefinedValueId} // Make pre-filled fields read-only
-                               />
+                              <InteractivePDFElement
+                                element={adjustedElement}
+                                scale={1.0} // No scaling needed - mobile container is same size as builder
+                                value={formData[element.id] || ''}
+                                onUpdate={(value) => handleInputChange(element.id, value)}
+                                isActive={activeElement === element.id}
+                                onActivate={() => handleElementClick(element.id)}
+                                hideOverlay={!showOverlay}
+                                isMobile={true}
+                                readOnly={!!element.preDefinedValueId || element.role === 'source'} // Make pre-filled and Source fields read-only
+                              />
                             </div>
-                            );
-                          })}
-                        </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-[495px] text-muted-foreground">
-                    <div className="text-center">
-                      <p className="text-lg mb-2">No PDF uploaded</p>
-                      <p className="text-sm">Please go back and upload a PDF file first.</p>
-                      <Button 
-                        onClick={() => navigate(backRoute)} 
-                        className="mt-4"
-                        variant="outline"
-                      >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        {backButtonText}
-                      </Button>
                     </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-[495px] text-muted-foreground">
+                  <div className="text-center">
+                    <p className="text-lg mb-2">No PDF uploaded</p>
+                    <p className="text-sm">Please go back and upload a PDF file first.</p>
+                    <Button
+                      onClick={() => navigate(backRoute)}
+                      className="mt-4"
+                      variant="outline"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      {backButtonText}
+                    </Button>
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Field Navigation Stepper */}

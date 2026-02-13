@@ -21,7 +21,7 @@ const PDFStart = () => {
       interactiveElements: [],
       isRichTextDocument: true
     }));
-    
+
     toast("New A4 document created!");
     navigate('/rich-text-builder');
   };
@@ -34,13 +34,13 @@ const PDFStart = () => {
       // Handle PDF file - detect page count and create pages
       try {
         const blobUrl = URL.createObjectURL(file);
-        
+
         // Load the PDF to get page count
         const pdfBytes = await file.arrayBuffer();
         const pdfDoc = await PDFDocument.load(pdfBytes);
         const pageCount = pdfDoc.getPageCount();
-        
-        
+
+
         // Create page objects for each page in the PDF
         const newPages = Array.from({ length: pageCount }, (_, index) => ({
           id: `page-${Date.now()}-${index}`,
@@ -50,10 +50,10 @@ const PDFStart = () => {
           originalFileName: file.name,
           pageNumber: index + 1 // PDFRenderer will use this to show the correct page
         }));
-        
+
         // Store using ApiService for consistency
         await ApiService.savePDFBuilderData(newPages, "A4");
-        
+
         toast(`PDF "${file.name}" loaded successfully! ${pageCount} pages detected.`);
         navigate('/pdf-builder');
       } catch (error) {
@@ -67,36 +67,42 @@ const PDFStart = () => {
 
   const handleNonPdfUpload = async (file: File) => {
     setIsConverting(true);
-    
+
     try {
       toast("Converting document to PDF...", { duration: 3000 });
-      
+
       // Create FormData for file upload
       const formData = new FormData();
       formData.append('file', file);
-      
-      // TODO: Replace with your actual backend endpoint
-      const response = await fetch('/api/convert-to-pdf', {
+
+      // Use the configured API URL
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const apiKey = import.meta.env.VITE_API_KEY || '';
+
+      const response = await fetch(`${apiUrl}/convert-to-pdf`, {
         method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+        },
         body: formData,
       });
-      
+
       if (!response.ok) {
         throw new Error(`Conversion failed: ${response.statusText}`);
       }
-      
+
       // Get the converted PDF blob from the response
       const pdfBlob = await response.blob();
-      
+
       // Load the PDF to get page count
       const pdfBytes = await pdfBlob.arrayBuffer();
       const pdfDoc = await PDFDocument.load(pdfBytes);
       const pageCount = pdfDoc.getPageCount();
-      
-      
+
+
       // Create a blob URL for the converted PDF
       const blobUrl = URL.createObjectURL(pdfBlob);
-      
+
       // Create page objects for each page in the PDF
       const newPages = Array.from({ length: pageCount }, (_, index) => ({
         id: `page-${Date.now()}-${index}`,
@@ -106,15 +112,15 @@ const PDFStart = () => {
         originalFileName: file.name,
         pageNumber: index + 1
       }));
-      
+
       // Store using ApiService for consistency
       await ApiService.savePDFBuilderData(newPages, "A4");
-      
-      toast(`Document converted to PDF successfully! "${file.name}" loaded with ${pageCount} pages.`, { 
-        duration: 3000 
+
+      toast(`Document converted to PDF successfully! "${file.name}" loaded with ${pageCount} pages.`, {
+        duration: 3000
       });
       navigate('/pdf-builder');
-      
+
     } catch (error) {
       console.error('Error converting file:', error);
       toast.error(`Failed to convert file: ${error.message}`);
@@ -129,14 +135,14 @@ const PDFStart = () => {
         <h1 className="text-2xl font-bold text-foreground">PDF Builder</h1>
         <p className="text-muted-foreground">Create fillable PDF documents with drag-and-drop ease</p>
       </header>
-      
+
       <div className="container mx-auto px-6 py-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-foreground mb-4">Get Started</h2>
             <p className="text-lg text-muted-foreground">Choose how you want to create your PDF document</p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Card className="p-6">
               <CardHeader className="pb-4">
@@ -147,8 +153,8 @@ const PDFStart = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-muted-foreground">Start with a blank A4 document and build your form from scratch</p>
-                <Button 
-                  onClick={handleCreateNew} 
+                <Button
+                  onClick={handleCreateNew}
                   className="w-full"
                   size="lg"
                 >
@@ -157,7 +163,7 @@ const PDFStart = () => {
                 </Button>
               </CardContent>
             </Card>
-            
+
             <Card className="p-6">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2">

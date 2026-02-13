@@ -17,6 +17,8 @@ const PDFBuilderPage = lazy(() => import("./pages/PDFBuilder"));
 const PDFCompletionPage = lazy(() => import("./pages/PDFCompletion"));
 const RichTextBuilderPage = lazy(() => import("./pages/RichTextBuilder"));
 const RichTextCompletionPage = lazy(() => import("./pages/RichTextCompletion"));
+const DocumentPreview = lazy(() => import("./pages/DocumentPreview"));
+const Demo = lazy(() => import("./pages/Demo"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -55,6 +57,8 @@ const App = () => (
               <Route path="/rich-text-builder" element={<RichTextBuilderPage />} />
               <Route path="/rich-text-completion" element={<RichTextCompletionPage />} />
               <Route path="/pdf-completion" element={<PDFCompletionPage />} />
+              <Route path="/preview" element={<DocumentPreview />} />
+              <Route path="/demo" element={<Demo />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

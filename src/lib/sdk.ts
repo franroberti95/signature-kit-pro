@@ -4,6 +4,7 @@ import type { PDFPage, PDFFormat } from '@/components/pdf-builder/PDFBuilder';
 export interface SDKConfig {
   apiKey: string;
   apiBaseUrl?: string; // Defaults to '/api' (relative) or can be absolute URL
+  customerId?: string; // Optional customer ID for multi-tenant scenarios
 }
 
 export interface Document {
@@ -53,6 +54,7 @@ export interface Session {
 class SignatureKitProSDK {
   private apiKey: string;
   private apiBaseUrl: string;
+  private customerId?: string;
 
   constructor(config: SDKConfig) {
     if (!config.apiKey) {
@@ -60,6 +62,7 @@ class SignatureKitProSDK {
     }
     this.apiKey = config.apiKey;
     this.apiBaseUrl = config.apiBaseUrl || '/api';
+    this.customerId = config.customerId;
   }
 
   private async request<T>(
@@ -70,13 +73,20 @@ class SignatureKitProSDK {
       ? endpoint 
       : `${this.apiBaseUrl}${endpoint}`;
     
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      'X-API-Key': this.apiKey,
+      ...options.headers,
+    };
+
+    // Add customer ID header if provided
+    if (this.customerId) {
+      headers['X-Customer-Id'] = this.customerId;
+    }
+    
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': this.apiKey,
-        ...options.headers,
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -90,10 +100,16 @@ class SignatureKitProSDK {
   }
 
   // Documents API
-  async createDocument(params: CreateDocumentParams): Promise<{ document: Document }> {
+  async createDocument(params: CreateDocumentParams & { customerId?: string }): Promise<{ document: Document }> {
+    const payload: any = { ...params };
+    if (this.customerId) {
+      payload.customerId = this.customerId;
+    } else if (params.customerId) {
+      payload.customerId = params.customerId;
+    }
     return this.request<{ document: Document }>('/documents', {
       method: 'POST',
-      body: JSON.stringify(params),
+      body: JSON.stringify(payload),
     });
   }
 
@@ -113,11 +129,16 @@ class SignatureKitProSDK {
 
   async listDocuments(filters?: { 
     status?: string; 
-    documentType?: 'pdf' | 'rich_text' 
+    documentType?: 'pdf' | 'rich_text';
+    customerId?: string;
   }): Promise<{ documents: Document[] }> {
     const queryParams = new URLSearchParams();
     if (filters?.status) queryParams.append('status', filters.status);
     if (filters?.documentType) queryParams.append('document_type', filters.documentType);
+    const customerIdToUse = filters?.customerId || this.customerId;
+    if (customerIdToUse) {
+      queryParams.append('customer_id', customerIdToUse);
+    }
     
     const query = queryParams.toString();
     return this.request<{ documents: Document[] }>(
@@ -173,12 +194,14 @@ class SignatureKitProSDK {
   async savePDFBuilder(
     pages: PDFPage[], 
     format: PDFFormat, 
-    title?: string
+    title?: string,
+    customerId?: string
   ): Promise<{ documentId: string }> {
     const result = await this.createDocument({
       documentType: 'pdf',
       title: title || 'Untitled PDF',
       data: { pages, format },
+      customerId: customerId || this.customerId,
     });
     return { documentId: result.document.id };
   }

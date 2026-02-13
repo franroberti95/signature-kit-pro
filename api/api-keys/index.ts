@@ -22,7 +22,7 @@ async function handler(req: AuthenticatedRequest, res: VercelResponse) {
       `;
 
       // Don't expose full API key, only show first 8 chars
-      const sanitizedKeys = keys.map((key) => ({
+      const sanitizedKeys = (keys as ApiKey[]).map((key) => ({
         id: key.id,
         keyName: key.key_name,
         apiKey: key.api_key.substring(0, 8) + '...' + key.api_key.substring(key.api_key.length - 4),

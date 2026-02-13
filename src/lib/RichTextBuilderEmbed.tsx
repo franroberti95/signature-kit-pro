@@ -32,6 +32,7 @@ interface PageData {
 export interface RichTextBuilderEmbedProps {
   apiKey: string;
   apiBaseUrl?: string;
+  customerId?: string; // Customer ID for multi-tenant scenarios
   initialDocumentId?: string;
   onSave?: (documentId: string) => void;
   onContinue?: (documentId: string) => void;
@@ -41,6 +42,7 @@ export interface RichTextBuilderEmbedProps {
 export const RichTextBuilderEmbed = ({
   apiKey,
   apiBaseUrl,
+  customerId,
   initialDocumentId,
   onSave,
   onContinue,
@@ -50,7 +52,7 @@ export const RichTextBuilderEmbed = ({
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const editorRefs = useRef<(RichTextEditorRef | null)[]>([]);
-  const [sdk] = useState(() => new SignatureKitProSDK({ apiKey, apiBaseUrl }));
+  const [sdk] = useState(() => new SignatureKitProSDK({ apiKey, apiBaseUrl, customerId }));
 
   useEffect(() => {
     const loadData = async () => {

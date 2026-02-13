@@ -15,28 +15,55 @@ async function handler(req: AuthenticatedRequest, res: VercelResponse) {
   // GET - List documents
   if (req.method === 'GET') {
     try {
-      const { status, document_type } = req.query;
+      const { status, document_type, customer_id } = req.query;
+      const customerIdHeader = req.headers['x-customer-id'] as string;
+      const customerId = customer_id || customerIdHeader;
 
       let query = sql`
-        SELECT id, document_type, title, status, created_at, updated_at
+        SELECT id, document_type, title, status, customer_id, created_at, updated_at
         FROM documents
         WHERE user_id = ${userId}
       `;
 
-      if (status && typeof status === 'string') {
+      // Filter by customer_id if provided
+      if (customerId && typeof customerId === 'string') {
         query = sql`
-          SELECT id, document_type, title, status, created_at, updated_at
+          SELECT id, document_type, title, status, customer_id, created_at, updated_at
           FROM documents
-          WHERE user_id = ${userId} AND status = ${status}
+          WHERE user_id = ${userId} AND customer_id = ${customerId}
         `;
       }
 
+      if (status && typeof status === 'string') {
+        if (customerId && typeof customerId === 'string') {
+          query = sql`
+            SELECT id, document_type, title, status, customer_id, created_at, updated_at
+            FROM documents
+            WHERE user_id = ${userId} AND status = ${status} AND customer_id = ${customerId}
+          `;
+        } else {
+          query = sql`
+            SELECT id, document_type, title, status, customer_id, created_at, updated_at
+            FROM documents
+            WHERE user_id = ${userId} AND status = ${status}
+          `;
+        }
+      }
+
       if (document_type && typeof document_type === 'string') {
-        query = sql`
-          SELECT id, document_type, title, status, created_at, updated_at
-          FROM documents
-          WHERE user_id = ${userId} AND document_type = ${document_type}
-        `;
+        if (customerId && typeof customerId === 'string') {
+          query = sql`
+            SELECT id, document_type, title, status, customer_id, created_at, updated_at
+            FROM documents
+            WHERE user_id = ${userId} AND document_type = ${document_type} AND customer_id = ${customerId}
+          `;
+        } else {
+          query = sql`
+            SELECT id, document_type, title, status, customer_id, created_at, updated_at
+            FROM documents
+            WHERE user_id = ${userId} AND document_type = ${document_type}
+          `;
+        }
       }
 
       const documents = await query;
@@ -47,6 +74,7 @@ async function handler(req: AuthenticatedRequest, res: VercelResponse) {
           documentType: doc.document_type,
           title: doc.title,
           status: doc.status,
+          customerId: doc.customer_id,
           createdAt: doc.created_at,
           updatedAt: doc.updated_at,
         })),
@@ -60,7 +88,9 @@ async function handler(req: AuthenticatedRequest, res: VercelResponse) {
   // POST - Create document
   if (req.method === 'POST') {
     try {
-      const { document_type, title, data } = req.body;
+      const { document_type, title, data, customerId } = req.body;
+      const customerIdHeader = req.headers['x-customer-id'] as string;
+      const customer_id = customerId || customerIdHeader;
 
       if (!document_type || !title || !data) {
         return res
@@ -75,9 +105,9 @@ async function handler(req: AuthenticatedRequest, res: VercelResponse) {
       }
 
       const newDoc = await sql`
-        INSERT INTO documents (user_id, document_type, title, data, status)
-        VALUES (${userId}, ${document_type}, ${title}, ${JSON.stringify(data)}::jsonb, 'draft')
-        RETURNING id, document_type, title, status, created_at, updated_at
+        INSERT INTO documents (user_id, document_type, title, data, status, customer_id)
+        VALUES (${userId}, ${document_type}, ${title}, ${JSON.stringify(data)}::jsonb, 'draft', ${customer_id || null})
+        RETURNING id, document_type, title, status, customer_id, created_at, updated_at
       `;
 
       return res.status(201).json({
@@ -86,6 +116,7 @@ async function handler(req: AuthenticatedRequest, res: VercelResponse) {
           documentType: newDoc[0].document_type,
           title: newDoc[0].title,
           status: newDoc[0].status,
+          customerId: newDoc[0].customer_id,
           createdAt: newDoc[0].created_at,
           updatedAt: newDoc[0].updated_at,
         },
