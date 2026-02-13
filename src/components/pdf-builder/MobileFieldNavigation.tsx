@@ -30,39 +30,39 @@ export const MobileFieldNavigation = ({
   onDownload
 }: MobileFieldNavigationProps) => {
   const [localValue, setLocalValue] = useState<string | boolean>('');
-  
+
   // Filter out pre-populated fields from stepper navigation
   const isFieldPrePopulated = (element: PDFElement) => {
     // Check if field is marked as pre-populated or has a pre-defined value
-    if (element.preDefinedValueId || element.defaultValue) {
+    if (element.preDefinedValueId) {
       return true;
     }
-    
+
     // Check against COMMON_VARIABLES for pre-populated fields
     if (element.id && element.id.startsWith('rich-text-')) {
       const variableName = element.id.replace('rich-text-', '');
       const variable = COMMON_VARIABLES.find(v => v.name === variableName);
       return variable?.prePopulated === true;
     }
-    
+
     // Check by label match
-    const variable = COMMON_VARIABLES.find(v => 
-      v.label === element.preDefinedLabel || 
+    const variable = COMMON_VARIABLES.find(v =>
+      v.label === element.preDefinedLabel ||
       v.name === element.placeholder?.toLowerCase().replace(/\s+/g, '_')
     );
     return variable?.prePopulated === true;
   };
-  
+
   // Only show non-pre-populated fields in stepper
   const interactiveElements = elements.filter(el => !isFieldPrePopulated(el));
   const currentElement = interactiveElements[currentIndex];
-  
-  const completedCount = interactiveElements.filter(el => 
+
+  const completedCount = interactiveElements.filter(el =>
     formData[el.id] && formData[el.id] !== false
   ).length;
-  
+
   const progress = interactiveElements.length > 0 ? (completedCount / interactiveElements.length) * 100 : 0;
-  
+
   const canGoPrevious = currentIndex > 0;
   const canGoNext = currentIndex < interactiveElements.length - 1;
   const isLastField = currentIndex === interactiveElements.length - 1;
@@ -77,9 +77,8 @@ export const MobileFieldNavigation = ({
       .filter(el => isFieldRequired(el))
       .filter(el => {
         const value = formData[el.id];
-        return !value || 
-               (typeof value === 'string' && value.trim() === '') ||
-               (typeof value === 'boolean' && value === false);
+        return !value ||
+          (typeof value === 'string' && value.trim() === '');
       });
 
     return emptyRequiredFields;
@@ -119,14 +118,14 @@ export const MobileFieldNavigation = ({
     if (emptyFields.length === 0) {
       onDownload?.();
     } else {
-      const fieldNames = emptyFields.map(el => 
+      const fieldNames = emptyFields.map(el =>
         el.preDefinedLabel || el.placeholder || `Field ${elements.indexOf(el) + 1}`
       ).join(', ');
-      
+
       toast.error("Required fields missing", {
         description: `Please fill in: ${fieldNames}`
       });
-      
+
       // Navigate to first empty required field
       const firstEmptyIndex = elements.indexOf(emptyFields[0]);
       if (firstEmptyIndex !== -1) {
@@ -146,7 +145,7 @@ export const MobileFieldNavigation = ({
     const getFieldLabel = () => {
       // Use proper label with correct capitalization from COMMON_VARIABLES
       let label = currentElement.preDefinedLabel || currentElement.placeholder || 'Field';
-      
+
       // Extract variable name from element ID if it follows rich-text-{variable} pattern
       if (currentElement.id && currentElement.id.startsWith('rich-text-')) {
         const variableName = currentElement.id.replace('rich-text-', '');
@@ -155,16 +154,16 @@ export const MobileFieldNavigation = ({
           label = variable.label;
         }
       }
-      
+
       // Also check by matching label text to COMMON_VARIABLES
-      const matchedVariable = COMMON_VARIABLES.find(v => 
+      const matchedVariable = COMMON_VARIABLES.find(v =>
         v.label?.toLowerCase() === label.toLowerCase().trim() ||
         v.name.replace(/_/g, ' ').toLowerCase() === label.toLowerCase().trim()
       );
       if (matchedVariable?.label) {
         label = matchedVariable.label;
       }
-      
+
       return (
         <label className="text-sm font-medium text-foreground flex items-center gap-1 mb-2">
           {label}
@@ -179,9 +178,9 @@ export const MobileFieldNavigation = ({
       case 'signature':
         return (
           <div className="p-4 bg-background border-t">
-          <div className="space-y-2">
-            {getFieldLabel()}
-            <div className="flex justify-center p-2 rounded-md border-2 border-border">
+            <div className="space-y-2">
+              {getFieldLabel()}
+              <div className="flex justify-center p-2 rounded-md border-2 border-border">
                 <SignatureCanvas
                   width={TRUE_A4_DIMENSIONS.SIGNATURE_WIDTH}
                   height={TRUE_A4_DIMENSIONS.SIGNATURE_HEIGHT}
@@ -219,8 +218,8 @@ export const MobileFieldNavigation = ({
       case 'checkbox':
         return (
           <div className="p-4 bg-background border-t">
-          <div className="space-y-2">
-            <div className="flex items-center justify-center p-2 rounded-md">
+            <div className="space-y-2">
+              <div className="flex items-center justify-center p-2 rounded-md">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="mobile-checkbox"
@@ -296,7 +295,7 @@ export const MobileFieldNavigation = ({
 
       {/* Field Editor */}
       {renderFieldEditor()}
-      
+
       {/* Removed red error message bar - validation info now shown on Done button */}
 
       {/* Navigation Panel - Always show */}
@@ -313,18 +312,17 @@ export const MobileFieldNavigation = ({
               <ChevronLeft className="w-4 h-4 mr-1" />
               Previous
             </Button>
-            
+
             {isLastField ? (
               <Button
                 variant="default"
                 size="sm"
                 onClick={handleDone}
                 disabled={!allRequiredFieldsFilled}
-                className={`flex-1 transition-colors ${
-                  allRequiredFieldsFilled 
-                    ? 'bg-green-600 hover:bg-green-700 text-white' 
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300'
-                }`}
+                className={`flex-1 transition-colors ${allRequiredFieldsFilled
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300'
+                  }`}
                 title={!allRequiredFieldsFilled ? `Complete ${emptyRequiredFields.length} required field(s) to finish` : 'Complete and download PDF'}
               >
                 {allRequiredFieldsFilled ? 'Done' : `${emptyRequiredFields.length} fields required`}

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Plus, X, User, Calendar, PenTool } from "lucide-react";
-import { COMMON_VARIABLES } from "@/constants/variables";
+import { COMMON_VARIABLES, VariableType } from "@/constants/variables";
 
 // Custom Quill embed for variables to make them atomic
 const Embed = Quill.import('blots/embed');
@@ -20,7 +20,7 @@ class VariableEmbed extends Embed {
   static create(value: { variableName: string; displayText: string; backgroundColor: string; textColor: string }) {
     const node = super.create(value);
     const { variableName, displayText, backgroundColor, textColor } = value;
-    
+
     node.setAttribute('contenteditable', 'false');
     node.setAttribute('data-variable', variableName);
     node.style.cssText = `
@@ -37,9 +37,10 @@ class VariableEmbed extends Embed {
       background: ${backgroundColor};
       color: ${textColor};
       vertical-align: baseline;
+      vertical-align: baseline;
     `;
     node.textContent = displayText;
-    
+
     return node;
   }
 
@@ -61,8 +62,8 @@ interface RichTextEditorProps {
   placeholder?: string;
   className?: string;
   style?: React.CSSProperties;
-  variables?: string[];
-  onVariablesChange?: (variables: string[]) => void;
+  variables?: VariableType[];
+  onVariablesChange?: (variables: VariableType[]) => void;
   readOnly?: boolean;
 }
 
@@ -72,9 +73,9 @@ export interface RichTextEditorRef {
   insertVariable: (variable: string) => void;
 }
 
-const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({ 
-  value = "", 
-  onChange, 
+const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
+  value = "",
+  onChange,
   placeholder = "Start typing...",
   className = "",
   style,
@@ -84,7 +85,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
 }, ref) => {
   const [showVariableModal, setShowVariableModal] = useState(false);
   const [newVariable, setNewVariable] = useState("");
-  const [currentVariables, setCurrentVariables] = useState<string[]>(variables);
+  const [currentVariables, setCurrentVariables] = useState<VariableType[]>(variables);
   const quillRef = useRef<ReactQuill>(null);
   const prevVariablesRef = useRef<string>(JSON.stringify(variables));
 
@@ -131,7 +132,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
           // Find variable data for proper styling
           const variable_data = COMMON_VARIABLES.find(v => v.name === variable);
           const displayText = variable_data?.label || variable;
-          
+
           // Apply background color based on type
           let backgroundColor = '#dbeafe'; // light blue
           let textColor = '#1e40af';
@@ -143,7 +144,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
             backgroundColor = '#e9d5ff'; // light purple
             textColor = '#6d28d9';
           }
-          
+
           // Insert as atomic embed
           editor.insertEmbed(range.index, 'variable-embed', {
             variableName: variable,
@@ -151,7 +152,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
             backgroundColor: backgroundColor,
             textColor: textColor
           });
-          
+
           // Move cursor after the embed and add space
           editor.setSelection(range.index + 1, 0);
           editor.insertText(range.index + 1, ' ');
@@ -163,7 +164,8 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
 
   useEffect(() => {
     // Only update if variables actually changed (use ref to track previous value to avoid infinite loops)
-    const currentStr = JSON.stringify([...variables].sort());
+    // simple comparison by looking at names
+    const currentStr = JSON.stringify(variables.map(v => v.name).sort());
     if (prevVariablesRef.current !== currentStr) {
       prevVariablesRef.current = currentStr;
       setCurrentVariables(variables);
@@ -178,7 +180,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
       [{ 'size': ['small', false, 'large', 'huge'] }],
       ['bold', 'italic', 'underline', 'strike'],
       [{ 'color': [] }],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1' }, { 'indent': '+1' }],
       [{ 'direction': 'rtl' }],
       [{ 'align': [] }],
       ['link', 'image'],
@@ -195,7 +197,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
 
   const handleDrop = (e: React.DragEvent) => {
     const variableData = e.dataTransfer.getData('text/plain');
-    
+
     try {
       // Try to parse as JSON first (for signature objects)
       const parsedData = JSON.parse(variableData);
@@ -206,16 +208,16 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
     } catch {
       // If not JSON, treat as variable (either "name" or "{{name}}" format)
       let variableName = variableData;
-      
+
       // Extract variable name from {{variable}} format
       if (variableData && variableData.startsWith('{{') && variableData.endsWith('}}')) {
         variableName = variableData.slice(2, -2);
       }
-      
-      if (variableName && (currentVariables.includes(variableName) || COMMON_VARIABLES.some(v => v.name === variableName))) {
+
+      if (variableName && (currentVariables.some(v => v.name === variableName) || COMMON_VARIABLES.some(v => v.name === variableName))) {
         e.preventDefault();
         e.stopPropagation();
-        
+
         // Insert styled variable at drop position - use embed approach
         const editor = quillRef.current?.getEditor();
         if (editor) {
@@ -223,7 +225,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
           if (selection) {
             const variable_data = COMMON_VARIABLES.find(v => v.name === variableName);
             const displayText = variable_data?.label || variableName;
-            
+
             // Apply background color based on type
             let backgroundColor = '#dbeafe'; // light blue
             let textColor = '#1e40af';
@@ -235,7 +237,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
               backgroundColor = '#e9d5ff'; // light purple
               textColor = '#6d28d9';
             }
-            
+
             // Insert as atomic embed
             editor.insertEmbed(selection.index, 'variable-embed', {
               variableName: variableName,
@@ -243,7 +245,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
               backgroundColor: backgroundColor,
               textColor: textColor
             });
-            
+
             // Move cursor after the embed and add space
             editor.setSelection(selection.index + 1, 0);
             editor.insertText(selection.index + 1, ' ');
@@ -267,7 +269,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
       if (range) {
         const variable_data = COMMON_VARIABLES.find(v => v.name === variable);
         const displayText = variable_data?.label || variable;
-        
+
         // Apply background color based on type
         let backgroundColor = '#dbeafe'; // light blue
         let textColor = '#1e40af';
@@ -279,7 +281,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
           backgroundColor = '#e9d5ff'; // light purple
           textColor = '#6d28d9';
         }
-        
+
         // Insert as atomic embed
         editor.insertEmbed(range.index, 'variable-embed', {
           variableName: variable,
@@ -287,7 +289,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
           backgroundColor: backgroundColor,
           textColor: textColor
         });
-        
+
         // Move cursor after the embed and add space
         editor.setSelection(range.index + 1, 0);
         editor.insertText(range.index + 1, ' ');
@@ -327,8 +329,13 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
   };
 
   const addNewVariable = () => {
-    if (newVariable.trim() && !currentVariables.includes(newVariable.trim())) {
-      const updated = [...currentVariables, newVariable.trim()];
+    if (newVariable.trim() && !currentVariables.some(v => v.name === newVariable.trim())) {
+      const newVarObj: VariableType = {
+        name: newVariable.trim(),
+        label: newVariable.trim(),
+        type: 'text'
+      };
+      const updated = [...currentVariables, newVarObj];
       setCurrentVariables(updated);
       onVariablesChange?.(updated);
       insertVariable(newVariable.trim());
@@ -336,8 +343,8 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
     }
   };
 
-  const removeVariable = (variable: string) => {
-    const updated = currentVariables.filter(v => v !== variable);
+  const removeVariable = (variableName: string) => {
+    const updated = currentVariables.filter(v => v.name !== variableName);
     setCurrentVariables(updated);
     onVariablesChange?.(updated);
   };
@@ -350,20 +357,20 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
           onDragOver={handleDragOver}
           className={readOnly ? "h-full" : ""}
         >
-              <ReactQuill
-                ref={quillRef}
-                theme="snow"
-                value={value}
-                onChange={onChange}
-                placeholder={placeholder}
-                modules={modules}
-                formats={formats}
-                className={readOnly ? "h-full w-full" : "w-full"}
-                style={readOnly ? { height: '100%' } : {}}
-                readOnly={readOnly}
-              />
+          <ReactQuill
+            ref={quillRef}
+            theme="snow"
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            modules={modules}
+            formats={formats}
+            className={readOnly ? "h-full w-full" : "w-full"}
+            style={readOnly ? { height: '100%' } : {}}
+            readOnly={readOnly}
+          />
         </div>
-        
+
       </div>
 
     </>

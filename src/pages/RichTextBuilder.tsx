@@ -3,9 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { 
-  FileText, 
-  X, 
+import {
+  FileText,
+  X,
   PenTool,
   Type,
   Calendar,
@@ -85,7 +85,7 @@ const InteractiveSignatureBox = ({ element, onUpdate, onDelete }: {
           const rect = container.getBoundingClientRect();
           const newX = e.clientX - rect.left - dragStart.x;
           const newY = e.clientY - rect.top - dragStart.y;
-          
+
           onUpdate({
             ...element,
             x: newX,
@@ -124,7 +124,7 @@ const InteractiveSignatureBox = ({ element, onUpdate, onDelete }: {
       onMouseDown={(e) => {
         if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.signature-content')) {
           setIsDragging(true);
-          
+
           // Calculate drag start relative to container, not viewport
           const container = (e.target as HTMLElement).closest(`[style*="width: ${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px"]`) as HTMLElement;
           if (container) {
@@ -134,7 +134,7 @@ const InteractiveSignatureBox = ({ element, onUpdate, onDelete }: {
               y: (e.clientY - rect.top) - element.y,
             });
           }
-          
+
           e.preventDefault();
         }
       }}
@@ -143,7 +143,7 @@ const InteractiveSignatureBox = ({ element, onUpdate, onDelete }: {
         <PenTool className="h-4 w-4 mb-1" />
         <span>{element.label}</span>
       </div>
-  
+
       {/* Delete button */}
       <button
         className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
@@ -157,14 +157,14 @@ const InteractiveSignatureBox = ({ element, onUpdate, onDelete }: {
 
 const RichTextBuilderPage = () => {
   const navigate = useNavigate();
-  
+
   // Multi-page state management
   const [pages, setPages] = useState<PageData[]>([
     { id: `page-${Date.now()}`, content: "", elements: [] }
   ]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const editorRefs = useRef<(RichTextEditorRef | null)[]>([]);
-  
+
   // SIMPLIFIED: Use centralized TRUE A4 dimensions
   const containerWidth = `${TRUE_A4_DIMENSIONS.CONTAINER_WIDTH}px`;
   const containerHeight = `${TRUE_A4_DIMENSIONS.CONTAINER_HEIGHT}px`;
@@ -173,17 +173,17 @@ const RichTextBuilderPage = () => {
   const estimateContentSize = (htmlContent: string) => {
     // Strip HTML tags and get text content
     const textContent = htmlContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    
+
     // SIMPLIFIED: Use centralized page limits
     const avgCharsPerLine = PAGE_LIMITS.avgCharsPerLine;
     const estimatedLines = Math.ceil(textContent.length / avgCharsPerLine);
-    
+
     // Account for rich text formatting (headers, spacing, etc.)
-    const formattingMultiplier = htmlContent.includes('<h') ? 1.5 : 
-                               htmlContent.includes('<p>') ? 1.2 : 1.0;
-    
+    const formattingMultiplier = htmlContent.includes('<h') ? 1.5 :
+      htmlContent.includes('<p>') ? 1.2 : 1.0;
+
     const adjustedLines = Math.ceil(estimatedLines * formattingMultiplier);
-    
+
     return {
       characters: textContent.length,
       estimatedLines: adjustedLines,
@@ -294,15 +294,15 @@ const RichTextBuilderPage = () => {
   // Delete page
   const deletePage = (pageIndex: number) => {
     if (pages.length <= 1) return; // Don't delete if only one page
-    
+
     const updatedPages = pages.filter((_, index) => index !== pageIndex);
     setPages(updatedPages);
-    
+
     // Adjust current page index if needed
     if (currentPageIndex >= updatedPages.length) {
       setCurrentPageIndex(updatedPages.length - 1);
     }
-    
+
     updateStoredData(updatedPages);
   };
 
@@ -319,15 +319,15 @@ const RichTextBuilderPage = () => {
   const handleContentChange = (pageIndex: number, newContent: string) => {
     // Check content limits
     const stats = estimateContentSize(newContent);
-    
-    
+
+
     // Update the page content
-    const updatedPages = pages.map((page, index) => 
+    const updatedPages = pages.map((page, index) =>
       index === pageIndex ? { ...page, content: newContent } : page
     );
     setPages(updatedPages);
     updateStoredData(updatedPages);
-    
+
     // Optional: Auto-create new page if current page is significantly over limit
     // Uncomment below if you want automatic page creation
     /*
@@ -362,7 +362,7 @@ const RichTextBuilderPage = () => {
       const sortedElements = [...page.elements].sort((a, b) => {
         return (a.y || 0) - (b.y || 0);
       });
-      
+
       // Convert interactive signature elements to PDF builder format
       // Array order is preserved, so stepper will use this order
       const pdfElements = sortedElements.map((element, elementIndex) => {
@@ -395,20 +395,20 @@ const RichTextBuilderPage = () => {
         richTextVariables: COMMON_VARIABLES
       };
     });
-    
+
     // Store in the format expected by RichTextCompletionPage
     const completionData = {
       pages: pdfPages,
       selectedFormat: "A4", // Always use A4 format
       isRichTextDocument: true
     };
-    
+
     // Store using ApiService for consistency with completion component
     await ApiService.savePDFBuilderData(pdfPages, "A4");
-    
+
     // Store in sessionStorage with the key that RichTextCompletionPage expects
     sessionStorage.setItem('richTextBuilderData', JSON.stringify(completionData));
-    
+
     const totalElements = pdfPages.reduce((sum, page) => sum + page.elements.length, 0);
     toast(`Document ready! ${pages.length} pages created with ${totalElements} signature fields.`);
     navigate('/rich-text-completion');
@@ -427,10 +427,10 @@ const RichTextBuilderPage = () => {
       height: SIGNATURE_HEIGHT,
       pageIndex,
     };
-    
-    
-    const updatedPages = pages.map((page, index) => 
-      index === pageIndex 
+
+
+    const updatedPages = pages.map((page, index) =>
+      index === pageIndex
         ? { ...page, elements: [...page.elements, newElement] }
         : page
     );
@@ -440,7 +440,7 @@ const RichTextBuilderPage = () => {
   };
 
   const updateInteractiveElement = (updatedElement: InteractiveElement) => {
-    const updatedPages = pages.map((page, index) => 
+    const updatedPages = pages.map((page, index) =>
       index === updatedElement.pageIndex
         ? { ...page, elements: page.elements.map(el => el.id === updatedElement.id ? updatedElement : el) }
         : page
@@ -474,18 +474,18 @@ const RichTextBuilderPage = () => {
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
-          <div>
-            <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
+            <div>
+              <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
                 <FileText className="h-5 w-5" />
                 Document Editor
-            </h1>
-            <p className="text-sm text-muted-foreground">
+              </h1>
+              <p className="text-sm text-muted-foreground">
                 Create professional documents with variables • A4 format
-            </p>
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
+            <Button
               onClick={() => clearEditorState(currentPageIndex)}
               variant="outline"
               size="sm"
@@ -493,30 +493,30 @@ const RichTextBuilderPage = () => {
             >
               Clear Format
             </Button>
-          <Button 
-            onClick={handleContinue}
+            <Button
+              onClick={handleContinue}
               className="bg-green-600 hover:bg-green-700 gap-2"
-          >
+            >
               Continue to Completion
-          </Button>
+            </Button>
           </div>
         </div>
       </header>
 
-              
+
       {/* Main Content Area */}
       <div className="flex flex-1 bg-gray-50">
         {/* Sticky Sidebar with draggable elements */}
         <div className="w-64 border-r border-border bg-card sticky top-0 h-screen overflow-y-auto">
           <div className="p-4 space-y-4">
             <h3 className="font-semibold text-sm text-foreground">Drag & Drop Elements</h3>
-            
+
             {/* Signature Boxes */}
             <div className="space-y-2">
               <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Signatures</h4>
               {COMMON_VARIABLES.filter(v => v.type === 'signature').map((variable) => (
-                  <div 
-                    key={variable.name}
+                <div
+                  key={variable.name}
                   draggable
                   onDragStart={(e) => {
                     e.dataTransfer.setData('text/plain', JSON.stringify({
@@ -542,7 +542,7 @@ const RichTextBuilderPage = () => {
               {COMMON_VARIABLES.filter(v => v.type === 'text').map((variable) => (
                 <div
                   key={variable.name}
-                      draggable
+                  draggable
                   onDragStart={(e) => {
                     e.dataTransfer.setData('text/plain', `{{${variable.name}}}`);
                   }}
@@ -560,9 +560,9 @@ const RichTextBuilderPage = () => {
                   <p className="text-xs text-blue-600 mt-1">
                     {variable.prePopulated ? 'Auto-filled • Click or drag to insert' : 'Click or drag to insert'}
                   </p>
-                  </div>
-                ))}
-              </div>
+                </div>
+              ))}
+            </div>
 
             {/* Date Fields */}
             <div className="space-y-2">
@@ -597,7 +597,7 @@ const RichTextBuilderPage = () => {
         {/* Multi-Page Editor Container */}
         <div className="flex-1 flex justify-center p-6 overflow-y-auto">
           <div className="flex flex-col gap-6">
-            
+
             {/* Pages */}
             {pages.map((page, pageIndex) => (
               <div key={page.id} className="relative">
@@ -607,33 +607,31 @@ const RichTextBuilderPage = () => {
                     <span className="text-sm font-medium text-muted-foreground">
                       Page {pageIndex + 1}
                     </span>
-                    
+
                     {/* Content Capacity Indicator */}
                     {(() => {
                       const stats = estimateContentSize(page.content || '');
                       return (
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1">
-                            <div 
+                            <div
                               className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden"
                               title={`${stats.estimatedLines}/${PAGE_LIMITS.maxLines} lines (${stats.percentageFull.toFixed(0)}% full)`}
                             >
-                              <div 
-                                className={`h-full transition-all duration-300 ${
-                                  stats.isOverLimit ? 'bg-red-500' : 
-                                  stats.isNearLimit ? 'bg-yellow-500' : 'bg-green-500'
-                                }`}
+                              <div
+                                className={`h-full transition-all duration-300 ${stats.isOverLimit ? 'bg-red-500' :
+                                    stats.isNearLimit ? 'bg-yellow-500' : 'bg-green-500'
+                                  }`}
                                 style={{ width: `${Math.min(stats.percentageFull, 100)}%` }}
                               />
                             </div>
-                            <span className={`text-xs ${
-                              stats.isOverLimit ? 'text-red-600 font-medium' : 
-                              stats.isNearLimit ? 'text-yellow-600' : 'text-gray-500'
-                            }`}>
+                            <span className={`text-xs ${stats.isOverLimit ? 'text-red-600 font-medium' :
+                                stats.isNearLimit ? 'text-yellow-600' : 'text-gray-500'
+                              }`}>
                               {stats.estimatedLines}/{PAGE_LIMITS.maxLines}
                             </span>
                           </div>
-                          
+
                           {stats.isOverLimit && (
                             <Badge variant="destructive" className="text-xs">
                               Page Full
@@ -647,8 +645,8 @@ const RichTextBuilderPage = () => {
                         </div>
                       );
                     })()}
-            </div>
-            
+                  </div>
+
                   {pages.length > 1 && (
                     <Button
                       variant="ghost"
@@ -659,10 +657,10 @@ const RichTextBuilderPage = () => {
                       <X className="h-4 w-4" />
                     </Button>
                   )}
-              </div>
-              
+                </div>
+
                 {/* Document Container - TRUE A4 794px width */}
-                <div 
+                <div
                   className="bg-white rounded-lg overflow-hidden relative shadow-md"
                   style={{ width: containerWidth, height: containerHeight }}
                   onDrop={(e) => {
@@ -675,7 +673,7 @@ const RichTextBuilderPage = () => {
                         const rect = e.currentTarget.getBoundingClientRect();
                         const dropX = e.clientX - rect.left;
                         const dropY = e.clientY - rect.top;
-                        
+
                         addInteractiveElement(signatureData, dropX, dropY, pageIndex);
                       }
                     } catch (error) {
@@ -697,17 +695,17 @@ const RichTextBuilderPage = () => {
                       }}
                       value={page.content}
                       onChange={(newContent) => handleContentChange(pageIndex, newContent)}
-                      variables={COMMON_VARIABLES.map(v => v.name)}
+                      variables={COMMON_VARIABLES}
                       className="h-full w-full"
-                      style={{ 
-                        height: containerHeight, 
+                      style={{
+                        height: containerHeight,
                         minHeight: containerHeight,
                         maxHeight: containerHeight,
                         overflow: 'hidden'
                       }}
                     />
                   </div>
-                  
+
                   {/* Interactive Elements Overlay - only for signature boxes */}
                   <div className="absolute inset-0 z-20 pointer-events-none">
                     {page.elements.map((element) => (
@@ -722,7 +720,7 @@ const RichTextBuilderPage = () => {
                 </div>
               </div>
             ))}
-            
+
             {/* Add Page Button */}
             <div className="flex flex-col items-center mt-4 space-y-2">
               <Button
@@ -737,7 +735,7 @@ const RichTextBuilderPage = () => {
                 Each page fits approximately {PAGE_LIMITS.maxLines} lines of content (adjusted to match PDF output). The progress bar shows current page capacity.
               </div>
             </div>
-            
+
           </div>
         </div>
       </div>

@@ -2,10 +2,18 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import { resolve } from "path";
 
+import dts from 'vite-plugin-dts';
+
 export default defineConfig({
   envPrefix: "SIGNATURE_KIT_PRO_",
   plugins: [
     react(),
+    dts({
+      include: ['src'],
+      insertTypesEntry: true,
+      rollupTypes: true,
+      tsconfigPath: './tsconfig.lib.json',
+    }),
   ],
   build: {
     lib: {

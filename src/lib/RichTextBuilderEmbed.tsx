@@ -185,7 +185,14 @@ export const RichTextBuilderEmbed = ({
       const result = await sdk.createDocument({
         documentType: 'rich_text',
         title: 'Untitled Rich Text Document',
-        data: { pages },
+        data: {
+          // Map pages to match PDFPage type (which requires format)
+          pages: pages.map(p => ({
+            ...p,
+            format: 'A4',
+            richTextVariables: COMMON_VARIABLES
+          }))
+        },
       });
       toast.success("Document saved successfully");
       onSave?.(result.document.id);
@@ -200,7 +207,14 @@ export const RichTextBuilderEmbed = ({
       const result = await sdk.createDocument({
         documentType: 'rich_text',
         title: 'Untitled Rich Text Document',
-        data: { pages },
+        data: {
+          // Map pages to match PDFPage type (which requires format)
+          pages: pages.map(p => ({
+            ...p,
+            format: 'A4',
+            richTextVariables: COMMON_VARIABLES
+          }))
+        },
       });
       toast.success("Document saved");
       onContinue?.(result.document.id);
