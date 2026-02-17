@@ -1,9 +1,11 @@
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 import { ClassProp } from 'class-variance-authority/types';
 import { ClassValue } from 'clsx';
+import { default as default_2 } from 'react';
 import { JSX as JSX_2 } from 'react/jsx-runtime';
 import * as ProgressPrimitive from '@radix-ui/react-progress';
 import * as React_2 from 'react';
+import { ReactNode } from 'react';
 import { VariantProps } from 'class-variance-authority';
 
 export declare const Button: React_2.ForwardRefExoticComponent<ButtonProps & React_2.RefAttributes<HTMLButtonElement>>;
@@ -13,7 +15,7 @@ declare interface ButtonProps extends React_2.ButtonHTMLAttributes<HTMLButtonEle
 }
 
 declare const buttonVariants: (props?: {
-    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | "toolbar" | "toolbar-active" | "format-card" | "pdf-action";
+    variant?: "link" | "default" | "destructive" | "outline" | "secondary" | "ghost" | "toolbar" | "toolbar-active" | "format-card" | "pdf-action";
     size?: "default" | "toolbar" | "format-card" | "sm" | "lg" | "icon";
 } & ClassProp) => string;
 
@@ -123,13 +125,15 @@ declare interface MobileFieldNavigationProps {
     onDownload?: () => void;
 }
 
-export declare const PDFBuilderEmbed: ({ apiKey, apiBaseUrl, customerId, initialDocumentId, onSave, onContinue, className, }: PDFBuilderEmbedProps) => JSX_2.Element;
+export declare const PDFBuilderEmbed: ({ apiKey, apiBaseUrl, customerId, initialDocumentId, initialPages, initialFormat, onSave, onContinue, className, }: PDFBuilderEmbedProps) => JSX_2.Element;
 
 export declare interface PDFBuilderEmbedProps {
-    apiKey: string;
+    apiKey?: string;
     apiBaseUrl?: string;
     customerId?: string;
     initialDocumentId?: string;
+    initialPages?: PDFPage[];
+    initialFormat?: PDFFormat;
     onSave?: (documentId: string) => void;
     onContinue?: (documentId: string) => void;
     className?: string;
@@ -178,6 +182,16 @@ declare interface PDFRendererProps {
     width: number;
     height: number;
     pageNumber?: number;
+    className?: string;
+}
+
+export declare const PDFStartScreen: ({ onSuccess, className }: PDFStartScreenProps) => JSX_2.Element;
+
+declare interface PDFStartScreenProps {
+    onSuccess: (data: {
+        pages: PDFPage[];
+        format: PDFFormat;
+    }) => void;
     className?: string;
 }
 
@@ -232,6 +246,12 @@ declare interface SignatureCanvasProps {
     onCancel: () => void;
 }
 
+declare interface SignatureKitConfig {
+    apiKey: string;
+    apiBaseUrl?: string;
+    customerId?: string;
+}
+
 export declare class SignatureKitProSDK {
     private apiKey;
     private apiBaseUrl;
@@ -278,6 +298,12 @@ export declare class SignatureKitProSDK {
         pages: PDFPage[];
         format: PDFFormat;
     } | null>;
+}
+
+export declare const SignatureKitProvider: default_2.FC<SignatureKitProviderProps>;
+
+declare interface SignatureKitProviderProps extends SignatureKitConfig {
+    children: ReactNode;
 }
 
 export declare const Textarea: React_2.ForwardRefExoticComponent<TextareaProps & React_2.RefAttributes<HTMLTextAreaElement>>;

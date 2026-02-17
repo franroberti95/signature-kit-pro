@@ -26,7 +26,8 @@ export default defineConfig({
       // Externalize dependencies - these won't be bundled
       external: (id) => {
         // Always externalize React (peer dependencies)
-        if (id === "react" || id === "react-dom") {
+        // Always externalize React (peer dependencies)
+        if (id === "react" || id === "react-dom" || id === "react/jsx-runtime") {
           return true;
         }
 
@@ -60,6 +61,7 @@ export default defineConfig({
         globals: {
           react: "React",
           "react-dom": "ReactDOM",
+          "react/jsx-runtime": "jsxRuntime",
         },
       },
     },

@@ -43,7 +43,7 @@ export const PDFCanvas = ({
   const [scale, setScale] = useState(1.0);
 
 
-  
+
 
   const handleDragOver = useCallback((e: React.DragEvent, pageIndex: number) => {
     e.preventDefault();
@@ -73,8 +73,9 @@ export const PDFCanvas = ({
       height: elementType === "text" ? 40 : elementType === "checkbox" ? 20 : 60,
       required: false,
       placeholder: `Enter ${elementType}...`,
+      role: 'source', // Default to Sender
     };
-    
+
     onAddElement(pageIndex, newElement);
     toast(`${elementType.charAt(0).toUpperCase() + elementType.slice(1)} field added to page ${pageIndex + 1}`);
   }, [scale, onAddElement]);
@@ -121,7 +122,7 @@ export const PDFCanvas = ({
             {totalElements} form {totalElements === 1 ? 'field' : 'fields'} across {pages.length} {pages.length === 1 ? 'page' : 'pages'}
           </div>
         </div>
-        
+
         {/* Zoom Controls */}
         <div className="flex items-center gap-2">
           <Button
@@ -161,13 +162,12 @@ export const PDFCanvas = ({
                 <div className="absolute -top-6 left-0 text-sm text-muted-foreground">
                   Page {pageIndex + 1}
                 </div>
-                
+
                 {/* PDF Page */}
                 <div className="relative bg-card shadow-lg rounded-lg overflow-hidden border border-pdf-border">
                   <div
-                    className={`relative bg-white transition-all duration-200 ${
-                      isPageDragOver ? "bg-drop-active ring-2 ring-primary" : ""
-                    }`}
+                    className={`relative bg-white transition-all duration-200 ${isPageDragOver ? "bg-drop-active ring-2 ring-primary" : ""
+                      }`}
                     style={{
                       width: `${displayWidth}px`,
                       height: `${displayHeight}px`,
@@ -194,7 +194,7 @@ export const PDFCanvas = ({
                     )}
 
                     {/* Grid pattern for alignment */}
-                    <div 
+                    <div
                       className="absolute inset-0 opacity-10 pointer-events-none"
                       style={{
                         backgroundImage: `

@@ -162,17 +162,32 @@ export const PDFElementComponent = ({
 
     switch (element.type) {
       case "text":
+        // Direct editing for Sender
+        if (isSource) {
+          return (
+            <div className={`${baseClasses} bg-white border-muted-foreground/20`}>
+              <textarea
+                value={element.content || ""}
+                onChange={(e) => onUpdate({ content: e.target.value })}
+                onMouseDown={(e) => e.stopPropagation()}
+                placeholder="Type here..."
+                className="w-full h-full p-1 bg-transparent border-none resize-none focus:outline-none focus:ring-0 text-gray-900 placeholder:text-gray-400"
+                style={{ fontSize }}
+              />
+            </div>
+          );
+        }
+        // Direct editing for Signer (Placeholder)
         return (
-          <div className={`${baseClasses} bg-white border-muted-foreground/20`} style={{ fontSize }}>
-            <span className="text-muted-foreground px-1">
-              {element.content ? (
-                <span className="text-foreground">{element.content}</span>
-              ) : element.preDefinedLabel ? (
-                getExampleValue(element.type, element.preDefinedLabel)
-              ) : (
-                element.placeholder || "Text Field"
-              )}
-            </span>
+          <div className={`${baseClasses} bg-white border-muted-foreground/20`}>
+            <textarea
+              value={element.placeholder || ""}
+              onChange={(e) => onUpdate({ placeholder: e.target.value })}
+              onMouseDown={(e) => e.stopPropagation()}
+              placeholder="Enter placeholder..."
+              className="w-full h-full p-1 bg-transparent border-none resize-none focus:outline-none focus:ring-0 text-black placeholder:text-gray-400"
+              style={{ fontSize }}
+            />
           </div>
         );
       case "signature":
@@ -184,13 +199,34 @@ export const PDFElementComponent = ({
           </div>
         );
       case "date":
+        // Direct editing for Sender
+        if (isSource) {
+          return (
+            <div className={`${baseClasses} bg-white border-muted-foreground/20`}>
+              <input
+                type="text" // Keep as text to allow flexible date formats or use type="date"
+                value={element.content || ""}
+                onChange={(e) => onUpdate({ content: e.target.value })}
+                onMouseDown={(e) => e.stopPropagation()}
+                placeholder="DD/MM/YYYY"
+                className="w-full h-full p-1 bg-transparent border-none focus:outline-none focus:ring-0 text-foreground"
+                style={{ fontSize }}
+              />
+            </div>
+          );
+        }
+        // Direct editing for Signer (Placeholder)
         return (
-          <div className={`${baseClasses} bg-white border-muted-foreground/20`} style={{ fontSize }}>
-            <span className="text-muted-foreground px-1">
-              {element.preDefinedLabel ?
-                getExampleValue(element.type, element.preDefinedLabel) :
-                "Date"}
-            </span>
+          <div className={`${baseClasses} bg-white border-muted-foreground/20`}>
+            <input
+              type="text"
+              value={element.placeholder || ""}
+              onChange={(e) => onUpdate({ placeholder: e.target.value })}
+              onMouseDown={(e) => e.stopPropagation()}
+              placeholder="Date Placeholder"
+              className="w-full h-full p-1 bg-transparent border-none focus:outline-none focus:ring-0 text-black placeholder:text-gray-400"
+              style={{ fontSize }}
+            />
           </div>
         );
       case "checkbox":
@@ -230,6 +266,13 @@ export const PDFElementComponent = ({
       onClick={(e) => {
         e.stopPropagation();
         onSelect();
+        // Reset config view when clicking the element body (natural reset)
+        // Only if not dragging to prevent accidental close after drag
+        if (!isDragging) {
+          // We keep selected but maybe close config? 
+          // User asked: "if you press again in the text, the first modal should appear"
+          setShowConfig(false);
+        }
       }}
     >
       {/* Element Content */}
@@ -240,26 +283,26 @@ export const PDFElementComponent = ({
         <div className="absolute inset-0 border-2 border-primary pointer-events-none">
           {/* Resize handles */}
           <div
-            className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-nw-resize pointer-events-auto hover:bg-primary/80"
+            className="absolute top-0 left-0 w-3 h-3 bg-primary rounded-full cursor-nw-resize pointer-events-auto hover:bg-primary/80 -translate-x-1/2 -translate-y-1/2 shadow-sm border border-white"
             onMouseDown={(e) => handleResizeMouseDown(e, 'nw')}
           ></div>
           <div
-            className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-ne-resize pointer-events-auto hover:bg-primary/80"
+            className="absolute top-0 right-0 w-3 h-3 bg-primary rounded-full cursor-ne-resize pointer-events-auto hover:bg-primary/80 translate-x-1/2 -translate-y-1/2 shadow-sm border border-white"
             onMouseDown={(e) => handleResizeMouseDown(e, 'ne')}
           ></div>
           <div
-            className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-sw-resize pointer-events-auto hover:bg-primary/80"
+            className="absolute bottom-0 left-0 w-3 h-3 bg-primary rounded-full cursor-sw-resize pointer-events-auto hover:bg-primary/80 -translate-x-1/2 translate-y-1/2 shadow-sm border border-white"
             onMouseDown={(e) => handleResizeMouseDown(e, 'sw')}
           ></div>
           <div
-            className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-se-resize pointer-events-auto hover:bg-primary/80"
+            className="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full cursor-se-resize pointer-events-auto hover:bg-primary/80 translate-x-1/2 translate-y-1/2 shadow-sm border border-white"
             onMouseDown={(e) => handleResizeMouseDown(e, 'se')}
           ></div>
         </div>
       )}
 
-      {/* Action Buttons */}
-      {isSelected && (
+      {/* Action Buttons - Hide when Config is Open */}
+      {isSelected && !showConfig && (
         <div className="absolute -top-8 right-0 flex items-center gap-1 bg-secondary text-secondary-foreground rounded px-2 py-1 shadow-md">
           <Button
             variant="ghost"
@@ -267,7 +310,7 @@ export const PDFElementComponent = ({
             className="w-6 h-6 p-0 hover:bg-secondary-hover"
             onClick={(e) => {
               e.stopPropagation();
-              setShowConfig(!showConfig);
+              setShowConfig(true);
             }}
           >
             <Settings className="w-3 h-3" />
@@ -289,34 +332,24 @@ export const PDFElementComponent = ({
       {/* Configuration Panel */}
       {showConfig && isSelected && (
         <div className="absolute top-full left-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-3 min-w-48 z-20">
+          <div className="flex items-center justify-between mb-2 pb-2 border-b border-border">
+            <span className="text-xs font-semibold">Settings</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-5 h-5 p-0 hover:bg-muted"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowConfig(false);
+              }}
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
           <div className="space-y-2">
-            <div>
-              <label className="text-xs font-medium text-foreground">Placeholder</label>
-              <Input
-                value={element.placeholder || ""}
-                onChange={(e) => onUpdate({ placeholder: e.target.value })}
-                onMouseDown={(e) => e.stopPropagation()}
-                onMouseUp={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-                className="text-xs h-7"
-                placeholder="Enter placeholder text"
-              />
-            </div>
 
-            {element.role === 'source' && (
-              <div>
-                <label className="text-xs font-medium text-foreground">Value (Pre-filled)</label>
-                <Input
-                  value={element.content || ""}
-                  onChange={(e) => onUpdate({ content: e.target.value })}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onMouseUp={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-xs h-7 border-blue-200 bg-blue-50"
-                  placeholder="Enter value..."
-                />
-              </div>
-            )}
+
+
 
             {/* Pre-defined Values Section */}
             {((element.type === 'text' && preDefinedFields?.text_field_options) ||
@@ -377,14 +410,21 @@ export const PDFElementComponent = ({
                 </div>
               )}
 
-            <div className="flex items-center gap-2">
+            <div
+              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onUpdate({ required: !element.required });
+              }}
+            >
               <input
                 type="checkbox"
                 checked={element.required || false}
-                onChange={(e) => onUpdate({ required: e.target.checked })}
-                className="w-3 h-3"
+                onChange={() => { }} // Controlled by parent div
+                className="w-3 h-3 pointer-events-none"
               />
-              <label className="text-xs text-foreground">Required field</label>
+              <label className="text-xs text-foreground cursor-pointer pointer-events-none">Required field</label>
             </div>
 
             <div className="pt-2 border-t border-border">

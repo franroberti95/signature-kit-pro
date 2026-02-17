@@ -1,10 +1,12 @@
 // Main library exports
+export { SignatureKitProvider } from '../contexts/SignatureKitContext';
 export { ToolbarPanel } from '../components/pdf-builder/ToolbarPanel';
 export { PDFCanvas } from '../components/pdf-builder/PDFCanvas';
 export { CompletionComponent } from './CompletionComponent';
 
 // Embedded components (for external use with API key)
 export { PDFBuilderEmbed } from './PDFBuilderEmbed';
+export { PDFStartScreen } from './PDFStartScreen';
 export { RichTextBuilderEmbed } from './RichTextBuilderEmbed';
 export type { PDFBuilderEmbedProps } from './PDFBuilderEmbed';
 export type { RichTextBuilderEmbedProps } from './RichTextBuilderEmbed';

@@ -4,14 +4,17 @@ import { Button } from "@/components/ui/button";
 import { ToolbarPanel } from "@/components/pdf-builder/ToolbarPanel";
 import { PDFCanvas } from "@/components/pdf-builder/PDFCanvas";
 import { PDFFormat, ElementType, PDFElement, PDFPage } from "@/components/pdf-builder/PDFBuilder";
+import { useSignatureKit } from "@/contexts/SignatureKitContext";
 import SignatureKitProSDK from "./sdk";
 import { toast } from "sonner";
 
 export interface PDFBuilderEmbedProps {
-  apiKey: string;
+  apiKey?: string;
   apiBaseUrl?: string;
   customerId?: string; // Customer ID for multi-tenant scenarios
   initialDocumentId?: string; // Load existing document
+  initialPages?: PDFPage[]; // Load from existing data (e.g. from Start Screen)
+  initialFormat?: PDFFormat;
   onSave?: (documentId: string) => void;
   onContinue?: (documentId: string) => void;
   className?: string;
@@ -22,14 +25,36 @@ export const PDFBuilderEmbed = ({
   apiBaseUrl,
   customerId,
   initialDocumentId,
+  initialPages,
+  initialFormat,
   onSave,
   onContinue,
   className = "",
 }: PDFBuilderEmbedProps) => {
+  const {
+    apiKey: contextApiKey,
+    apiBaseUrl: contextApiBaseUrl,
+    customerId: contextCustomerId
+  } = useSignatureKit();
+
+  const finalApiKey = apiKey || contextApiKey;
+  const finalApiBaseUrl = apiBaseUrl || contextApiBaseUrl;
+  const finalCustomerId = customerId || contextCustomerId;
+
   const [pages, setPages] = useState<PDFPage[]>([]);
   const [selectedFormat, setSelectedFormat] = useState<PDFFormat>("A4");
   const [loading, setLoading] = useState(true);
-  const [sdk] = useState(() => new SignatureKitProSDK({ apiKey, apiBaseUrl, customerId }));
+  // Initialize SDK with finalized config
+  const [sdk] = useState(() => {
+    if (!finalApiKey) {
+      console.warn("SignatureKitPro: No API key provided via props or SignatureKitProvider");
+    }
+    return new SignatureKitProSDK({
+      apiKey: finalApiKey || '',
+      apiBaseUrl: finalApiBaseUrl,
+      customerId: finalCustomerId
+    });
+  });
 
   useEffect(() => {
     const loadData = async () => {
@@ -47,7 +72,14 @@ export const PDFBuilderEmbed = ({
           }
         }
 
-        // Create initial empty page
+        // Create initial empty page or use provided initial pages
+        if (initialPages && initialPages.length > 0) {
+          setPages(initialPages);
+          if (initialFormat) setSelectedFormat(initialFormat);
+          setLoading(false);
+          return;
+        }
+
         const initialPage: PDFPage = {
           id: `page-${Date.now()}`,
           format: "A4",
@@ -74,7 +106,7 @@ export const PDFBuilderEmbed = ({
 
   const addElement = (type: ElementType) => {
     if (pages.length === 0) return;
-    
+
     const newElement: PDFElement = {
       id: `element-${Date.now()}`,
       type,
@@ -82,8 +114,10 @@ export const PDFBuilderEmbed = ({
       y: 100 + Math.random() * 200,
       width: type === "checkbox" ? 20 : 150,
       height: type === "text" ? 40 : type === "checkbox" ? 20 : 60,
+
       required: false,
       placeholder: `Enter ${type}...`,
+      role: 'source', // Default to Sender
     };
 
     const updatedPages = [...pages];
