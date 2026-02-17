@@ -291,7 +291,7 @@ export declare class SignatureKitProSDK {
         sessionId: string;
         completedAt: string;
     }>;
-    savePDFBuilder(pages: PDFPage[], format: PDFFormat, title?: string, customerId?: string): Promise<{
+    savePDFBuilder(pages: PDFPage[], format: PDFFormat, title?: string, customerId?: string, documentId?: string): Promise<{
         documentId: string;
     }>;
     loadPDFBuilder(documentId: string): Promise<{

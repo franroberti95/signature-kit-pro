@@ -158,9 +158,16 @@ export const PDFBuilderEmbed = ({
     toast.success("New page added");
   };
 
+  const [currentDocumentId, setCurrentDocumentId] = useState<string | undefined>(initialDocumentId);
+
   const handleSave = async () => {
     try {
-      const result = await sdk.savePDFBuilder(pages, selectedFormat, undefined, customerId);
+      // Pass currentDocumentId to update existing or create new
+      const result = await sdk.savePDFBuilder(pages, selectedFormat, undefined, customerId, currentDocumentId);
+
+      // Update state with the returned ID (newly created or same)
+      setCurrentDocumentId(result.documentId);
+
       toast.success("Document saved successfully");
       onSave?.(result.documentId);
     } catch (error) {
@@ -172,10 +179,14 @@ export const PDFBuilderEmbed = ({
   const handleContinue = async () => {
     try {
       // Save first, then call onContinue
-      const result = await sdk.savePDFBuilder(pages, selectedFormat, undefined, customerId);
+      const result = await sdk.savePDFBuilder(pages, selectedFormat, undefined, customerId, currentDocumentId);
+
+      setCurrentDocumentId(result.documentId);
+
       toast.success("Document saved");
       onContinue?.(result.documentId);
     } catch (error) {
+      // ... existing error handling
       console.error('PDFBuilderEmbed: Error saving:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to save document');
     }

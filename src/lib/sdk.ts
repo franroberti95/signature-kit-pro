@@ -69,10 +69,10 @@ class SignatureKitProSDK {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = endpoint.startsWith('http') 
-      ? endpoint 
+    const url = endpoint.startsWith('http')
+      ? endpoint
       : `${this.apiBaseUrl}${endpoint}`;
-    
+
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       'X-API-Key': this.apiKey,
@@ -83,15 +83,15 @@ class SignatureKitProSDK {
     if (this.customerId) {
       headers['X-Customer-Id'] = this.customerId;
     }
-    
+
     const response = await fetch(url, {
       ...options,
       headers,
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ 
-        error: `HTTP ${response.status}: ${response.statusText}` 
+      const error = await response.json().catch(() => ({
+        error: `HTTP ${response.status}: ${response.statusText}`
       }));
       throw new Error(error.error || `API request failed: ${response.statusText}`);
     }
@@ -118,7 +118,7 @@ class SignatureKitProSDK {
   }
 
   async updateDocument(
-    documentId: string, 
+    documentId: string,
     updates: UpdateDocumentParams
   ): Promise<{ document: Document }> {
     return this.request<{ document: Document }>(`/documents/${documentId}`, {
@@ -127,8 +127,8 @@ class SignatureKitProSDK {
     });
   }
 
-  async listDocuments(filters?: { 
-    status?: string; 
+  async listDocuments(filters?: {
+    status?: string;
     documentType?: 'pdf' | 'rich_text';
     customerId?: string;
   }): Promise<{ documents: Document[] }> {
@@ -139,7 +139,7 @@ class SignatureKitProSDK {
     if (customerIdToUse) {
       queryParams.append('customer_id', customerIdToUse);
     }
-    
+
     const query = queryParams.toString();
     return this.request<{ documents: Document[] }>(
       `/documents${query ? `?${query}` : ''}`
@@ -153,9 +153,9 @@ class SignatureKitProSDK {
   }
 
   // Sessions API
-  async createSession(params: CreateSessionParams): Promise<{ 
-    session: Session; 
-    signingUrl: string 
+  async createSession(params: CreateSessionParams): Promise<{
+    session: Session;
+    signingUrl: string
   }> {
     const expiresAt = params.expiresAt || new Date(
       Date.now() + 7 * 24 * 60 * 60 * 1000
@@ -177,13 +177,13 @@ class SignatureKitProSDK {
   }
 
   async submitSessionForm(
-    token: string, 
+    token: string,
     formData: Record<string, any>
   ): Promise<{ message: string; sessionId: string; completedAt: string }> {
-    return this.request<{ 
-      message: string; 
-      sessionId: string; 
-      completedAt: string 
+    return this.request<{
+      message: string;
+      sessionId: string;
+      completedAt: string
     }>(`/sessions/${token}`, {
       method: 'POST',
       body: JSON.stringify({ formData }),
@@ -192,18 +192,28 @@ class SignatureKitProSDK {
 
   // Helper methods for PDF Builder
   async savePDFBuilder(
-    pages: PDFPage[], 
-    format: PDFFormat, 
+    pages: PDFPage[],
+    format: PDFFormat,
     title?: string,
-    customerId?: string
+    customerId?: string,
+    documentId?: string
   ): Promise<{ documentId: string }> {
-    const result = await this.createDocument({
-      documentType: 'pdf',
-      title: title || 'Untitled PDF',
-      data: { pages, format },
-      customerId: customerId || this.customerId,
-    });
-    return { documentId: result.document.id };
+    if (documentId) {
+      await this.updateDocument(documentId, {
+        title: title,
+        data: { pages, format },
+        // status: 'draft' // keep existing status or update?
+      });
+      return { documentId };
+    } else {
+      const result = await this.createDocument({
+        documentType: 'pdf',
+        title: title || 'Untitled PDF',
+        data: { pages, format },
+        customerId: customerId || this.customerId,
+      });
+      return { documentId: result.document.id };
+    }
   }
 
   async loadPDFBuilder(
@@ -211,7 +221,7 @@ class SignatureKitProSDK {
   ): Promise<{ pages: PDFPage[]; format: PDFFormat } | null> {
     const result = await this.getDocument(documentId);
     if (!result.document?.data) return null;
-    
+
     return {
       pages: result.document.data.pages || [],
       format: result.document.data.format || 'A4',

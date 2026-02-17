@@ -34,93 +34,59 @@ export const PDFStartScreen = ({ onSuccess, className = "" }: PDFStartScreenProp
     };
 
     const handleFileUpload = async (file: File) => {
-        if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-            // Handle non-PDF file - send to backend for conversion
-            await handleNonPdfUpload(file);
-        } else if (file.type === 'application/pdf') {
-            // Handle PDF file - detect page count and create pages
-            try {
-                const blobUrl = URL.createObjectURL(file);
-
-                // Load the PDF to get page count
-                const pdfBytes = await file.arrayBuffer();
-                const pdfDoc = await PDFDocument.load(pdfBytes);
-                const pageCount = pdfDoc.getPageCount();
-
-                // Create page objects for each page in the PDF
-                const newPages = Array.from({ length: pageCount }, (_, index) => ({
-                    id: `page-${Date.now()}-${index}`,
-                    format: "A4" as PDFFormat,
-                    elements: [],
-                    backgroundImage: blobUrl,
-                    originalFileName: file.name,
-                    pageNumber: index + 1
-                }));
-
-                onSuccess({
-                    pages: newPages,
-                    format: "A4"
-                });
-
-                toast(`PDF "${file.name}" loaded successfully! ${pageCount} pages detected.`);
-            } catch (error) {
-                console.error('Error processing PDF:', error);
-                toast.error("Failed to process PDF file");
-            }
-        } else {
-            toast.error("Please upload a PDF or DOCX file");
+        if (file.type !== 'application/pdf') {
+            toast.error("Please upload a PDF file. DOCX is not supported.");
+            return;
         }
-    };
 
-    const handleNonPdfUpload = async (file: File) => {
-        setIsConverting(true);
+        setIsConverting(true); // Reuse converting state for uploading
+        toast("Uploading PDF...", { duration: 2000 });
 
         try {
-            toast("Converting document to PDF...", { duration: 3000 });
-
-            // Create FormData for file upload
+            // 1. Upload to Vercel Blob via API
             const formData = new FormData();
             formData.append('file', file);
 
-            // Use the configured API URL from context or override
-            const apiUrl = contextApiBaseUrl || 'https://api.signaturekit.pro/api';
-            // Fallback API URL should ideally be the production one if not specified
+            const apiUrl = contextApiBaseUrl || 'https://signature-kit-pro.vercel.app/api';
+            // NOTE: Using current origin or standard prod URL if context is missing. 
+            // Ideally should be dynamic based on env but this is a library component.
+            // For local dev with 'vercel dev', it handles /api relative if on same origin, 
+            // but if on localhost:5173 calling localhost:3000, we need full URL.
 
-            const apiKey = contextApiKey || '';
+            // Simpler strategy: Try relative '/api/upload' if we think we are in the same app, 
+            // otherwise use contextUrl. 
+            // But since this is a library, safer to use the passed contextApiBaseUrl or failover.
+            // If contextApiBaseUrl is undefined, we might assume '/api'.
 
-            if (!apiKey) {
-                console.warn("SignatureKitPro: No API key available for conversion");
-            }
+            const uploadUrl = contextApiBaseUrl ? `${contextApiBaseUrl}/upload` : '/api/upload';
 
-            const response = await fetch(`${apiUrl}/convert-to-pdf`, {
+            const uploadResponse = await fetch(uploadUrl, {
                 method: 'POST',
                 headers: {
-                    'x-api-key': apiKey,
+                    'x-api-key': contextApiKey || '',
                 },
                 body: formData,
             });
 
-            if (!response.ok) {
-                throw new Error(`Conversion failed: ${response.statusText}`);
+            if (!uploadResponse.ok) {
+                const errText = await uploadResponse.text();
+                throw new Error(`Upload failed: ${uploadResponse.status} ${errText}`);
             }
 
-            // Get the converted PDF blob from the response
-            const pdfBlob = await response.blob();
+            const blobData = await uploadResponse.json();
+            const pdfUrl = blobData.url;
 
-            // Load the PDF to get page count
-            const pdfBytes = await pdfBlob.arrayBuffer();
+            // 2. Load PDF locally to get page count (faster than re-fetching)
+            const pdfBytes = await file.arrayBuffer();
             const pdfDoc = await PDFDocument.load(pdfBytes);
             const pageCount = pdfDoc.getPageCount();
 
-            // Create a blob URL for the converted PDF
-            const blobUrl = URL.createObjectURL(pdfBlob);
-
-            // Create page objects for each page in the PDF
+            // 3. Create Pages
             const newPages = Array.from({ length: pageCount }, (_, index) => ({
                 id: `page-${Date.now()}-${index}`,
                 format: "A4" as PDFFormat,
                 elements: [],
-                backgroundImage: blobUrl,
+                backgroundImage: pdfUrl, // Use the permanent Vercel Blob URL
                 originalFileName: file.name,
                 pageNumber: index + 1
             }));
@@ -130,13 +96,11 @@ export const PDFStartScreen = ({ onSuccess, className = "" }: PDFStartScreenProp
                 format: "A4"
             });
 
-            toast(`Document converted to PDF successfully! "${file.name}" loaded with ${pageCount} pages.`, {
-                duration: 3000
-            });
+            toast.success(`PDF uploaded successfully! ${pageCount} pages detected.`);
 
         } catch (error) {
-            console.error('Error converting file:', error);
-            toast.error(`Failed to convert file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            console.error('Error processing PDF:', error);
+            toast.error(`Failed to process PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
             setIsConverting(false);
         }
@@ -180,7 +144,7 @@ export const PDFStartScreen = ({ onSuccess, className = "" }: PDFStartScreenProp
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <p className="text-muted-foreground">Add form fields to an existing PDF or Word document</p>
+                                <p className="text-muted-foreground">Add form fields to an existing PDF document</p>
                                 <FileUploader onFileUpload={handleFileUpload} isConverting={isConverting} />
                             </CardContent>
                         </Card>

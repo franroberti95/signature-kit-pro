@@ -1,129 +1,106 @@
 # Signature Kit Pro Integration Guide
 
-This guide provides everything you need to know to integrate `signature-kit-pro` into your Next.js or React application.
+This guide explains how to integrate `signature-kit-pro` into your other projects, leveraging the local backend for data persistence and file storage.
 
-**Copy this file to your other project's `.cursorrules`, `.agent/knowledge`, or simply point your AI assistant to it.**
+## 1. Prerequisites
 
-## 1. Installation
+Your project needs a **Postgres Database** (e.g., Vercel Postgres, Neon) and **Vercel Blob** configured.
 
-If you are using the private registry or local linking:
-
+### Environment Variables
+Ensure your `.env.local` has:
 ```bash
-npm install signature-kit-pro
-# or
-yarn add signature-kit-pro
+# Database (Neon/Postgres)
+DATABASE_URL="postgres://..."
+
+# Vercel Blob (for file uploads)
+BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
+
+# API Key for your own API (to secure endpoints)
+SIGNATURE_KIT_PRO_API_KEY="sk_..."
 ```
 
-## 2. Frontend Integration (React/Next.js)
+## 2. Database Setup
 
-### Setup Provider
-Wrap your application root with `SignatureKitProvider`. This context handles the API key and configuration globally.
+Since this project uses raw SQL (via `@neondatabase/serverless`) instead of an ORM migration tool, you need to create the `documents` table manually in your database.
 
-```tsx
-// src/app/layout.tsx
-'use client';
-import { SignatureKitProvider } from 'signature-kit-pro';
+Run this SQL command in your database query editor:
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>
-        <SignatureKitProvider 
-          apiKey={process.env.NEXT_PUBLIC_SIGNATURE_KIT_API_KEY!}
-          apiBaseUrl={process.env.NEXT_PUBLIC_SIGNATURE_KIT_API_URL} // Optional, defaults to /api
-        >
-          {children}
-        </SignatureKitProvider>
-      </body>
-    </html>
-  );
+```sql
+CREATE TABLE IF NOT EXISTS documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id VARCHAR(255) NOT NULL,
+  customer_id VARCHAR(255),
+  document_type VARCHAR(50) NOT NULL CHECK (document_type IN ('pdf', 'rich_text')),
+  title VARCHAR(255) NOT NULL,
+  status VARCHAR(50) DEFAULT 'draft',
+  data JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Optional: Index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents(user_id);
+```
+
+## 3. Library Integration
+
+### Installation
+Link the local package in your consuming project's `package.json`:
+```json
+"dependencies": {
+  "signature-kit-pro": "file:../signature-kit-pro"
 }
 ```
 
-### Using the PDF Builder
-Import and use the `PDFBuilderEmbed` component. It automatically uses the context configuration.
+### Usage Flow
+
+The integration consists of two steps:
+1.  **Start Screen:** User creates a new doc or uploads a PDF.
+2.  **Builder Embed:** User edits the document.
 
 ```tsx
-// src/app/builder/page.tsx
-'use client';
-import { PDFBuilderEmbed } from 'signature-kit-pro';
-import 'signature-kit-pro/dist/style.css'; // Don't forget CSS!
+import { useState } from 'react';
+import { PDFStartScreen, PDFBuilderEmbed } from 'signature-kit-pro';
+import 'signature-kit-pro/dist/style.css';
 
-export default function BuilderPage() {
-  return (
-    <div className="h-screen w-full">
-      <PDFBuilderEmbed 
-        onSave={(documentId) => console.log('Saved document:', documentId)}
-        onContinue={(documentId) => console.log('Proceed to signing:', documentId)}
-        // Optional: override context
-        // apiKey="special-key" 
+export default function DocumentEditor() {
+  const [builderData, setBuilderData] = useState(null);
+
+  // 1. Show Start Screen initially
+  if (!builderData) {
+    return (
+      <PDFStartScreen 
+        onSuccess={(data) => {
+          // data contains: { pages, format }
+          // If uploaded, pages[].backgroundImage will be a Vercel Blob URL
+          setBuilderData(data);
+        }}
       />
-    </div>
+    );
+  }
+
+  // 2. Show Builder when data is ready
+  return (
+    <PDFBuilderEmbed
+      apiKey="sk_..." // Your API key
+      apiBaseUrl="http://localhost:3000/api" // Your backend URL
+      customerId="cust_123" // Optional: for multi-tenant apps
+      initialPages={builderData.pages}
+      initialFormat={builderData.format}
+      onSave={(documentId) => {
+        console.log("Document saved with ID:", documentId);
+      }}
+    />
   );
 }
 ```
 
-## 3. Backend Integration (Node.js/Next.js API Routes)
+## 4. How Saving Works
 
-Use the SDK to interact with the Signature Kit services programmatically (e.g., creating signing sessions, downloading PDFs).
-
-```typescript
-import { SignatureKitProSDK } from 'signature-kit-pro/sdk'; 
-// Or sometimes just: import { SignatureKitProSDK } from 'signature-kit-pro';
-
-const sdk = new SignatureKitProSDK({
-  apiKey: process.env.SIGNATURE_KIT_API_KEY!,
-  apiBaseUrl: 'https://api.signaturekit.pro', // Your backend URL
-});
-
-// Example: Create a signing session
-export async function createSession(documentId: string, email: string) {
-  const { session, signingUrl } = await sdk.createSession({
-    documentId,
-    signerEmail: email,
-    signerName: 'John Doe',
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-  });
-  return signingUrl;
-}
-
-// Example: Get a document
-export async function getDocument(id: string) {
-  const { document } = await sdk.getDocument(id);
-  return document;
-}
-```
-
-## 4. Required Backend API Endpoints
-
-If you are hosting the backend yourself (not using a managed service), you must implement these endpoints to support `PDFBuilderEmbed`:
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/documents` | Create/Save a document (pages, format, etc.) |
-| `GET` | `/documents/:id` | Load a document |
-| `GET` | `/pre-defined-fields` | (Optional) Get fields for drag-and-drop |
-| `POST` | `/convert-to-pdf` | (Optional) Convert DOCX/Images to PDF background |
-
-## 5. TypeScript Definitions
-
-The library exports full TypeScript definitions. Key interfaces:
-
-```typescript
-export interface PDFPage {
-  id: string;
-  format: "A4" | "A5" | "Letter";
-  elements: PDFElement[];
-  backgroundImage?: string;
-}
-
-export interface PDFElement {
-  id: string;
-  type: "text" | "signature" | "date" | "checkbox";
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  required?: boolean;
-}
-```
+1.  **Upload:** `PDFStartScreen` uploads files to `/api/upload` (Vercel Blob) and returns a permanent URL.
+2.  **Edit:** `PDFBuilderEmbed` renders the PDF using that URL.
+3.  **Save:** When "Save" is clicked:
+    *   It calls `POST /api/documents` (first time).
+    *   It saves the JSON definition (pages, elements, positions) to the `documents` table.
+    *   It returns a `documentId`.
+    *   Subsequent saves call `PUT /api/documents/:id` to update the existing record.
